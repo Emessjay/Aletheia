@@ -1,13 +1,17 @@
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { Sidebar } from "@/features/reader/Sidebar";
 
 export function AppShell() {
   const loc = useLocation();
+  const showSidebar = loc.pathname.startsWith("/reader");
+
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
       <header
         style={{
           height: 44,
+          flexShrink: 0,
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
@@ -28,6 +32,9 @@ export function AppShell() {
           >
             Aletheia
           </Link>
+          <TopBarLink to="/reader/bible/john/1" active={loc.pathname.startsWith("/reader")}>
+            Read
+          </TopBarLink>
           <TopBarLink to="/design" active={loc.pathname.startsWith("/design")}>
             Design
           </TopBarLink>
@@ -36,9 +43,12 @@ export function AppShell() {
           <ThemeToggle />
         </div>
       </header>
-      <main style={{ flex: 1, overflow: "auto" }}>
-        <Outlet />
-      </main>
+      <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
+        {showSidebar ? <Sidebar /> : null}
+        <main style={{ flex: 1, overflow: "auto" }}>
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 }
