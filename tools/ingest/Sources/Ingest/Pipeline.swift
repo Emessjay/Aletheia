@@ -6,6 +6,7 @@ import Logging
 ///     <root>/
 ///       bsb/bsb.txt                              # BSB plain text
 ///       brenton/eng-Brenton/*.usfm               # Brenton LXX English USFM files
+///       grcbrent/*.usfm                          # Brenton LXX Greek USFM files
 ///       kjv-apocrypha/*.usfm                     # KJV 1611 Apocrypha USFM
 ///       stepbible/TAHOT/*.txt                    # STEPBible TSV tables
 ///       stepbible/TAGOT/*.txt
@@ -37,6 +38,7 @@ public struct Pipeline {
             ("BSB",                 { try ingestBSB(writer: writer) }),
             ("KJV (Eng)",           { try ingestKJV(writer: writer) }),
             ("Brenton LXX (Eng)",   { try ingestBrenton(writer: writer) }),
+            ("Brenton LXX (Grk)",   { try ingestGrcbrent(writer: writer) }),
             ("KJV Apocrypha",       { try ingestKJVApocrypha(writer: writer) }),
             ("STEPBible KJV+Strongs", { try ingestSTEP(writer: writer, table: .tkjvs, language: "en_kjv") }),
             ("STEPBible Hebrew (MT)", { try ingestSTEP(writer: writer, table: .tahot, language: "he") }),
@@ -94,6 +96,15 @@ public struct Pipeline {
 
     private func ingestBrenton(writer: CorpusWriter) throws {
         try ingestUSFMDirectory(named: "brenton", language: "en_brenton", writer: writer)
+    }
+
+    /// Brenton's Greek LXX (eBible.org `grcbrent`). Untagged Greek text under
+    /// `language="gk"` alongside the existing Greek NT, so the reader's Greek
+    /// column resolves for OT chapters. Books not present in [[BookCatalog]]
+    /// (LJE, SUS, BEL, MAN, 1ES, 3MA, 4MA) are silently skipped by the USFM
+    /// parser; DAG/ESG are remapped to dan/esth via the catalog's alias table.
+    private func ingestGrcbrent(writer: CorpusWriter) throws {
+        try ingestUSFMDirectory(named: "grcbrent", language: "gk", writer: writer)
     }
 
     private func ingestKJVApocrypha(writer: CorpusWriter) throws {

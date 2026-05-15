@@ -127,7 +127,14 @@ public struct STEPBibleParser {
 
     private func cellAt(_ cells: [String], _ idx: Int) -> String? {
         guard cells.indices.contains(idx) else { return nil }
-        let v = cells[idx].trimmingCharacters(in: .whitespaces)
+        // STEPBible's TAGNT appends ¶/§ paragraph-break glyphs to the last surface
+        // of a paragraph (e.g. "Βαβυλῶνος.¶"). They're presentation hints, not
+        // part of the word — strip so word lookups and joined verse text are clean.
+        let v = cells[idx]
+            .trimmingCharacters(in: .whitespaces)
+            .replacingOccurrences(of: "¶", with: "")
+            .replacingOccurrences(of: "§", with: "")
+            .trimmingCharacters(in: .whitespaces)
         return v.isEmpty ? nil : v
     }
 

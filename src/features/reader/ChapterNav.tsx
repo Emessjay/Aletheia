@@ -20,27 +20,39 @@ export function ChapterNav({ workSlug, bookSlug, current, all }: Props) {
         alignItems: "center",
         padding: "2rem 0 0",
         borderTop: "1px solid var(--color-rule)",
-        marginTop: "2.5rem",
+        marginTop: "3rem",
+        width: "100%",
       }}
     >
-      <div style={{ flex: 1 }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
         {prev ? (
-          <Link to={`/reader/${workSlug}/${bookSlug}/${prev}`}>← Chapter {prev}</Link>
+          <Link
+            to={`/reader/${workSlug}/${bookSlug}/${prev}`}
+            data-nav="prev"
+          >
+            ← Chapter {prev}
+          </Link>
         ) : null}
       </div>
       <div
         style={{
           color: "var(--color-fg-subtle)",
           fontSize: 13,
-          flex: 0,
-          padding: "0 1em",
+          flex: "0 0 auto",
+          padding: "0 1.5em",
+          fontFeatureSettings: '"onum"',
         }}
       >
-        {idx + 1} / {all.length}
+        {idx >= 0 ? `${idx + 1} / ${all.length}` : null}
       </div>
-      <div style={{ flex: 1, textAlign: "right" }}>
+      <div style={{ flex: 1, minWidth: 0, textAlign: "right" }}>
         {next ? (
-          <Link to={`/reader/${workSlug}/${bookSlug}/${next}`}>Chapter {next} →</Link>
+          <Link
+            to={`/reader/${workSlug}/${bookSlug}/${next}`}
+            data-nav="next"
+          >
+            Chapter {next} →
+          </Link>
         ) : null}
       </div>
     </nav>

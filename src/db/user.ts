@@ -10,6 +10,11 @@ import type {
   VerseRef,
 } from "./types";
 
+export interface ChapterAnnotations {
+  highlights: HighlightRow[];
+  notes: NoteRow[];
+}
+
 const USER_DB_URL = "sqlite:aletheia_user.db";
 
 let userPromise: Promise<Database> | null = null;
@@ -130,6 +135,26 @@ export async function softDeleteHighlight(id: string): Promise<void> {
   );
 }
 
+export async function listChapterAnnotations(
+  workSlug: string,
+  bookSlug: string,
+  chapter: number,
+): Promise<ChapterAnnotations> {
+  const highlights = await userSelect<HighlightRow>(
+    `SELECT * FROM highlights
+       WHERE work_slug = $1 AND book_slug = $2 AND chapter = $3
+         AND deleted_at IS NULL`,
+    [workSlug, bookSlug, chapter],
+  );
+  const notes = await userSelect<NoteRow>(
+    `SELECT * FROM notes
+       WHERE work_slug = $1 AND book_slug = $2 AND chapter = $3
+         AND deleted_at IS NULL`,
+    [workSlug, bookSlug, chapter],
+  );
+  return { highlights, notes };
+}
+
 // ── Notes ────────────────────────────────────────────────────────────────────
 
 export async function listNotesForVerse(ref: VerseRef): Promise<NoteRow[]> {
@@ -142,7 +167,7 @@ export async function listNotesForVerse(ref: VerseRef): Promise<NoteRow[]> {
   );
 }
 
-export async function upsertNote(
+export async function createNote(
   ref: VerseRef,
   body: string,
 ): Promise<NoteRow> {
@@ -165,6 +190,30 @@ export async function upsertNote(
     updated_at: now,
     deleted_at: null,
   };
+}
+
+export async function updateNote(id: string, body: string): Promise<void> {
+  const now = nowMs();
+  await userExecute(
+    `UPDATE notes SET body = $1, updated_at = $2 WHERE id = $3`,
+    [body, now, id],
+  );
+}
+
+export async function softDeleteNote(id: string): Promise<void> {
+  const now = nowMs();
+  await userExecute(
+    `UPDATE notes SET deleted_at = $1, updated_at = $1 WHERE id = $2`,
+    [now, id],
+  );
+}
+
+export async function softDeleteBookmark(id: string): Promise<void> {
+  const now = nowMs();
+  await userExecute(
+    `UPDATE bookmarks SET deleted_at = $1, updated_at = $1 WHERE id = $2`,
+    [now, id],
+  );
 }
 
 // ── Bookmarks ────────────────────────────────────────────────────────────────

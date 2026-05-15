@@ -96,16 +96,29 @@ public struct USFMParser {
     /// Strip USFM inline markup, leaving plain reading text.
     private func cleanInline(_ s: String) -> String {
         var out = s
-        // Drop footnotes (\f ... \f*) and cross-refs (\x ... \x*) entirely
-        out = out.replacingOccurrences(of: #"\\f[^\\]*\\f\*"#, with: "", options: .regularExpression)
-        out = out.replacingOccurrences(of: #"\\x[^\\]*\\x\*"#, with: "", options: .regularExpression)
-        // Replace \w word|...\w* with just the word (the Strong's payload will be ingested by
-        // STEPBible instead, since USFM Strong's encoding varies).
-        out = out.replacingOccurrences(of: #"\\w ([^|\\]+)\|[^\\]*\\w\*"#, with: "$1", options: .regularExpression)
-        out = out.replacingOccurrences(of: #"\\w ([^\\]+)\\w\*"#, with: "$1", options: .regularExpression)
-        // Drop any remaining \tag ... \tag* spans
-        out = out.replacingOccurrences(of: #"\\[a-z0-9]+[\* ]"#, with: " ", options: .regularExpression)
-        out = out.replacingOccurrences(of: #"\\[a-z0-9]+$"#, with: "", options: .regularExpression)
+        // Drop footnotes (\f ... \f*) and cross-refs (\x ... \x*) entirely. Their
+        // bodies contain nested markers like \fr, \ft, \fq, \xo, \xt — so we cannot
+        // exclude backslashes from the inner match. Use a non-greedy `.` (newlines
+        // already split at the parser layer) so multiple footnotes on one verse
+        // each match independently.
+        out = out.replacingOccurrences(of: #"\\f\s.*?\\f\*"#, with: "", options: .regularExpression)
+        out = out.replacingOccurrences(of: #"\\x\s.*?\\x\*"#, with: "", options: .regularExpression)
+        // Unwrap \w word|strong=…\w* — and the nested-marker variant \+w word|…\+w*
+        // (used inside \nd …\nd* for "LORD"). Strong's payloads are ingested
+        // separately from STEPBible, since USFM Strong's encoding varies.
+        out = out.replacingOccurrences(of: #"\\\+?w ([^|\\]+)\|[^\\]*\\\+?w\*"#, with: "$1", options: .regularExpression)
+        out = out.replacingOccurrences(of: #"\\\+?w ([^\\]+)\\\+?w\*"#, with: "$1", options: .regularExpression)
+        // Drop any remaining USFM markers — closing forms (\nd*, \add*, \+nd*) and
+        // opening forms (\nd , \add , \+nd ). Text content is preserved; only the
+        // tag itself is removed.
+        out = out.replacingOccurrences(of: #"\\\+?[a-z0-9]+\*"#, with: "", options: .regularExpression)
+        out = out.replacingOccurrences(of: #"\\\+?[a-z0-9]+ "#, with: " ", options: .regularExpression)
+        out = out.replacingOccurrences(of: #"\\\+?[a-z0-9]+$"#, with: "", options: .regularExpression)
+        // eBible.org's KJV uses literal ¶ / § glyphs inside verse text to mark
+        // paragraph breaks (in addition to the line-level \p markers). The visual
+        // pilcrow doesn't belong in reading flow — drop it.
+        out = out.replacingOccurrences(of: "¶", with: "")
+        out = out.replacingOccurrences(of: "§", with: "")
         // Collapse whitespace
         out = out.replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
         return out.trimmingCharacters(in: .whitespacesAndNewlines)

@@ -3,8 +3,8 @@ import type { CorpusLanguage } from "@/db/types";
 export const TRANSLATION_LABELS: Record<CorpusLanguage, string> = {
   he: "Hebrew",
   gk: "Greek",
-  en_bsb: "BSB",
-  en_kjv: "KJV",
+  en_bsb: "English (Modern)",
+  en_kjv: "English (King James)",
   en_brenton: "Brenton",
   la: "Latin",
 };

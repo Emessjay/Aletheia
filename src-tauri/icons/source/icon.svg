@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Aletheia app-icon master.
+  Parchment-cream italic "A" on an oxblood book-cloth ground — Loeb spine.
+  Render with `tauri icon src-tauri/icons/source/icon.png` to produce every
+  platform size, after first rasterising this SVG via scripts/generate_icons.sh.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <rect width="1024" height="1024" fill="#7a1f1f"/>
+
+  <!-- Baskerville SemiBold Italic is closest to a calligraphic capital among
+       reliably-installed macOS serifs; falls back to Garamond/Didot. -->
+  <text x="512" y="800"
+        font-family="Baskerville, 'EB Garamond', Garamond, Didot, 'Times New Roman', serif"
+        font-style="italic"
+        font-weight="600"
+        font-size="980"
+        fill="#f5f1e8"
+        text-anchor="middle">A</text>
+
+  <!-- Subtle hairline beneath the letter — book-cover convention. -->
+  <line x1="320" y1="900" x2="704" y2="900" stroke="#f5f1e8" stroke-width="3" opacity="0.5"/>
+</svg>

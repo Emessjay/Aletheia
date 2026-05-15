@@ -1,5 +1,31 @@
 # Aletheia — Claude project notes
 
+## Worktree-per-feature
+
+Before starting work on any non-trivial feature, create a git worktree for it
+and do all editing + testing inside that worktree. Merge back to `main` when
+the feature is complete.
+
+    git worktree add ../aletheia-<slug> -b feature/<slug>
+    # …work, commit, test inside ../aletheia-<slug>…
+    cd /path/to/main/worktree
+    git merge feature/<slug>
+    git worktree remove ../aletheia-<slug>
+
+This lets several Claude instances work and run `tauri dev` in parallel without
+colliding on the Vite port, the Tauri single-instance lock, or the macOS
+app-data directory. **Never run `npm run tauri dev` directly** inside a
+worktree — always launch via:
+
+    ./scripts/dev-instance.sh        # auto-picks the lowest free instance index
+    ./scripts/dev-instance.sh 3      # or pin to instance #3 explicitly
+
+The script overrides the Tauri bundle identifier to `org.jackporter.aletheia.devN`
+and picks Vite port `1420 + 2N`, so each instance has an isolated user-data
+SQLite under `~/Library/Application Support/`. Without this, the
+`tauri_plugin_single_instance` lock in [src-tauri/src/lib.rs](src-tauri/src/lib.rs)
+will refuse to launch a second window.
+
 ## Corpus licensing policy
 
 When sourcing new content for the bundled corpus (`data/Aletheia.sqlite`), prefer

@@ -115,7 +115,20 @@ public enum BookCatalog {
     private static let usfmIndex: [String: CanonBook] = Dictionary(uniqueKeysWithValues: all.map { ($0.usfmID, $0) })
     private static let slugIndex: [String: CanonBook] = Dictionary(uniqueKeysWithValues: all.map { ($0.slug, $0) })
 
+    // USFM aliases for LXX-only book codes that map onto Hebrew-canon slugs.
+    // Brenton's Greek LXX uses DAG (Theodotion Daniel + additions) and ESG
+    // (Greek Esther); both should land under the same slug as their Hebrew
+    // counterparts so the reader shows the LXX text in the Greek column.
+    private static let usfmAliases: [String: String] = [
+        "DAG": "DAN",
+        "ESG": "EST",
+    ]
+
     public static func byOSIS(_ id: String) -> CanonBook? { osisIndex[id] }
-    public static func byUSFM(_ id: String) -> CanonBook? { usfmIndex[id] }
+    public static func byUSFM(_ id: String) -> CanonBook? {
+        if let b = usfmIndex[id] { return b }
+        if let target = usfmAliases[id] { return usfmIndex[target] }
+        return nil
+    }
     public static func bySlug(_ slug: String) -> CanonBook? { slugIndex[slug] }
 }

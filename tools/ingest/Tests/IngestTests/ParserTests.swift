@@ -56,6 +56,27 @@ final class USFMParserTests: XCTestCase {
         let result = try parser.parse(text: usfm)
         XCTAssertEqual(result.rows.count, 1)
         XCTAssertFalse(result.rows[0].text.contains("prologue"))
+        XCTAssertFalse(result.rows[0].text.contains("1.1"))
+        XCTAssertFalse(result.rows[0].text.contains("+"))
+    }
+
+    /// Regression test for Joshua 5:2 in the KJV: pilcrow, nested \+w marker
+    /// inside \nd, and a footnote whose body uses inner \fr / \ft markers.
+    func testKJVJoshua52Shape() throws {
+        let parser = USFMParser()
+        let usfm = """
+        \\id JOS Joshua
+        \\c 5
+        \\p
+        \\v 2 ¶ At that \\w time|strong="H6256"\\w* the \\nd \\+w LORD|strong="H3068"\\+w*\\nd* \\w said|strong="H0559"\\w* unto \\w Joshua|strong="H3091"\\w*, \\w Make|strong="H6213"\\w* thee \\w sharp|strong="H6697"\\w* \\w knives|strong="H2719"\\w*.\\f + \\fr 5.2 \\ft sharp…: or, knives of flints\\f*
+        """
+        let result = try parser.parse(text: usfm)
+        XCTAssertEqual(result.rows.count, 1)
+        let text = result.rows[0].text
+        XCTAssertEqual(
+            text,
+            "At that time the LORD said unto Joshua, Make thee sharp knives."
+        )
     }
 }
 

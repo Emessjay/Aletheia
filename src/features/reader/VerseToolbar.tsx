@@ -1,0 +1,424 @@
+import { useState } from "react";
+import { Link } from "react-router-dom";
+import type { HighlightColor, HighlightRow, NoteRow, VerseRef } from "@/db/types";
+import { useVerseXrefs } from "@/db/hooks";
+import {
+  useCreateBookmark,
+  useCreateHighlight,
+  useCreateLibrary,
+  useCreateNote,
+  useDeleteHighlight,
+  useDeleteNote,
+  useLibraries,
+  useUpdateNote,
+} from "@/db/userHooks";
+
+const COLORS: HighlightColor[] = [
+  "yellow",
+  "green",
+  "blue",
+  "pink",
+  "purple",
+  "orange",
+];
+
+const COLOR_NAMES: Record<HighlightColor, string> = {
+  yellow: "Saffron",
+  green: "Sage",
+  blue: "Lapis",
+  pink: "Rose",
+  purple: "Iris",
+  orange: "Amber",
+};
+
+interface Props {
+  ref_: VerseRef;
+  highlights: HighlightRow[];
+  notes: NoteRow[];
+  onDone: () => void;
+}
+
+export function VerseToolbar({ ref_, highlights, notes, onDone }: Props) {
+  const [noteOpen, setNoteOpen] = useState(notes.length > 0);
+  const [bookmarkOpen, setBookmarkOpen] = useState(false);
+  const [xrefOpen, setXrefOpen] = useState(false);
+
+  const createHl = useCreateHighlight();
+  const deleteHl = useDeleteHighlight();
+
+  const onColor = (color: HighlightColor) => {
+    const existing = highlights.find((h) => h.color === color);
+    if (existing) {
+      deleteHl.mutate({ id: existing.id, ref: ref_ });
+    } else {
+      createHl.mutate({ ref: ref_, color });
+    }
+  };
+
+  return (
+    <div
+      style={{
+        marginTop: "0.25em",
+        marginBottom: "0.6em",
+        padding: "8px 0",
+        borderTop: "1px solid var(--color-rule)",
+        borderBottom: "1px solid var(--color-rule)",
+        display: "flex",
+        flexWrap: "wrap",
+        alignItems: "center",
+        gap: 14,
+        marginLeft: "2.5em",
+      }}
+    >
+      <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+        {COLORS.map((c) => {
+          const on = highlights.some((h) => h.color === c);
+          return (
+            <button
+              key={c}
+              type="button"
+              aria-label={COLOR_NAMES[c]}
+              title={COLOR_NAMES[c]}
+              onClick={() => onColor(c)}
+              style={{
+                width: 18,
+                height: 18,
+                padding: 0,
+                background: `var(--color-hl-${c})`,
+                border: on
+                  ? "1.5px solid var(--color-accent)"
+                  : "1px solid var(--color-rule-strong)",
+                borderRadius: 0,
+                cursor: "pointer",
+              }}
+            />
+          );
+        })}
+      </div>
+
+      <ToolbarButton
+        active={noteOpen}
+        onClick={() => setNoteOpen((v) => !v)}
+      >
+        Note {notes.length > 0 ? "·" : ""}
+      </ToolbarButton>
+
+      <ToolbarButton
+        active={bookmarkOpen}
+        onClick={() => setBookmarkOpen((v) => !v)}
+      >
+        Bookmark
+      </ToolbarButton>
+
+      <ToolbarButton
+        active={xrefOpen}
+        onClick={() => setXrefOpen((v) => !v)}
+      >
+        Cross-refs
+      </ToolbarButton>
+
+      <ToolbarButton onClick={onDone}>Done</ToolbarButton>
+
+      {noteOpen ? (
+        <div style={{ flexBasis: "100%", paddingTop: 8 }}>
+          <NoteEditor ref_={ref_} notes={notes} />
+        </div>
+      ) : null}
+
+      {bookmarkOpen ? (
+        <div style={{ flexBasis: "100%", paddingTop: 8 }}>
+          <BookmarkPicker ref_={ref_} onClose={() => setBookmarkOpen(false)} />
+        </div>
+      ) : null}
+
+      {xrefOpen ? (
+        <div style={{ flexBasis: "100%", paddingTop: 8 }}>
+          <CrossRefs ref_={ref_} />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function CrossRefs({ ref_ }: { ref_: VerseRef }) {
+  const q = useVerseXrefs("en_bsb", ref_.bookSlug, ref_.chapter, ref_.verse);
+  if (q.isPending)
+    return <span style={{ color: "var(--color-fg-muted)" }}>Loading…</span>;
+  if (q.isError)
+    return (
+      <pre style={{ color: "var(--color-accent)", fontSize: 12 }}>
+        {String(q.error)}
+      </pre>
+    );
+  if (!q.data || q.data.length === 0)
+    return (
+      <span style={{ color: "var(--color-fg-subtle)", fontStyle: "italic" }}>
+        No cross-references.
+      </span>
+    );
+  return (
+    <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+      {q.data.map((x, i) => (
+        <li
+          key={i}
+          style={{
+            display: "flex",
+            gap: 12,
+            padding: "5px 0",
+            borderTop: i > 0 ? "1px solid var(--color-rule)" : 0,
+          }}
+        >
+          <Link
+            to={`/reader/bible/${x.to_book_slug}/${x.to_chapter}#v${x.to_verse_start}`}
+            style={{
+              flexShrink: 0,
+              textDecoration: "none",
+              color: "var(--color-accent)",
+              fontVariant: "small-caps",
+              letterSpacing: "0.04em",
+              fontSize: 13,
+              width: 110,
+            }}
+          >
+            {x.to_book_name} {x.to_chapter}:{x.to_verse_start}
+          </Link>
+          <span
+            style={{
+              color: "var(--color-fg-muted)",
+              fontSize: 14,
+              flex: 1,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {x.to_text}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function ToolbarButton({
+  children,
+  active,
+  onClick,
+}: {
+  children: React.ReactNode;
+  active?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        background: "transparent",
+        border: 0,
+        padding: "2px 0",
+        font: "inherit",
+        fontSize: 13,
+        color: active ? "var(--color-fg)" : "var(--color-fg-muted)",
+        borderBottom: active
+          ? "1px solid var(--color-accent)"
+          : "1px solid transparent",
+        cursor: "pointer",
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function NoteEditor({
+  ref_,
+  notes,
+}: {
+  ref_: VerseRef;
+  notes: NoteRow[];
+}) {
+  // Phase 8: a single note per verse for the MVP.
+  const existing = notes[0];
+  const [draft, setDraft] = useState(existing?.body ?? "");
+
+  const createMut = useCreateNote();
+  const updateMut = useUpdateNote();
+  const deleteMut = useDeleteNote();
+
+  const save = () => {
+    const body = draft.trim();
+    if (!body) {
+      if (existing) deleteMut.mutate({ id: existing.id, ref: ref_ });
+      return;
+    }
+    if (existing) {
+      updateMut.mutate({ id: existing.id, body, ref: ref_ });
+    } else {
+      createMut.mutate({ ref: ref_, body });
+    }
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      <textarea
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        rows={3}
+        placeholder="Note for this verse…"
+        style={{
+          width: "100%",
+          background: "var(--color-bg-inset)",
+          border: "1px solid var(--color-rule)",
+          padding: "8px 10px",
+          color: "var(--color-fg)",
+          font: "inherit",
+          fontSize: 15,
+          resize: "vertical",
+          outline: "none",
+        }}
+      />
+      <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+        <button
+          type="button"
+          onClick={save}
+          style={{
+            background: "transparent",
+            border: 0,
+            padding: 0,
+            font: "inherit",
+            fontSize: 13,
+            color: "var(--color-accent)",
+            cursor: "pointer",
+            textDecoration: "underline",
+            textDecorationThickness: "0.5px",
+            textUnderlineOffset: 2,
+          }}
+        >
+          Save
+        </button>
+        {existing ? (
+          <button
+            type="button"
+            onClick={() => deleteMut.mutate({ id: existing.id, ref: ref_ })}
+            style={{
+              background: "transparent",
+              border: 0,
+              padding: 0,
+              font: "inherit",
+              fontSize: 13,
+              color: "var(--color-fg-muted)",
+              cursor: "pointer",
+            }}
+          >
+            Delete
+          </button>
+        ) : null}
+        {existing?.updated_at ? (
+          <span style={{ color: "var(--color-fg-subtle)", fontSize: 12 }}>
+            Saved {new Date(existing.updated_at).toLocaleString()}
+          </span>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function BookmarkPicker({
+  ref_,
+  onClose,
+}: {
+  ref_: VerseRef;
+  onClose: () => void;
+}) {
+  const libs = useLibraries();
+  const createBm = useCreateBookmark();
+  const createLib = useCreateLibrary();
+  const [newName, setNewName] = useState("");
+
+  if (libs.isPending) {
+    return <span style={{ color: "var(--color-fg-muted)" }}>Loading…</span>;
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <div
+        style={{
+          fontSize: 11,
+          letterSpacing: "0.14em",
+          textTransform: "uppercase",
+          color: "var(--color-fg-muted)",
+        }}
+      >
+        Add to library
+      </div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+        {(libs.data ?? []).map((l) => (
+          <button
+            key={l.id}
+            type="button"
+            onClick={() => {
+              createBm.mutate({ libraryId: l.id, ref: ref_ });
+              onClose();
+            }}
+            style={{
+              background: "transparent",
+              border: "1px solid var(--color-rule-strong)",
+              borderRadius: 0,
+              padding: "3px 8px",
+              font: "inherit",
+              fontSize: 13,
+              cursor: "pointer",
+              color: "var(--color-fg)",
+            }}
+          >
+            {l.name}
+          </button>
+        ))}
+      </div>
+      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <input
+          value={newName}
+          onChange={(e) => setNewName(e.target.value)}
+          placeholder="New library…"
+          style={{
+            background: "var(--color-bg-inset)",
+            border: 0,
+            borderBottom: "1px solid var(--color-rule)",
+            padding: "4px 6px",
+            font: "inherit",
+            fontSize: 14,
+            color: "var(--color-fg)",
+            outline: "none",
+            flex: 1,
+            maxWidth: 220,
+          }}
+        />
+        <button
+          type="button"
+          disabled={!newName.trim()}
+          onClick={async () => {
+            const name = newName.trim();
+            if (!name) return;
+            const lib = await createLib.mutateAsync(name);
+            createBm.mutate({ libraryId: lib.id, ref: ref_ });
+            setNewName("");
+            onClose();
+          }}
+          style={{
+            background: "transparent",
+            border: 0,
+            padding: 0,
+            font: "inherit",
+            fontSize: 13,
+            color: newName.trim() ? "var(--color-accent)" : "var(--color-fg-subtle)",
+            cursor: newName.trim() ? "pointer" : "default",
+          }}
+        >
+          Create & add
+        </button>
+      </div>
+    </div>
+  );
+}
+

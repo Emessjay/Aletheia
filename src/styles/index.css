@@ -86,6 +86,7 @@
   --radius-pop: 3px;
   --measure: 34em;
   --shadow-pop: 0 1px 3px rgb(0 0 0 / 0.08);
+  --reader-font-size: 17px;
 }
 
 .dark {
@@ -204,6 +205,7 @@ kbd {
   padding-left: 2.5em;
   position: relative;
   text-indent: 0;
+  font-size: var(--reader-font-size, 17px);
 }
 
 .al-verse-number {
