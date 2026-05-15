@@ -1,0 +1,247 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ── Fonts ────────────────────────────────────────────────────────────────── */
+/* EB Garamond — body serif (humanist Garamont revival, weight axis 400-700) */
+@font-face {
+  font-family: "EB Garamond";
+  src: url("./fonts/EBGaramond-Regular.woff2") format("woff2");
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "EB Garamond";
+  src: url("./fonts/EBGaramond-Italic.woff2") format("woff2");
+  font-weight: 400 700;
+  font-style: italic;
+  font-display: swap;
+}
+/* Ezra SIL — SIL International's Biblical Hebrew face */
+@font-face {
+  font-family: "Ezra SIL";
+  src: url("./fonts/SILEOT.ttf") format("truetype");
+  font-display: swap;
+  unicode-range: U+0590-05FF, U+FB1D-FB4F;
+}
+/* GFS Didot — Greek Font Society's Didot for ancient Greek (poly- + monotonic) */
+@font-face {
+  font-family: "GFS Didot";
+  src: url("./fonts/GFSDidot-Greek.woff2") format("woff2");
+  font-display: swap;
+  unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;
+}
+@font-face {
+  font-family: "GFS Didot";
+  src: url("./fonts/GFSDidot-GreekExt.woff2") format("woff2");
+  font-display: swap;
+  unicode-range: U+1F00-1FFF;
+}
+/* iA Writer Mono — UI affordances only */
+@font-face {
+  font-family: "iA Writer Mono";
+  src: url("./fonts/iAWriterMonoS-Regular.ttf") format("truetype");
+  font-display: swap;
+}
+
+/* ── Theme tokens (Tailwind 4 exposes these as utility classes) ───────────── */
+@theme {
+  --font-serif: "EB Garamond", "Adobe Garamond Pro", Garamond, "Times New Roman", serif;
+  --font-hebrew: "Ezra SIL", "SBL Hebrew", "Times New Roman", serif;
+  --font-greek: "GFS Didot", "SBL Greek", "EB Garamond", "Times New Roman", serif;
+  --font-mono: "iA Writer Mono", "JetBrains Mono", ui-monospace, monospace;
+
+  --color-bg: #f5f1e8;
+  --color-fg: #1c1813;
+  --color-accent: #7a1f1f;
+}
+
+/* All other tokens — declared in :root so Tailwind 4 cannot tree-shake them.
+   They're consumed via plain CSS var() in components and the al-* helpers. */
+:root {
+  --color-bg-elevated: #efe9dc;
+  --color-bg-inset: #e8e1d0;
+  --color-fg-muted: #5b4f3f;
+  --color-fg-subtle: #8a7c66;
+  --color-rule: #d8cfb8;
+  --color-rule-strong: #b8ad92;
+  --color-accent-muted: #a85555;
+  --color-selection: #e6d9a8;
+
+  --color-hl-yellow: #f0e0a0;
+  --color-hl-green:  #cfdcb8;
+  --color-hl-blue:   #c8d4e0;
+  --color-hl-pink:   #e8c8c8;
+  --color-hl-purple: #d8c8dc;
+  --color-hl-orange: #ecccb0;
+
+  --color-hl-yellow-rule: #d4b94c;
+  --color-hl-green-rule:  #8aa56d;
+  --color-hl-blue-rule:   #7a96b3;
+  --color-hl-pink-rule:   #c98a8a;
+  --color-hl-purple-rule: #a48aac;
+  --color-hl-orange-rule: #c08858;
+
+  --radius-sm: 2px;
+  --radius-pop: 3px;
+  --measure: 34em;
+  --shadow-pop: 0 1px 3px rgb(0 0 0 / 0.08);
+}
+
+.dark {
+  --color-bg: #15171a;
+  --color-bg-elevated: #1c1f23;
+  --color-bg-inset: #0f1114;
+  --color-fg: #e8dfcc;
+  --color-fg-muted: #9a8f7d;
+  --color-fg-subtle: #5e574a;
+  --color-rule: #2a2d32;
+  --color-rule-strong: #3a3e44;
+  --color-accent: #c87171;
+  --color-accent-muted: #8a4a4a;
+  --color-selection: #3a2f1c;
+
+  --color-hl-yellow: #4a4020;
+  --color-hl-green:  #2e3a24;
+  --color-hl-blue:   #243240;
+  --color-hl-pink:   #4a2828;
+  --color-hl-purple: #3a2a3e;
+  --color-hl-orange: #4a3420;
+
+  --color-hl-yellow-rule: #847026;
+  --color-hl-green-rule:  #5a7340;
+  --color-hl-blue-rule:   #466078;
+  --color-hl-pink-rule:   #844a4a;
+  --color-hl-purple-rule: #6a4a74;
+  --color-hl-orange-rule: #84602a;
+
+  --shadow-pop: 0 1px 3px rgb(0 0 0 / 0.4);
+}
+
+/* ── Base ─────────────────────────────────────────────────────────────────── */
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-fg);
+  font-family: var(--font-serif);
+  font-size: 17px;
+  line-height: 1.62;
+  font-feature-settings: "onum", "kern", "liga";
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+:lang(he) {
+  font-family: var(--font-hebrew);
+  font-size: 18px;
+  line-height: 1.85;
+  direction: rtl;
+}
+
+:lang(grc),
+:lang(el) {
+  font-family: var(--font-greek);
+  line-height: 1.78;
+}
+
+::selection {
+  background: var(--color-selection);
+  color: var(--color-fg);
+}
+
+a {
+  color: var(--color-accent);
+  text-decoration: underline;
+  text-decoration-thickness: 0.5px;
+  text-underline-offset: 2px;
+}
+
+a:hover {
+  color: var(--color-accent-muted);
+}
+
+hr {
+  border: 0;
+  border-top: 1px solid var(--color-rule);
+  margin: 1.5em 0;
+}
+
+code,
+kbd {
+  font-family: var(--font-mono);
+}
+
+/* ── Design-system helpers (al- prefix) ───────────────────────────────────── */
+
+/* Letterspaced small-caps section label, in muted ink */
+.al-eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-fg-muted);
+  margin: 0;
+  font-weight: 400;
+}
+
+/* Chapter label — 14px letterspaced small-caps, Roman numerals in body */
+.al-chapter-label {
+  font-size: 14px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-fg-muted);
+  font-variant-numeric: oldstyle-nums;
+  margin: 0;
+}
+
+/* Verse body — hanging gutter for verse numbers */
+.al-verse {
+  padding-left: 2.5em;
+  position: relative;
+  text-indent: 0;
+}
+
+.al-verse-number {
+  position: absolute;
+  left: 0;
+  top: 0.1em;
+  width: 2em;
+  text-align: right;
+  font-size: 0.7em;
+  font-style: italic;
+  font-feature-settings: "onum";
+  color: var(--color-fg-muted);
+  user-select: none;
+}
+
+/* Drop cap — 3-line drop, oxblood, classical incipit */
+.al-drop-cap {
+  float: left;
+  font-size: 3.2em;
+  line-height: 0.9;
+  margin: 0.06em 0.08em -0.1em 0;
+  color: var(--color-accent);
+  font-weight: 400;
+}
+
+.al-chapter-incipit {
+  font-variant: small-caps;
+  letter-spacing: 0.04em;
+}
+
+/* Highlights — desaturated tint + 1px bottom rule in the same hue */
+.al-hl {
+  padding: 0 1px;
+  border-bottom: 1px solid transparent;
+}
+.al-hl-yellow { background: var(--color-hl-yellow); border-bottom-color: var(--color-hl-yellow-rule); }
+.al-hl-green  { background: var(--color-hl-green);  border-bottom-color: var(--color-hl-green-rule); }
+.al-hl-blue   { background: var(--color-hl-blue);   border-bottom-color: var(--color-hl-blue-rule); }
+.al-hl-pink   { background: var(--color-hl-pink);   border-bottom-color: var(--color-hl-pink-rule); }
+.al-hl-purple { background: var(--color-hl-purple); border-bottom-color: var(--color-hl-purple-rule); }
+.al-hl-orange { background: var(--color-hl-orange); border-bottom-color: var(--color-hl-orange-rule); }

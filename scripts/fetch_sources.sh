@@ -2,6 +2,9 @@
 # Fetches every raw source the ingest pipeline expects under data/sources/.
 # Idempotent: re-running only refreshes things that already changed upstream.
 # Required tools: git, curl, unzip.
+#
+# All biblical sources are public domain / unencumbered. See CLAUDE.md for the
+# corpus licensing policy.
 
 set -euo pipefail
 
@@ -12,87 +15,42 @@ mkdir -p "${SRC_DIR}"
 note() { printf "\033[1;34m==>\033[0m %s\n" "$*"; }
 
 # -----------------------------------------------------------------------------
-# STEPBible TSV tables — CC BY 4.0
-#   TAGOT  Greek LXX (incl. deuteros) with Strong's + morphology
-#   TAHOT  Hebrew MT with Strong's + morphology
-#   TAGNT  Greek NT, multi-base-text (NA28/THGNT/TR/Byz) tagged
-#   TKJVS  KJV English with Strong's
-# -----------------------------------------------------------------------------
-STEP_DIR="${SRC_DIR}/stepbible"
-if [[ ! -d "${STEP_DIR}/.git" ]]; then
-    note "Cloning STEPBible-Data (shallow)…"
-    git clone --depth=1 https://github.com/STEPBible/STEPBible-Data.git "${STEP_DIR}"
-else
-    note "Updating STEPBible-Data…"
-    git -C "${STEP_DIR}" pull --ff-only
-fi
-# Flatten into the structure the pipeline expects (one subfolder per table).
-for table in TAGOT TAHOT TAGNT TKJVS; do
-    mkdir -p "${STEP_DIR}/${table}"
-    find "${STEP_DIR}" -maxdepth 2 -type f -iname "${table}*.txt" -exec cp -f {} "${STEP_DIR}/${table}/" \;
-done
-
-# -----------------------------------------------------------------------------
-# OpenScriptures HebrewLexicon (BDB + Strong's H) — CC BY 4.0
-# -----------------------------------------------------------------------------
-LEX_DIR="${SRC_DIR}/openscriptures"
-mkdir -p "${LEX_DIR}"
-if [[ ! -d "${LEX_DIR}/HebrewLexicon/.git" ]]; then
-    note "Cloning openscriptures/HebrewLexicon…"
-    git clone --depth=1 https://github.com/openscriptures/HebrewLexicon.git "${LEX_DIR}/HebrewLexicon"
-fi
-cp -f "${LEX_DIR}/HebrewLexicon/HebrewStrong.xml" "${LEX_DIR}/HebrewLexicon.xml" 2>/dev/null \
-    || cp -f "${LEX_DIR}/HebrewLexicon/StrongHebrewG.xml" "${LEX_DIR}/HebrewLexicon.xml" 2>/dev/null \
-    || true
-
-# -----------------------------------------------------------------------------
-# OpenScriptures Strongs (Greek) — public domain
-# -----------------------------------------------------------------------------
-if [[ ! -d "${LEX_DIR}/strongs/.git" ]]; then
-    note "Cloning openscriptures/strongs…"
-    git clone --depth=1 https://github.com/openscriptures/strongs.git "${LEX_DIR}/strongs"
-fi
-cp -f "${LEX_DIR}/strongs/greek/strongsgreek.xml" "${LEX_DIR}/StrongsGreek.xml" 2>/dev/null || true
-
-# -----------------------------------------------------------------------------
-# OpenBible.info cross-references — CC BY
-# -----------------------------------------------------------------------------
-XREF_DIR="${SRC_DIR}/openbibleinfo"
-mkdir -p "${XREF_DIR}"
-if [[ ! -f "${XREF_DIR}/cross_references.txt" ]]; then
-    note "Downloading OpenBible.info cross-references…"
-    curl -sSL https://a.openbible.info/data/cross-references.zip -o /tmp/obi.zip
-    unzip -p /tmp/obi.zip cross_references.txt > "${XREF_DIR}/cross_references.txt"
-    rm /tmp/obi.zip
-fi
-
-# -----------------------------------------------------------------------------
-# BSB plain text — public domain (2023-04-30)
+# BSB plain text — public domain (2023-04-30 dedication)
 # -----------------------------------------------------------------------------
 BSB_DIR="${SRC_DIR}/bsb"
 mkdir -p "${BSB_DIR}"
 if [[ ! -f "${BSB_DIR}/bsb.txt" ]]; then
     note "Downloading BSB plain text…"
-    # Internet Archive mirror is more reliable than the .bible site.
     curl -sSL "https://bereanbible.com/bsb.txt" -o "${BSB_DIR}/bsb.txt" \
         || curl -sSL "https://archive.org/download/berean-standard-bible_202403/bsb.txt" -o "${BSB_DIR}/bsb.txt"
 fi
 
 # -----------------------------------------------------------------------------
-# Brenton LXX English (eBible.org USFM)
+# Brenton LXX English (eBible.org USFM) — public domain (1851)
 # -----------------------------------------------------------------------------
-note "Downloading Brenton LXX English USFM…"
 BRENTON_DIR="${SRC_DIR}/brenton"
 mkdir -p "${BRENTON_DIR}"
 if [[ -z "$(ls -A "${BRENTON_DIR}" 2>/dev/null)" ]]; then
+    note "Downloading Brenton LXX English USFM…"
     curl -sSL "https://eBible.org/Scriptures/eng-Brenton_usfm.zip" -o /tmp/brenton.zip
     unzip -qoj /tmp/brenton.zip -d "${BRENTON_DIR}"
     rm /tmp/brenton.zip
 fi
 
 # -----------------------------------------------------------------------------
-# KJV English + KJV 1611 Apocrypha (single eBible.org USFM zip)
-# eng-kjv ships the full KJV with Apocrypha; we pull the whole archive then split.
+# Brenton LXX Greek (eBible.org grcbrent USFM) — public domain (1851)
+# -----------------------------------------------------------------------------
+GRCBRENT_DIR="${SRC_DIR}/grcbrent"
+mkdir -p "${GRCBRENT_DIR}"
+if [[ -z "$(ls -A "${GRCBRENT_DIR}" 2>/dev/null)" ]]; then
+    note "Downloading Brenton Greek LXX (grcbrent) USFM…"
+    curl -sSL "https://eBible.org/Scriptures/grcbrent_usfm.zip" -o /tmp/grcbrent.zip
+    unzip -qoj /tmp/grcbrent.zip -d "${GRCBRENT_DIR}"
+    rm /tmp/grcbrent.zip
+fi
+
+# -----------------------------------------------------------------------------
+# KJV English + KJV 1611 Apocrypha (eBible.org USFM) — public domain by age
 # -----------------------------------------------------------------------------
 note "Downloading KJV (with Apocrypha) USFM…"
 KJV_DIR="${SRC_DIR}/kjv"
@@ -121,6 +79,57 @@ if [[ -z "$(ls -A "${KJV_DIR}" 2>/dev/null)" ]]; then
 fi
 
 # -----------------------------------------------------------------------------
+# Byzantine Majority Greek NT (byztxt/byzantine-majority-text) — Unlicense / PD
+# Robinson-Pierpont 2018, tagged with Strong's + morphology
+# -----------------------------------------------------------------------------
+BYZ_DIR="${SRC_DIR}/byztxt"
+if [[ ! -d "${BYZ_DIR}/.git" ]]; then
+    note "Cloning byztxt/byzantine-majority-text (shallow)…"
+    git clone --depth=1 https://github.com/byztxt/byzantine-majority-text.git "${BYZ_DIR}"
+else
+    note "Updating byztxt/byzantine-majority-text…"
+    git -C "${BYZ_DIR}" pull --ff-only
+fi
+
+# -----------------------------------------------------------------------------
+# BDB Hebrew lexicon (eliranwong/unabridged-BDB-Hebrew-lexicon) — PD
+# Unabridged 1906 BDB, Strong's-keyed, distributed as JSON.
+# -----------------------------------------------------------------------------
+BDB_DIR="${SRC_DIR}/bdb"
+mkdir -p "${BDB_DIR}"
+if [[ ! -f "${BDB_DIR}/DictBDB.json" ]]; then
+    note "Downloading unabridged BDB JSON…"
+    curl -sSL "https://raw.githubusercontent.com/eliranwong/unabridged-BDB-Hebrew-lexicon/master/DictBDB.json" \
+        -o "${BDB_DIR}/DictBDB.json"
+fi
+
+# -----------------------------------------------------------------------------
+# Strong's Greek dictionary — PD by age (Strong, 1890)
+# We use the openscriptures/strongs digital edition for convenience; the digital
+# edition itself is unlicensed in that repo, but the underlying lexicon is PD.
+# -----------------------------------------------------------------------------
+STRONGS_DIR="${SRC_DIR}/strongs-greek"
+mkdir -p "${STRONGS_DIR}"
+if [[ ! -f "${STRONGS_DIR}/StrongsGreek.xml" ]]; then
+    note "Downloading Strong's Greek dictionary…"
+    curl -sSL "https://raw.githubusercontent.com/openscriptures/strongs/master/greek/StrongsGreekDictionaryXML_1.4/strongsgreek.xml" \
+        -o "${STRONGS_DIR}/StrongsGreek.xml"
+fi
+
+# -----------------------------------------------------------------------------
+# Treasury of Scripture Knowledge (TSK) cross-references — PD by age (R.A. Torrey, 1880s)
+# Sourced from narthur/tsk-cli; the repository's GPL applies to the CLI code,
+# not to the underlying public-domain TSK data file.
+# -----------------------------------------------------------------------------
+TSK_DIR="${SRC_DIR}/tsk"
+mkdir -p "${TSK_DIR}"
+if [[ ! -f "${TSK_DIR}/tskxref.txt" ]]; then
+    note "Downloading Treasury of Scripture Knowledge data…"
+    curl -sSL "https://raw.githubusercontent.com/narthur/tsk-cli/master/tskxref.txt" \
+        -o "${TSK_DIR}/tskxref.txt"
+fi
+
+# -----------------------------------------------------------------------------
 # Patristics
 # -----------------------------------------------------------------------------
 PAT_DIR="${SRC_DIR}/patristics"
@@ -134,9 +143,8 @@ if [[ ! -f "${PAT_DIR}/summa.json" ]]; then
 fi
 
 # Summa Theologica Latin — bilingual HTML files from Geremia/AquinasOperaOmnia
-# (mirror of dhspriory.org/thomas/). Each file is one Question with parallel
-# Latin/English columns. Parser at tools/ingest/Sources/Ingest/Parsers/SummaLatinParser.swift
-# pulls the left column.
+# (mirror of dhspriory.org/thomas/). See CLAUDE.md re: licensing concerns;
+# kept for now but a clean replacement source is still TBD.
 SUMMA_LAT_DIR="${SRC_DIR}/summa-latin"
 if [[ ! -d "${SUMMA_LAT_DIR}/.git" ]]; then
     note "Cloning Geremia/AquinasOperaOmnia for the Latin Summa…"
@@ -156,7 +164,8 @@ if [[ ! -f "${PAT_DIR}/incarnation-en.xml" ]]; then
     curl -sSL "https://ccel.org/ccel/schaff/npnf204.xml" -o "${PAT_DIR}/incarnation-en.xml" || true
 fi
 
-# OpenGreekAndLatin / First1KGreek TEI XML
+# OpenGreekAndLatin / First1KGreek TEI XML — CC BY-SA 4.0 (viral SA, see CLAUDE.md).
+# Currently used only for Greek patristics, not biblical content. Reviewing.
 OGL_DIR="${SRC_DIR}/opengreekandlatin"
 if [[ ! -d "${OGL_DIR}/.git" ]]; then
     note "Cloning First1KGreek (shallow; this is large)…"

@@ -65,26 +65,29 @@ xcodebuild -project Aletheia.xcodeproj -scheme AletheiaTests test
 
 ## Data sources & licenses
 
-Every source bundled into `Aletheia.sqlite` is either public domain or under a
-permissive license. The attribution screen in the app credits each upstream project
-as the licenses require.
+All biblical sources bundled into `Aletheia.sqlite` are public domain. See
+[CLAUDE.md](CLAUDE.md) for the corpus licensing policy.
 
 | Source | License |
 |---|---|
-| STEPBible TAGOT / TAHOT / TAGNT / TKJVS | CC BY 4.0 |
-| OpenScriptures HebrewLexicon (BDB + Strong's H) | CC BY 4.0 |
-| OpenScriptures Strongs (Greek) | Public Domain / CC BY 4.0 |
-| BSB plain text + interlinear | Public Domain |
-| Brenton LXX English | Public Domain |
-| KJV 1611 Apocrypha | Public Domain |
-| OpenBible.info cross-references | CC BY |
+| BSB plain text | Public Domain (2023 dedication) |
+| KJV 1611 + Apocrypha (eBible.org `eng-kjv`) | Public Domain (by age) |
+| Brenton LXX English (eBible.org `eng-Brenton`) | Public Domain (1851) |
+| Brenton LXX Greek (eBible.org `grcbrent`) | Public Domain (1851) |
+| Robinson-Pierpont Byzantine Greek NT (byztxt) | Unlicense / Public Domain |
+| BDB Hebrew lexicon (eliranwong/unabridged-BDB) | Public Domain (1906, by age) |
+| Strong's Greek dictionary (openscriptures/strongs) | Public Domain (Strong, 1890, by age) |
+| Treasury of Scripture Knowledge cross-references | Public Domain (Torrey, 1880s, by age) |
 | Jacob-Gray/summa.json | Unlicense (PD) |
-| Corpus Thomisticum Latin dump | Underlying Leonine text PD; non-commercial w/ attribution |
-| CCEL ThML (Trypho, On the Incarnation) | Public Domain |
-| OpenGreekAndLatin First1KGreek TEI | CC BY-SA 4.0 |
 
-Sources we explicitly avoid (license incompatible with a paid iOS app): SBLGNT,
-Tyndale House GNT, Sources Chrétiennes, CCAT/CATSS LXX.
+Patristic sources (CCEL ThML, OpenGreekAndLatin First1KGreek, Corpus Thomisticum)
+are under review — see [CLAUDE.md](CLAUDE.md). They are not biblical content and
+their licensing is being resolved separately.
+
+Sources we explicitly avoid: SBLGNT, Tyndale House GNT, NA28, BHS, Rahlfs-Hanhart,
+Göttingen LXX, CCAT/CATSS LXX, and any CC BY-NC / CC BY-SA / GPL biblical data.
+The goal is zero-strings reuse: anyone should be able to lift the corpus from
+`Aletheia.sqlite` and redistribute with no attribution or licensing obligations.
 
 ## Sync
 

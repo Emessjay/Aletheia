@@ -1,14 +1,29 @@
-# Build artifacts
-.build/
-DerivedData/
-*.xcodeproj
+# Bundled corpus (built by tools/ingest from data/sources/)
 data/sources/
 data/Aletheia.sqlite
 data/Aletheia.sqlite-*
 
-# macOS
-.DS_Store
+# Node / Vite
+node_modules
+dist
+dist-ssr
+*.local
+.vite
+tsconfig.tsbuildinfo
 
-# Swift Package Manager
+# Rust / Tauri
+src-tauri/target
+src-tauri/gen
+
+# Swift Package Manager (tools/ingest)
+.build/
 .swiftpm/
 Package.resolved
+
+# Editors
+.vscode
+.idea
+
+# OS
+.DS_Store
+*.log
