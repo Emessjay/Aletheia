@@ -1,0 +1,14 @@
+# Build artifacts
+.build/
+DerivedData/
+*.xcodeproj
+data/sources/
+data/Aletheia.sqlite
+data/Aletheia.sqlite-*
+
+# macOS
+.DS_Store
+
+# Swift Package Manager
+.swiftpm/
+Package.resolved
