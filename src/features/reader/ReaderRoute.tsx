@@ -2,8 +2,18 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useQueries } from "@tanstack/react-query";
 import { useLocation, useParams, Navigate } from "react-router-dom";
 import { getChapter, type ChapterPayload } from "@/db/queries";
-import { useChapterAnnotations } from "@/db/userHooks";
-import type { CorpusLanguage, HighlightRow, NoteRow } from "@/db/types";
+import {
+  useChapterAnnotations,
+  useCreateHighlight,
+  useDeleteHighlight,
+} from "@/db/userHooks";
+import type {
+  CorpusLanguage,
+  HighlightColor,
+  HighlightRow,
+  NoteRow,
+  VerseRef,
+} from "@/db/types";
 import { kvSet } from "@/db/user";
 import { isTauri } from "@/lib/tauri";
 import { useSettingsStore } from "@/stores/useSettingsStore";
@@ -11,6 +21,7 @@ import { TRANSLATION_LABELS } from "@/domain/translations";
 import { StrongsPopover } from "@/features/lexicon/StrongsPopover";
 import { VerseInline } from "./VerseInline";
 import { VerseToolbar } from "./VerseToolbar";
+import { HighlightPopover } from "./HighlightPopover";
 import { ChapterNav } from "./ChapterNav";
 import { ChapterPicker } from "./ChapterPicker";
 import { LanguageToggle } from "./LanguageToggle";
@@ -21,6 +32,25 @@ interface StrongsState {
   id: string;
   rect: DOMRect;
 }
+
+interface NewHighlightState {
+  kind: "new";
+  ref: VerseRef;
+  startToken: number;
+  endToken: number;
+  translation: string;
+  rect: DOMRect;
+}
+
+interface EditHighlightState {
+  kind: "edit";
+  ref: VerseRef;
+  highlightId: string;
+  color: HighlightColor;
+  rect: DOMRect;
+}
+
+type HighlightUiState = NewHighlightState | EditHighlightState;
 
 const LANG_ATTR: Partial<Record<CorpusLanguage, string>> = {
   he: "he",
@@ -41,6 +71,9 @@ export function ReaderRoute() {
   const [toolbarAnchor, setToolbarAnchor] = useState<
     { top: number; left: number; width: number; placement: "below" | "above" } | null
   >(null);
+  const [hlUi, setHlUi] = useState<HighlightUiState | null>(null);
+  const createHl = useCreateHighlight();
+  const deleteHl = useDeleteHighlight();
   const location = useLocation();
 
   // Reset selection on chapter change.
@@ -104,6 +137,57 @@ export function ReaderRoute() {
       window.removeEventListener("scroll", onScroll);
     };
   }, [selectedVerse, active.join(",")]);
+
+  // Reset the highlight popover when the chapter changes.
+  useEffect(() => {
+    setHlUi(null);
+  }, [work, book, chapterNum]);
+
+  // Detect text selection inside a verse body and open the color popover. The
+  // selection must be non-collapsed and live entirely within a single
+  // [data-verse-body] element. Character offsets are derived by cloning a
+  // range from the body start to the selection's anchor/focus.
+  useEffect(() => {
+    if (!valid) return;
+    const primary = active[0];
+    if (!primary) return;
+    const onMouseUp = () => {
+      // Defer one tick so the click that lands inside an existing highlight
+      // span (which sets hlUi to "edit") wins over the selection branch.
+      requestAnimationFrame(() => {
+        const sel = window.getSelection();
+        if (!sel || sel.isCollapsed || sel.rangeCount === 0) return;
+        const range = sel.getRangeAt(0);
+        if (range.collapsed) return;
+        const startBody = closestVerseBody(range.startContainer);
+        const endBody = closestVerseBody(range.endContainer);
+        if (!startBody || startBody !== endBody) return;
+        const verseNum = Number(startBody.dataset.verseBody);
+        if (!Number.isFinite(verseNum) || verseNum < 1) return;
+        const startOffset = rangeLength(startBody, range.startContainer, range.startOffset);
+        const endOffset = rangeLength(startBody, range.endContainer, range.endOffset);
+        const lo = Math.min(startOffset, endOffset);
+        const hi = Math.max(startOffset, endOffset);
+        if (hi - lo < 1) return;
+        const rect = range.getBoundingClientRect();
+        setHlUi({
+          kind: "new",
+          ref: {
+            workSlug: work,
+            bookSlug: book,
+            chapter: chapterNum,
+            verse: verseNum,
+          },
+          startToken: lo,
+          endToken: hi,
+          translation: primary,
+          rect,
+        });
+      });
+    };
+    document.addEventListener("mouseup", onMouseUp);
+    return () => document.removeEventListener("mouseup", onMouseUp);
+  }, [valid, active.join(","), work, book, chapterNum]);
 
   // Scroll to #vN anchor after verses mount.
   useEffect(() => {
@@ -182,6 +266,23 @@ export function ReaderRoute() {
         selectedVerse={selectedVerse}
         onSelectVerse={setSelectedVerse}
         onOpenStrongs={(id, rect) => setStrongs({ id, rect })}
+        onOpenHighlight={(highlightId, rect) => {
+          const h = allHighlights.find((x) => x.id === highlightId);
+          if (!h) return;
+          window.getSelection()?.removeAllRanges();
+          setHlUi({
+            kind: "edit",
+            ref: {
+              workSlug: h.work_slug,
+              bookSlug: h.book_slug,
+              chapter: h.chapter,
+              verse: h.verse,
+            },
+            highlightId,
+            color: h.color,
+            rect,
+          });
+        }}
       />
       {selectedVerse !== null && toolbarAnchor ? (
         <div
@@ -208,7 +309,6 @@ export function ReaderRoute() {
               chapter: chapterNum,
               verse: selectedVerse,
             }}
-            highlights={allHighlights.filter((h) => h.verse === selectedVerse)}
             notes={allNotes.filter((n) => n.verse === selectedVerse)}
             onDone={() => setSelectedVerse(null)}
           />
@@ -229,8 +329,72 @@ export function ReaderRoute() {
           onClose={() => setStrongs(null)}
         />
       ) : null}
+      {hlUi ? (
+        <HighlightPopover
+          anchorRect={hlUi.rect}
+          activeColor={hlUi.kind === "edit" ? hlUi.color : null}
+          onPick={(color) => {
+            if (hlUi.kind === "new") {
+              createHl.mutate({
+                ref: hlUi.ref,
+                color,
+                translation: hlUi.translation,
+                range: { startToken: hlUi.startToken, endToken: hlUi.endToken },
+              });
+              window.getSelection()?.removeAllRanges();
+            } else {
+              // Replace: delete the old, insert a new one with the same range.
+              const old = allHighlights.find((h) => h.id === hlUi.highlightId);
+              if (old && old.start_token != null && old.end_token != null) {
+                deleteHl.mutate({ id: old.id, ref: hlUi.ref });
+                createHl.mutate({
+                  ref: hlUi.ref,
+                  color,
+                  translation: old.translation,
+                  range: { startToken: old.start_token, endToken: old.end_token },
+                });
+              }
+            }
+            setHlUi(null);
+          }}
+          onRemove={
+            hlUi.kind === "edit"
+              ? () => {
+                  deleteHl.mutate({ id: hlUi.highlightId, ref: hlUi.ref });
+                  setHlUi(null);
+                }
+              : undefined
+          }
+          onClose={() => setHlUi(null)}
+        />
+      ) : null}
     </article>
   );
+}
+
+function closestVerseBody(node: Node | null): HTMLElement | null {
+  let n: Node | null = node;
+  while (n) {
+    if (n.nodeType === Node.ELEMENT_NODE) {
+      const el = n as HTMLElement;
+      if (el.dataset && el.dataset.verseBody) return el;
+    }
+    n = n.parentNode;
+  }
+  return null;
+}
+
+function rangeLength(
+  body: HTMLElement,
+  endContainer: Node,
+  endOffset: number,
+): number {
+  const r = document.createRange();
+  r.setStart(body, 0);
+  r.setEnd(endContainer, endOffset);
+  const length = r.toString().length;
+  r.detach?.();
+  return length;
 }
 
 function ColumnsLayout({
@@ -246,6 +410,7 @@ function ColumnsLayout({
   selectedVerse,
   onSelectVerse,
   onOpenStrongs,
+  onOpenHighlight,
 }: {
   workSlug: string;
   bookSlug: string;
@@ -259,6 +424,7 @@ function ColumnsLayout({
   selectedVerse: number | null;
   onSelectVerse: (n: number | null) => void;
   onOpenStrongs: (id: string, rect: DOMRect) => void;
+  onOpenHighlight: (highlightId: string, rect: DOMRect) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const dropCapsEnabled = useSettingsStore((s) => s.dropCapsEnabled);
@@ -325,6 +491,7 @@ function ColumnsLayout({
           selectedVerse={selectedVerse}
           onSelectVerse={onSelectVerse}
           onOpenStrongs={onOpenStrongs}
+          onOpenHighlight={onOpenHighlight}
           dropCapsEnabled={dropCapsEnabled}
         />
       ))}
@@ -345,6 +512,7 @@ function Column({
   selectedVerse,
   onSelectVerse,
   onOpenStrongs,
+  onOpenHighlight,
   dropCapsEnabled,
 }: {
   language: CorpusLanguage;
@@ -359,6 +527,7 @@ function Column({
   selectedVerse: number | null;
   onSelectVerse: (n: number | null) => void;
   onOpenStrongs: (id: string, rect: DOMRect) => void;
+  onOpenHighlight: (highlightId: string, rect: DOMRect) => void;
   dropCapsEnabled: boolean;
 }) {
   if (isPending) {
@@ -417,7 +586,14 @@ function Column({
         lang={LANG_ATTR[language]}
       >
         {verses.map((v, i) => {
-          const verseHls = highlights.filter((h) => h.verse === v.number);
+          // Verse-level highlights (translation === null) are universal;
+          // partial highlights are scoped to the translation they were created
+          // against so they don't bleed across columns.
+          const verseHls = highlights.filter(
+            (h) =>
+              h.verse === v.number &&
+              (h.translation === null || h.translation === language),
+          );
           const verseNotes = notes.filter((n) => n.verse === v.number);
           const isSelected = isPrimary && selectedVerse === v.number;
           return (
@@ -436,6 +612,7 @@ function Column({
                   : undefined
               }
               onOpenStrongs={onOpenStrongs}
+              onOpenHighlight={isPrimary ? onOpenHighlight : undefined}
             />
           );
         })}

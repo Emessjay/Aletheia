@@ -89,17 +89,28 @@ export async function listHighlightsForVerse(
   );
 }
 
+export interface HighlightRange {
+  /** Character offset into VerseRow.text_plain (inclusive). */
+  startToken: number;
+  /** Character offset into VerseRow.text_plain (exclusive). */
+  endToken: number;
+}
+
 export async function createHighlight(
   ref: VerseRef,
   color: HighlightColor,
   translation: string | null = null,
+  range: HighlightRange | null = null,
 ): Promise<HighlightRow> {
   const id = newId();
   const now = nowMs();
+  const start = range?.startToken ?? null;
+  const end = range?.endToken ?? null;
   await userExecute(
     `INSERT INTO highlights
-       (id, work_slug, book_slug, chapter, verse, translation, color, created_at, updated_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8)`,
+       (id, work_slug, book_slug, chapter, verse, translation, color,
+        start_token, end_token, created_at, updated_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $10)`,
     [
       id,
       ref.workSlug,
@@ -108,6 +119,8 @@ export async function createHighlight(
       ref.verse,
       translation,
       color,
+      start,
+      end,
       now,
     ],
   );
@@ -119,8 +132,8 @@ export async function createHighlight(
     verse: ref.verse,
     translation,
     color,
-    start_token: null,
-    end_token: null,
+    start_token: start,
+    end_token: end,
     created_at: now,
     updated_at: now,
     deleted_at: null,
