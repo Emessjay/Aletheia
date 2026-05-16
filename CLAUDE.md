@@ -3,17 +3,19 @@
 ## Worktree-per-feature
 
 Before starting work on any non-trivial feature, create a git worktree for it
-and do all editing + testing inside that worktree. Merge back to `main` when
-the feature is complete.
+and do all editing + testing inside that worktree.
 
 Use the helper script — it creates the worktree on `feature/<slug>` and runs
 `npm install` so the new checkout is ready to build:
 
     ./scripts/new-worktree.sh <slug>
-    # …work, commit, test inside ../aletheia-<slug>…
-    cd /path/to/main/worktree
-    git merge feature/<slug>
-    git worktree remove ../aletheia-<slug>
+
+When the feature is complete, commit the work *inside the worktree* before
+handing off — do not leave uncommitted changes for the user to merge, since a
+`git merge` of an unchanged branch is a no-op. Then give the user a single
+combined command they can paste from the main worktree to merge and clean up:
+
+    git merge feature/<slug> && git worktree remove ../aletheia-<slug> && git branch -d feature/<slug>
 
 The primary reason is isolation between concurrent Claude instances: working in
 a shared checkout means one instance can read another's partially-written code
