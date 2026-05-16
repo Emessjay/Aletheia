@@ -1,7 +1,7 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { useQueries } from "@tanstack/react-query";
+import { useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { useQueries, useQuery } from "@tanstack/react-query";
 import { useLocation, useParams, Navigate } from "react-router-dom";
-import { getChapter, type ChapterPayload } from "@/db/queries";
+import { getChapter, getStrongsByIds, type ChapterPayload } from "@/db/queries";
 import {
   useChapterAnnotations,
   useCreateHighlight,
@@ -12,23 +12,33 @@ import type {
   HighlightColor,
   HighlightRow,
   NoteRow,
+  StrongsRow,
   VerseRef,
+  VerseRow,
+  WordRow,
 } from "@/db/types";
 import { kvSet } from "@/db/user";
 import { isTauri } from "@/lib/tauri";
+import { onAnyScroll } from "@/lib/onScroll";
 import { useSettingsStore } from "@/stores/useSettingsStore";
 import { TRANSLATION_LABELS } from "@/domain/translations";
-import type { Tab } from "@/domain/tabs";
+import {
+  glossFor,
+  interlinearLabel,
+  type InterlinearTab,
+  type SingleTab,
+  type Tab,
+} from "@/domain/tabs";
 import { StrongsPopover } from "@/features/lexicon/StrongsPopover";
 import { VerseInline } from "./VerseInline";
 import { VerseToolbar } from "./VerseToolbar";
 import { HighlightPopover } from "./HighlightPopover";
 import { ChapterNav } from "./ChapterNav";
 import { ChapterPicker } from "./ChapterPicker";
+import { InterlinearWord } from "./InterlinearWord";
 import { LanguageToggle } from "./LanguageToggle";
 import { InterlinearColumn } from "./InterlinearColumn";
 import { toRoman } from "./roman";
-import { alignVerses } from "./alignVerses";
 
 interface StrongsState {
   id: string;
@@ -107,9 +117,17 @@ export function ReaderRoute() {
       return;
     }
     const compute = () => {
-      const verseEl = document.querySelector<HTMLElement>(
-        `[data-verse-text="${selectedVerse}"]`,
-      );
+      // Prefer the per-verse cell wrapper used by the multi-column grid (its
+      // bounding rect spans the full column width). Fall back to the inline
+      // verse-text span used in single-tab paragraph mode, where the wrapping
+      // <section> provides the column width.
+      const verseEl =
+        document.querySelector<HTMLElement>(
+          `[data-verse-cell-primary="${selectedVerse}"]`,
+        ) ??
+        document.querySelector<HTMLElement>(
+          `[data-verse-text="${selectedVerse}"]`,
+        );
       if (!verseEl) {
         setToolbarAnchor(null);
         return;
@@ -137,14 +155,13 @@ export function ReaderRoute() {
     };
     compute();
     // Dismiss the toolbar as soon as the user scrolls — it's a transient
-    // overlay anchored to one verse, and following the verse across a scroll
-    // visually clutters the page.
-    const onScroll = () => setSelectedVerse(null);
+    // overlay anchored to one verse, and following it across a scroll just
+    // clutters the page.
     window.addEventListener("resize", compute);
-    window.addEventListener("scroll", onScroll, { passive: true });
+    const teardownScroll = onAnyScroll(() => setSelectedVerse(null));
     return () => {
       window.removeEventListener("resize", compute);
-      window.removeEventListener("scroll", onScroll);
+      teardownScroll();
     };
   }, [selectedVerse, activeLangs.join(",")]);
 
@@ -298,6 +315,7 @@ export function ReaderRoute() {
         <div
           role="dialog"
           aria-label={`Annotations for verse ${selectedVerse}`}
+          data-scroll-trap
           style={{
             position: "fixed",
             top: toolbarAnchor.top,
@@ -407,21 +425,7 @@ function rangeLength(
   return length;
 }
 
-function ColumnsLayout({
-  workSlug,
-  bookSlug,
-  chapterNum,
-  tabs,
-  chapters,
-  pending,
-  errors,
-  highlights,
-  notes,
-  selectedVerse,
-  onSelectVerse,
-  onOpenStrongs,
-  onOpenHighlight,
-}: {
+function ColumnsLayout(props: {
   workSlug: string;
   bookSlug: string;
   chapterNum: number;
@@ -436,96 +440,443 @@ function ColumnsLayout({
   onOpenStrongs: (id: string, rect: DOMRect) => void;
   onOpenHighlight: (highlightId: string, rect: DOMRect) => void;
 }) {
-  const containerRef = useRef<HTMLDivElement>(null);
   const dropCapsEnabled = useSettingsStore((s) => s.dropCapsEnabled);
-  const fontSize = useSettingsStore((s) => s.fontSize);
+  if (props.tabs.length <= 1) {
+    return <SingleTabLayout {...props} dropCapsEnabled={dropCapsEnabled} />;
+  }
+  return <MultiTabGrid {...props} />;
+}
 
-  const langsKey = tabs
-    .map((t) => (t.kind === "single" ? t.lang : `${t.primary}+${t.secondary}`))
-    .join(",");
+function SingleTabLayout({
+  tabs,
+  chapters,
+  pending,
+  errors,
+  chapterNum,
+  highlights,
+  notes,
+  selectedVerse,
+  onSelectVerse,
+  onOpenStrongs,
+  onOpenHighlight,
+  dropCapsEnabled,
+}: {
+  tabs: Tab[];
+  chapters: Array<ChapterPayload | null>;
+  pending: boolean[];
+  errors: Array<unknown>;
+  chapterNum: number;
+  highlights: HighlightRow[];
+  notes: NoteRow[];
+  selectedVerse: number | null;
+  onSelectVerse: (n: number | null) => void;
+  onOpenStrongs: (id: string, rect: DOMRect) => void;
+  onOpenHighlight: (highlightId: string, rect: DOMRect) => void;
+  dropCapsEnabled: boolean;
+}) {
+  const tab = tabs[0];
+  if (!tab) return null;
+  if (tab.kind === "interlinear") {
+    return (
+      <InterlinearColumn
+        primary={tab.primary}
+        secondary={tab.secondary}
+        chapter={chapters[0] ?? null}
+        isPending={pending[0] ?? false}
+        error={errors[0] ?? null}
+        chapterNum={chapterNum}
+        maxWidth="var(--measure)"
+        highlights={highlights}
+        notes={notes}
+        selectedVerse={selectedVerse}
+        onSelectVerse={onSelectVerse}
+        onOpenStrongs={onOpenStrongs}
+        isPrimary
+      />
+    );
+  }
+  return (
+    <Column
+      language={tab.lang}
+      chapter={chapters[0] ?? null}
+      isPending={pending[0] ?? false}
+      error={errors[0] ?? null}
+      chapterNum={chapterNum}
+      isPrimary
+      maxWidth="var(--measure)"
+      highlights={highlights}
+      notes={notes}
+      selectedVerse={selectedVerse}
+      onSelectVerse={onSelectVerse}
+      onOpenStrongs={onOpenStrongs}
+      onOpenHighlight={onOpenHighlight}
+      dropCapsEnabled={dropCapsEnabled}
+    />
+  );
+}
 
-  const verseCountsKey = chapters
-    .map((c) => c?.verses.length ?? 0)
-    .join(",");
-
-  useLayoutEffect(() => {
-    if (tabs.length < 2) return;
-    const run = () => alignVerses(containerRef.current);
-
-    run();
-
-    const onResize = () => run();
-    window.addEventListener("resize", onResize);
-
-    if (typeof document !== "undefined" && document.fonts?.ready) {
-      void document.fonts.ready.then(run);
-    }
-
-    return () => window.removeEventListener("resize", onResize);
-  }, [
-    workSlug,
-    bookSlug,
-    chapterNum,
-    langsKey,
-    verseCountsKey,
-    dropCapsEnabled,
-    fontSize,
-  ]);
+/**
+ * Multi-tab comparison layout: one grid row per verse number, one column per
+ * tab. Grid alignment guarantees that verse N starts on the same baseline in
+ * every column — no measurement effects needed. Each cell is a block, so
+ * verses stack vertically (one per line) within their column. Interlinear
+ * tabs render their per-word gloss stack inline within their cell; single
+ * tabs render the verse text via VerseInline.
+ */
+function MultiTabGrid({
+  tabs,
+  chapters,
+  pending,
+  errors,
+  chapterNum,
+  highlights,
+  notes,
+  selectedVerse,
+  onSelectVerse,
+  onOpenStrongs,
+  onOpenHighlight,
+}: {
+  tabs: Tab[];
+  chapters: Array<ChapterPayload | null>;
+  pending: boolean[];
+  errors: Array<unknown>;
+  chapterNum: number;
+  highlights: HighlightRow[];
+  notes: NoteRow[];
+  selectedVerse: number | null;
+  onSelectVerse: (n: number | null) => void;
+  onOpenStrongs: (id: string, rect: DOMRect) => void;
+  onOpenHighlight: (highlightId: string, rect: DOMRect) => void;
+}) {
+  // Union of verse numbers across loaded columns, ascending. A verse missing
+  // from a particular language renders as an empty cell in that column's row.
+  const verseNumbers = useMemo(() => {
+    const set = new Set<number>();
+    for (const c of chapters) c?.verses.forEach((v) => set.add(v.number));
+    return [...set].sort((a, b) => a - b);
+  }, [chapters]);
 
   return (
     <div
-      ref={containerRef}
       style={{
         display: "grid",
         gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))`,
-        gap: "2.5rem",
+        columnGap: "2.5rem",
+        rowGap: "0.75em",
         alignItems: "start",
       }}
     >
-      {tabs.map((tab, i) => {
-        const isPrimary = i === 0;
-        const maxWidth = tabs.length > 1 ? "30em" : "var(--measure)";
-        if (tab.kind === "interlinear") {
+      {tabs.map((tab, colIdx) => (
+        <TabColumnCells
+          key={tab.kind === "single" ? `s:${tab.lang}:${colIdx}` : `i:${tab.primary}+${tab.secondary}:${colIdx}`}
+          tab={tab}
+          colIdx={colIdx}
+          isPrimary={colIdx === 0}
+          chapter={chapters[colIdx] ?? null}
+          isPending={pending[colIdx] ?? false}
+          error={errors[colIdx]}
+          chapterNum={chapterNum}
+          verseNumbers={verseNumbers}
+          highlights={highlights}
+          notes={notes}
+          selectedVerse={selectedVerse}
+          onSelectVerse={onSelectVerse}
+          onOpenStrongs={onOpenStrongs}
+          onOpenHighlight={onOpenHighlight}
+        />
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Emits one column's worth of grid cells: a header at row 1, then a cell per
+ * verse number at row verseIdx+2. Returned as a React fragment so the cells
+ * become direct children of the grid container. Pending/error/missing states
+ * render once in the header cell; verse cells in those states stay empty so
+ * the row heights track the columns that DO have content.
+ */
+function TabColumnCells({
+  tab,
+  colIdx,
+  isPrimary,
+  chapter,
+  isPending,
+  error,
+  chapterNum,
+  verseNumbers,
+  highlights,
+  notes,
+  selectedVerse,
+  onSelectVerse,
+  onOpenStrongs,
+  onOpenHighlight,
+}: {
+  tab: Tab;
+  colIdx: number;
+  isPrimary: boolean;
+  chapter: ChapterPayload | null;
+  isPending: boolean;
+  error: unknown;
+  chapterNum: number;
+  verseNumbers: number[];
+  highlights: HighlightRow[];
+  notes: NoteRow[];
+  selectedVerse: number | null;
+  onSelectVerse: (n: number | null) => void;
+  onOpenStrongs: (id: string, rect: DOMRect) => void;
+  onOpenHighlight: (highlightId: string, rect: DOMRect) => void;
+}) {
+  const gridColumn = colIdx + 1;
+  const label =
+    tab.kind === "single"
+      ? TRANSLATION_LABELS[tab.lang]
+      : interlinearLabel(tab.primary, tab.secondary);
+
+  // Strong's lookup for an interlinear tab — one query per chapter, shared
+  // across all of this tab's verse cells. Hook is always called (even for
+  // single tabs, with enabled=false) to keep hook order stable.
+  const isInterlinear = tab.kind === "interlinear";
+  const strongsIds = useMemo(() => {
+    if (!isInterlinear || !chapter) return [] as string[];
+    const set = new Set<string>();
+    for (const ws of Object.values(chapter.wordsByVerse)) {
+      for (const w of ws) {
+        if (w.strongs) set.add(w.strongs);
+      }
+    }
+    return Array.from(set).sort();
+  }, [isInterlinear, chapter]);
+  const strongsQuery = useQuery({
+    queryKey: ["corpus", "strongsByIds", strongsIds.join(",")],
+    queryFn: () => getStrongsByIds(strongsIds),
+    enabled: isInterlinear && strongsIds.length > 0,
+  });
+  const strongs = strongsQuery.data;
+
+  const headerCell = (
+    <div
+      key="h"
+      style={{ gridColumn, gridRow: 1, minWidth: 0, display: "block" }}
+    >
+      <header style={{ marginBottom: "1.25rem" }}>
+        <p className="al-eyebrow">{label}</p>
+        <p className="al-chapter-label" style={{ marginTop: 4 }}>
+          {chapter
+            ? `${chapter.book.name} · Chapter ${toRoman(chapterNum)}`
+            : "—"}
+        </p>
+      </header>
+      {isPending ? (
+        <p style={{ color: "var(--color-fg-muted)" }}>Loading…</p>
+      ) : error ? (
+        <pre style={{ color: "var(--color-accent)" }}>{String(error)}</pre>
+      ) : !chapter ? (
+        <p style={{ color: "var(--color-fg-subtle)", fontStyle: "italic" }}>
+          Not available
+          {tab.kind === "single" ? ` in ${TRANSLATION_LABELS[tab.lang]}` : ""}.
+        </p>
+      ) : null}
+    </div>
+  );
+
+  return (
+    <>
+      {headerCell}
+      {verseNumbers.map((n, rowIdx) => {
+        const gridRow = rowIdx + 2;
+        const verse = chapter?.verses.find((v) => v.number === n);
+        if (!chapter || !verse) {
           return (
-            <InterlinearColumn
-              key={`il:${tab.primary}+${tab.secondary}:${i}`}
-              primary={tab.primary}
-              secondary={tab.secondary}
-              chapter={chapters[i] ?? null}
-              isPending={pending[i] ?? false}
-              error={errors[i] ?? null}
-              chapterNum={chapterNum}
-              maxWidth={maxWidth}
-              highlights={highlights}
-              notes={notes}
-              selectedVerse={selectedVerse}
-              onSelectVerse={onSelectVerse}
-              onOpenStrongs={onOpenStrongs}
-              isPrimary={isPrimary}
+            <div
+              key={`v:${n}`}
+              style={{ gridColumn, gridRow, minWidth: 0, display: "block" }}
             />
           );
         }
+        const isSelected = isPrimary && selectedVerse === n;
         return (
-          <Column
-            key={`s:${tab.lang}:${i}`}
-            language={tab.lang}
-            chapter={chapters[i] ?? null}
-            isPending={pending[i] ?? false}
-            error={errors[i] ?? null}
-            chapterNum={chapterNum}
-            isPrimary={isPrimary}
-            maxWidth={maxWidth}
-            highlights={highlights}
-            notes={notes}
-            selectedVerse={selectedVerse}
-            onSelectVerse={onSelectVerse}
-            onOpenStrongs={onOpenStrongs}
-            onOpenHighlight={onOpenHighlight}
-            dropCapsEnabled={dropCapsEnabled}
-          />
+          <div
+            key={`v:${n}`}
+            data-verse-cell={n}
+            data-verse-cell-primary={isPrimary ? n : undefined}
+            style={{ gridColumn, gridRow, minWidth: 0, display: "block" }}
+          >
+            {tab.kind === "single" ? (
+              <SingleVerseCell
+                tab={tab}
+                verse={verse}
+                words={chapter.wordsByVerse[verse.id]}
+                isPrimary={isPrimary}
+                isSelected={isSelected}
+                highlights={highlights}
+                notes={notes}
+                onSelectVerse={onSelectVerse}
+                onOpenStrongs={onOpenStrongs}
+                onOpenHighlight={onOpenHighlight}
+              />
+            ) : (
+              <InterlinearVerseCell
+                tab={tab}
+                verse={verse}
+                words={chapter.wordsByVerse[verse.id] ?? []}
+                strongs={strongs}
+                isPrimary={isPrimary}
+                isSelected={isSelected}
+                highlights={highlights}
+                notes={notes}
+                onSelectVerse={onSelectVerse}
+                onOpenStrongs={onOpenStrongs}
+              />
+            )}
+          </div>
         );
       })}
-    </div>
+    </>
+  );
+}
+
+function SingleVerseCell({
+  tab,
+  verse,
+  words,
+  isPrimary,
+  isSelected,
+  highlights,
+  notes,
+  onSelectVerse,
+  onOpenStrongs,
+  onOpenHighlight,
+}: {
+  tab: SingleTab;
+  verse: VerseRow;
+  words: WordRow[] | undefined;
+  isPrimary: boolean;
+  isSelected: boolean;
+  highlights: HighlightRow[];
+  notes: NoteRow[];
+  onSelectVerse: (n: number | null) => void;
+  onOpenStrongs: (id: string, rect: DOMRect) => void;
+  onOpenHighlight: (highlightId: string, rect: DOMRect) => void;
+}) {
+  const verseHls = highlights.filter(
+    (h) =>
+      h.verse === verse.number &&
+      (h.translation === null || h.translation === tab.lang),
+  );
+  const verseNotes = notes.filter((n) => n.verse === verse.number);
+  return (
+    <span lang={LANG_ATTR[tab.lang]}>
+      <VerseInline
+        verse={verse}
+        words={words}
+        language={tab.lang}
+        withDropCap={false}
+        highlights={verseHls}
+        notes={verseNotes}
+        selected={isSelected}
+        onSelect={
+          isPrimary
+            ? () => onSelectVerse(isSelected ? null : verse.number)
+            : undefined
+        }
+        onOpenStrongs={onOpenStrongs}
+        onOpenHighlight={isPrimary ? onOpenHighlight : undefined}
+      />
+    </span>
+  );
+}
+
+function InterlinearVerseCell({
+  tab,
+  verse,
+  words,
+  strongs,
+  isPrimary,
+  isSelected,
+  highlights,
+  notes,
+  onSelectVerse,
+  onOpenStrongs,
+}: {
+  tab: InterlinearTab;
+  verse: VerseRow;
+  words: WordRow[];
+  strongs: Map<string, StrongsRow> | undefined;
+  isPrimary: boolean;
+  isSelected: boolean;
+  highlights: HighlightRow[];
+  notes: NoteRow[];
+  onSelectVerse: (n: number | null) => void;
+  onOpenStrongs: (id: string, rect: DOMRect) => void;
+}) {
+  const tokenLang: "he" | "grc" = tab.primary === "he" ? "he" : "grc";
+  const rtl = tab.primary === "he";
+  // Only universal verse-level highlights apply to an interlinear cell — the
+  // visible tokens are primary-language words, not the secondary translation.
+  const verseHls = highlights.filter(
+    (h) =>
+      h.verse === verse.number &&
+      h.translation === null &&
+      h.start_token == null,
+  );
+  const hl = verseHls[0];
+  const hasNote = notes.some((n) => n.verse === verse.number);
+  const wrapperClass = [
+    "al-verse-inline",
+    "al-il-verse",
+    hl ? `al-hl al-hl-${hl.color}` : null,
+    isSelected ? "al-verse-selected" : null,
+    hasNote ? "al-verse-noted" : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
+  return (
+    <span
+      className="al-il-flow"
+      lang={tokenLang}
+      dir={rtl ? "rtl" : "ltr"}
+      style={{ display: "block" }}
+    >
+      <span
+        className={wrapperClass}
+        data-verse-text={verse.number}
+        lang={tokenLang}
+        onClick={
+          isPrimary
+            ? () => onSelectVerse(isSelected ? null : verse.number)
+            : undefined
+        }
+        style={isPrimary ? { cursor: "pointer" } : undefined}
+      >
+        <sup
+          id={`v${verse.number}`}
+          data-verse-anchor={verse.number}
+          className="al-verse-num-inline al-il-vnum"
+        >
+          {verse.number}
+        </sup>
+        <span data-verse-body={verse.number} className="al-il-body">
+          {words.length > 0
+            ? words.map((w, i) => {
+                const gloss = w.strongs
+                  ? glossFor(strongs?.get(w.strongs), tab.secondary)
+                  : "";
+                return (
+                  <InterlinearWord
+                    key={`${w.id}-${i}`}
+                    surface={w.surface}
+                    gloss={gloss}
+                    strongs={w.strongs}
+                    lang={tokenLang}
+                    onOpenStrongs={onOpenStrongs}
+                  />
+                );
+              })
+            : verse.text_plain}
+        </span>
+      </span>
+    </span>
   );
 }
 

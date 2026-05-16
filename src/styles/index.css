@@ -201,11 +201,10 @@ kbd {
 }
 
 /* ── Flowing inline verse layout ──────────────────────────────────────────
-   Verses flow as paragraph-style text. Each verse is preceded by an inline
-   `<span data-spacer>` whose default size is zero. The cross-column
-   alignment effect (alignVerses.ts) flips that spacer to `display: block`
-   with a measured height when a verse needs to be pushed down to match a
-   later-running column. */
+   Single-tab mode: verses flow as paragraph-style text, the way a printed
+   Bible reads. Multi-tab comparison uses a CSS grid (one row per verse, one
+   column per tab) so cross-column alignment is automatic — no runtime
+   spacer-injection needed. */
 .al-chapter-flow {
   font-size: var(--reader-font-size, 17px);
   text-align: left;

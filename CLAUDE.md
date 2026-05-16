@@ -35,6 +35,17 @@ SQLite under `~/Library/Application Support/`. Without this, the
 `tauri_plugin_single_instance` lock in [src-tauri/src/lib.rs](src-tauri/src/lib.rs)
 will refuse to launch a second window.
 
+### Merge conflicts
+
+If a merge from `main` into your feature branch produces a conflict, do **not**
+assume `main` looks the way it did when you branched — other Claude instances
+may have landed features in parallel. Read both sides of every conflict hunk
+carefully and preserve the new work on `main` alongside your own changes.
+Resolving a conflict by discarding the incoming side is almost never correct;
+when in doubt, inspect the `main`-side commit (`git log -p` on the conflicting
+file) to understand what feature it was implementing before deciding how to
+combine.
+
 ## Corpus licensing policy
 
 When sourcing new content for the bundled corpus (`data/Aletheia.sqlite`), prefer
