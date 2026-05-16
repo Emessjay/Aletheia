@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useStrongs } from "@/db/hooks";
 
 interface Props {
@@ -7,9 +7,68 @@ interface Props {
   onClose: () => void;
 }
 
+const REF_RE = /\b([GH])(\d{1,5})\b/g;
+
+function RefLink({
+  id,
+  onClick,
+}: {
+  id: string;
+  onClick: (id: string) => void;
+}) {
+  const q = useStrongs(id);
+  const lemma = q.data?.lemma;
+  const lang = id.startsWith("H") ? "he" : "grc";
+  return (
+    <button
+      type="button"
+      onClick={() => onClick(id)}
+      lang={lemma ? lang : undefined}
+      style={{
+        color: "var(--color-accent)",
+        background: "none",
+        border: "none",
+        padding: 0,
+        font: "inherit",
+        cursor: "pointer",
+      }}
+    >
+      {lemma ?? id}
+    </button>
+  );
+}
+
+function renderWithRefs(
+  text: string,
+  onNav: (id: string) => void,
+): ReactNode[] {
+  const parts: ReactNode[] = [];
+  let lastIndex = 0;
+  let key = 0;
+  REF_RE.lastIndex = 0;
+  for (let match = REF_RE.exec(text); match; match = REF_RE.exec(text)) {
+    if (match.index > lastIndex) {
+      parts.push(text.slice(lastIndex, match.index));
+    }
+    const id = match[1] + match[2];
+    parts.push(<RefLink key={key++} id={id} onClick={onNav} />);
+    lastIndex = match.index + match[0].length;
+  }
+  if (lastIndex < text.length) parts.push(text.slice(lastIndex));
+  return parts;
+}
+
 export function StrongsPopover({ strongsId, anchorRect, onClose }: Props) {
   const ref = useRef<HTMLDivElement>(null);
-  const q = useStrongs(strongsId);
+  const [history, setHistory] = useState<string[]>([]);
+  const [currentId, setCurrentId] = useState(strongsId);
+  const q = useStrongs(currentId);
+
+  // If the parent picks a different anchor word, reset the navigation stack.
+  useEffect(() => {
+    setCurrentId(strongsId);
+    setHistory([]);
+  }, [strongsId]);
 
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
@@ -26,6 +85,20 @@ export function StrongsPopover({ strongsId, anchorRect, onClose }: Props) {
     };
   }, [onClose]);
 
+  const navigateTo = (id: string) => {
+    if (id === currentId) return;
+    setHistory((h) => [...h, currentId]);
+    setCurrentId(id);
+  };
+
+  const goBack = () => {
+    setHistory((h) => {
+      if (h.length === 0) return h;
+      setCurrentId(h[h.length - 1]);
+      return h.slice(0, -1);
+    });
+  };
+
   // Position below the anchor; clamp into viewport.
   const width = 320;
   const left = Math.min(
@@ -34,14 +107,14 @@ export function StrongsPopover({ strongsId, anchorRect, onClose }: Props) {
   );
   const top = anchorRect.bottom + 6;
 
-  const isHebrew = strongsId.startsWith("H");
+  const isHebrew = currentId.startsWith("H");
   const lang = isHebrew ? "he" : "grc";
 
   return (
     <div
       ref={ref}
       role="dialog"
-      aria-label={`Strong's entry ${strongsId}`}
+      aria-label={`Strong's entry ${currentId}`}
       style={{
         position: "fixed",
         left,
@@ -63,11 +136,31 @@ export function StrongsPopover({ strongsId, anchorRect, onClose }: Props) {
           justifyContent: "space-between",
           alignItems: "baseline",
           marginBottom: 4,
+          gap: 8,
         }}
       >
-        <span style={{ fontSize: 20 }} lang={lang}>
-          {q.data?.lemma ?? (q.isPending ? "…" : "—")}
-        </span>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+          {history.length > 0 ? (
+            <button
+              type="button"
+              onClick={goBack}
+              aria-label="Back to previous entry"
+              style={{
+                background: "none",
+                border: "none",
+                padding: 0,
+                cursor: "pointer",
+                fontSize: 14,
+                color: "var(--color-fg-subtle)",
+              }}
+            >
+              ←
+            </button>
+          ) : null}
+          <span style={{ fontSize: 20 }} lang={lang}>
+            {q.data?.lemma ?? (q.isPending ? "…" : "—")}
+          </span>
+        </div>
         <span
           style={{
             fontFamily: "var(--font-mono)",
@@ -75,7 +168,7 @@ export function StrongsPopover({ strongsId, anchorRect, onClose }: Props) {
             color: "var(--color-fg-subtle)",
           }}
         >
-          {strongsId}
+          {currentId}
         </span>
       </div>
 
@@ -86,7 +179,9 @@ export function StrongsPopover({ strongsId, anchorRect, onClose }: Props) {
       ) : null}
 
       {q.data?.gloss ? (
-        <p style={{ marginTop: 10, fontSize: 15 }}>{q.data.gloss}</p>
+        <p style={{ marginTop: 10, fontSize: 15 }}>
+          {renderWithRefs(q.data.gloss, navigateTo)}
+        </p>
       ) : null}
 
       {q.data?.definition ? (
@@ -98,7 +193,7 @@ export function StrongsPopover({ strongsId, anchorRect, onClose }: Props) {
             whiteSpace: "pre-wrap",
           }}
         >
-          {q.data.definition}
+          {renderWithRefs(q.data.definition, navigateTo)}
         </p>
       ) : null}
 
