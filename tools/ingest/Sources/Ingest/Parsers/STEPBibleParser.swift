@@ -92,6 +92,13 @@ public struct STEPBibleParser {
             .replacingOccurrences(of: "\r\n", with: "\n")
             .replacingOccurrences(of: "\r", with: "\n")
 
+        // TAHOT references encode an explicit per-word position (`Gen.1.1#01`),
+        // but TAGNT does not — every row in a verse shares `44_Jhn.001.001`.
+        // Without unique positions the writer's `UNIQUE(verse_id, position,
+        // base_text)` collapses the whole verse to one word. Auto-assign
+        // sequential positions when the source omits them.
+        var nextAutoPosition: [String: Int] = [:]
+
         for rawLine in normalized.split(separator: "\n", omittingEmptySubsequences: true) {
             let line = String(rawLine).trimmingCharacters(in: .whitespacesAndNewlines)
             // Skip preamble, blanks, comments, and re-listed header rows.
@@ -112,9 +119,19 @@ public struct STEPBibleParser {
             let lemma = map.lemma.flatMap { cellAt(cells, $0) }
             let baseText = map.sourceFlags.flatMap { cellAt(cells, $0) }
 
+            let position: Int
+            if parsed.position > 0 {
+                position = parsed.position
+            } else {
+                let key = "\(parsed.slug):\(parsed.chapter):\(parsed.verse)"
+                let next = (nextAutoPosition[key] ?? 0) + 1
+                nextAutoPosition[key] = next
+                position = next
+            }
+
             rows.append(Word(
                 bookSlug: parsed.slug, chapter: parsed.chapter, verse: parsed.verse,
-                position: parsed.position,
+                position: position,
                 surface: surface ?? "",
                 lemma: (lemma?.isEmpty == false) ? lemma : nil,
                 strongs: strongs,
@@ -253,7 +270,8 @@ public struct STEPBibleParser {
 
     private func normalizeStrongs(_ raw: String) -> String? {
         // Strong's in STEPBible can be a slash-separated list or wrapped in {}: e.g. `H9003/{H7225G}`.
-        // Take the first H/G + digits run we encounter.
+        // Take the first H/G + digits run we encounter, then strip leading zeros so
+        // the IDs match the canonical form used by the lexicon table.
         var trimmed = raw.replacingOccurrences(of: "{", with: "").replacingOccurrences(of: "}", with: "")
         if let slash = trimmed.firstIndex(of: "/") { trimmed = String(trimmed[..<slash]) }
         guard let first = trimmed.first(where: { $0 == "H" || $0 == "G" }) else { return nil }
@@ -261,6 +279,7 @@ public struct STEPBibleParser {
         let after = trimmed[trimmed.index(after: prefixIdx)...]
         let digits = after.prefix(while: { $0.isNumber })
         guard !digits.isEmpty else { return nil }
-        return String(first) + String(digits)
+        let stripped = String(digits).drop(while: { $0 == "0" })
+        return String(first) + (stripped.isEmpty ? "0" : String(stripped))
     }
 }

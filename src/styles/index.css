@@ -200,25 +200,67 @@ kbd {
   margin: 0;
 }
 
-/* Verse body — hanging gutter for verse numbers */
-.al-verse {
-  padding-left: 2.5em;
-  position: relative;
-  text-indent: 0;
+/* ── Flowing inline verse layout ──────────────────────────────────────────
+   Verses flow as paragraph-style text. Each verse is preceded by an inline
+   `<span data-spacer>` whose default size is zero. The cross-column
+   alignment effect (alignVerses.ts) flips that spacer to `display: block`
+   with a measured height when a verse needs to be pushed down to match a
+   later-running column. */
+.al-chapter-flow {
   font-size: var(--reader-font-size, 17px);
+  text-align: left;
+  hanging-punctuation: first last;
 }
 
-.al-verse-number {
-  position: absolute;
-  left: 0;
-  top: 0.1em;
-  width: 2em;
-  text-align: right;
-  font-size: 0.7em;
+.al-verse-spacer {
+  /* Inline + zero-size by default; flipped to display:block at runtime when
+     used as a vertical alignment shim. `line-height: 0` and `font-size: 0`
+     mean the block contributes only its explicit height — no hidden line
+     contribution from default text metrics. */
+  display: inline;
+  line-height: 0;
+  font-size: 0;
+}
+
+.al-verse-inline {
+  /* Each verse is one continuous inline span so paragraph wrapping joins
+     adjacent verses on the same line where they fit. */
+  font-size: var(--reader-font-size, 17px);
+  transition: background 80ms;
+}
+
+.al-verse-num-inline {
+  font-size: 0.62em;
+  vertical-align: super;
   font-style: italic;
   font-feature-settings: "onum";
   color: var(--color-fg-muted);
+  margin: 0 0.18em 0 0;
+  line-height: 0;
   user-select: none;
+}
+
+:lang(he) .al-verse-num-inline {
+  /* In RTL the number's right-margin reads as before-the-word; mirror it. */
+  margin: 0 0 0 0.18em;
+}
+
+.al-verse-selected {
+  background: var(--color-bg-inset);
+  border-radius: 2px;
+}
+
+.al-verse-noted .al-verse-num-inline::before {
+  /* A tiny accent dot before noted verses, in lieu of a gutter tick which the
+     hanging-margin layout no longer has room for. */
+  content: "";
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  margin-right: 3px;
+  background: var(--color-accent);
+  border-radius: 50%;
+  vertical-align: 0.15em;
 }
 
 /* Drop cap — 3-line drop, oxblood, classical incipit */
