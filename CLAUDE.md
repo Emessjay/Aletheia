@@ -6,7 +6,10 @@ Before starting work on any non-trivial feature, create a git worktree for it
 and do all editing + testing inside that worktree. Merge back to `main` when
 the feature is complete.
 
-    git worktree add ../aletheia-<slug> -b feature/<slug>
+Use the helper script — it creates the worktree on `feature/<slug>` and runs
+`npm install` so the new checkout is ready to build:
+
+    ./scripts/new-worktree.sh <slug>
     # …work, commit, test inside ../aletheia-<slug>…
     cd /path/to/main/worktree
     git merge feature/<slug>
