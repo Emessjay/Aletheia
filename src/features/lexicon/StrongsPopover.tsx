@@ -77,11 +77,16 @@ export function StrongsPopover({ strongsId, anchorRect, onClose }: Props) {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
+    // Dismiss on scroll — the popover is anchored to a fixed viewport rect,
+    // so scrolling desyncs it from the word it belongs to.
+    const onScroll = () => onClose();
     document.addEventListener("mousedown", onDoc);
     document.addEventListener("keydown", onKey);
+    window.addEventListener("scroll", onScroll, { passive: true, capture: true });
     return () => {
       document.removeEventListener("mousedown", onDoc);
       document.removeEventListener("keydown", onKey);
+      window.removeEventListener("scroll", onScroll, true);
     };
   }, [onClose]);
 

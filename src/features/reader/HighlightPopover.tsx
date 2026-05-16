@@ -43,13 +43,18 @@ export function HighlightPopover({
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
+    // Dismiss as soon as the user scrolls — the popover is anchored to a fixed
+    // viewport rect, so any scroll desyncs it from the selection it belongs to.
+    const onScroll = () => onClose();
     // mousedown fires before selection collapses; use mouseup so a fresh
     // selection-triggered popover isn't immediately dismissed by the same drag.
     document.addEventListener("mouseup", onDoc);
     document.addEventListener("keydown", onKey);
+    window.addEventListener("scroll", onScroll, { passive: true, capture: true });
     return () => {
       document.removeEventListener("mouseup", onDoc);
       document.removeEventListener("keydown", onKey);
+      window.removeEventListener("scroll", onScroll, true);
     };
   }, [onClose]);
 

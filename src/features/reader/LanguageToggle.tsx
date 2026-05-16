@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useSettingsStore } from "@/stores/useSettingsStore";
 import { TRANSLATION_LABELS } from "@/domain/translations";
 import type { CorpusLanguage } from "@/db/types";
@@ -13,6 +13,14 @@ export function LanguageToggle() {
   const [dropTargetLang, setDropTargetLang] = useState<CorpusLanguage | null>(
     null,
   );
+  // Mirror of draggingLang for the drag event handlers. Event handlers from a
+  // previous render can fire before the post-setState re-render commits in
+  // WebKit; the ref guarantees they read the live value.
+  const draggingRef = useRef<CorpusLanguage | null>(null);
+  // Suppress the click that some browsers synthesize at the end of a successful
+  // drop on the source button — without this, the drop would also toggle the
+  // dragged translation off.
+  const suppressNextClickRef = useRef(false);
 
   function moveTo(src: CorpusLanguage, dst: CorpusLanguage) {
     if (src === dst) return;
@@ -64,20 +72,32 @@ export function LanguageToggle() {
             key={lang}
             type="button"
             draggable
-            onClick={() => toggle(lang)}
+            onClick={() => {
+              if (suppressNextClickRef.current) {
+                suppressNextClickRef.current = false;
+                return;
+              }
+              toggle(lang);
+            }}
             onDragStart={(e) => {
+              draggingRef.current = lang;
               setDraggingLang(lang);
               e.dataTransfer.effectAllowed = "move";
               // Firefox needs data to be set to initiate a drag.
               e.dataTransfer.setData("text/plain", lang);
             }}
-            onDragEnter={() => {
-              if (draggingLang && draggingLang !== lang) {
-                setDropTargetLang(lang);
-              }
+            onDragEnter={(e) => {
+              // WebKit (Tauri on macOS) refuses the drop unless dragenter also
+              // calls preventDefault. The spec says dragover alone is enough,
+              // but in practice without this the drop event never fires and
+              // the tab visually drags but doesn't move on release.
+              const src = draggingRef.current;
+              if (!src) return;
+              e.preventDefault();
+              if (src !== lang) setDropTargetLang(lang);
             }}
             onDragOver={(e) => {
-              if (draggingLang) {
+              if (draggingRef.current) {
                 e.preventDefault();
                 e.dataTransfer.dropEffect = "move";
               }
@@ -87,13 +107,15 @@ export function LanguageToggle() {
             }}
             onDrop={(e) => {
               e.preventDefault();
-              if (draggingLang && draggingLang !== lang) {
-                moveTo(draggingLang, lang);
-              }
+              const src = draggingRef.current;
+              if (src && src !== lang) moveTo(src, lang);
+              suppressNextClickRef.current = true;
+              draggingRef.current = null;
               setDraggingLang(null);
               setDropTargetLang(null);
             }}
             onDragEnd={() => {
+              draggingRef.current = null;
               setDraggingLang(null);
               setDropTargetLang(null);
             }}

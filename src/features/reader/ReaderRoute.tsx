@@ -129,7 +129,10 @@ export function ReaderRoute() {
       });
     };
     compute();
-    const onScroll = () => compute();
+    // Dismiss the toolbar as soon as the user scrolls — it's a transient
+    // overlay anchored to one verse, and following the verse across a scroll
+    // visually clutters the page.
+    const onScroll = () => setSelectedVerse(null);
     window.addEventListener("resize", compute);
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => {
@@ -532,7 +535,7 @@ function Column({
 }) {
   if (isPending) {
     return (
-      <section style={{ maxWidth }}>
+      <section style={{ maxWidth, minWidth: 0 }}>
         <ColumnHeading
           language={language}
           bookName={null}
@@ -545,7 +548,7 @@ function Column({
 
   if (error) {
     return (
-      <section style={{ maxWidth }}>
+      <section style={{ maxWidth, minWidth: 0 }}>
         <ColumnHeading
           language={language}
           bookName={null}
@@ -558,7 +561,7 @@ function Column({
 
   if (!chapter) {
     return (
-      <section style={{ maxWidth }}>
+      <section style={{ maxWidth, minWidth: 0 }}>
         <ColumnHeading
           language={language}
           bookName={null}

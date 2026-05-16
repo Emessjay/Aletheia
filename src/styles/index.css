@@ -210,6 +210,11 @@ kbd {
   font-size: var(--reader-font-size, 17px);
   text-align: left;
   hanging-punctuation: first last;
+  /* When 3-4 translations share the viewport the column tracks get tight, and
+     long Greek words with stacked diacritics can exceed a track's content min
+     width. Allow mid-word breaking as a last resort so a single long word
+     never forces its column to overflow and push neighbours sideways. */
+  overflow-wrap: break-word;
 }
 
 .al-verse-spacer {
