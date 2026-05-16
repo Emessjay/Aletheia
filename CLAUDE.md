@@ -12,9 +12,13 @@ the feature is complete.
     git merge feature/<slug>
     git worktree remove ../aletheia-<slug>
 
-This lets several Claude instances work and run `tauri dev` in parallel without
-colliding on the Vite port, the Tauri single-instance lock, or the macOS
-app-data directory. **Never run `npm run tauri dev` directly** inside a
+The primary reason is isolation between concurrent Claude instances: working in
+a shared checkout means one instance can read another's partially-written code
+mid-edit, leading to confused state and conflicting changes. A worktree gives
+each instance its own filesystem view and its own branch. The secondary reason
+applies only when running the Tauri app: parallel `tauri dev` instances
+otherwise collide on the Vite port, the Tauri single-instance lock, and the
+macOS app-data directory. **Never run `npm run tauri dev` directly** inside a
 worktree — always launch via:
 
     ./scripts/dev-instance.sh        # auto-picks the lowest free instance index

@@ -5,13 +5,22 @@ import GRDB
 /// so each book is inserted once and reused by every translation that ships it.
 public final class CorpusWriter {
     public let queue: DatabaseQueue
-    public init(at path: String) throws {
-        // Always start with a clean file — the corpus is rebuilt from scratch.
-        try? FileManager.default.removeItem(atPath: path)
+    public init(at path: String, clean: Bool = true) throws {
+        // When `clean` is true (the default) the file is wiped so the corpus is
+        // rebuilt from scratch. Partial rebuilds (Pipeline with book or language
+        // filters) pass `clean: false` so they merge into the existing DB.
+        if clean {
+            try? FileManager.default.removeItem(atPath: path)
+        }
         var config = Configuration()
         config.label = "Aletheia.writer"
         self.queue = try DatabaseQueue(path: path, configuration: config)
-        try queue.write(Schema.create)
+        let alreadyInitialized: Bool = try queue.read { db in
+            (try Bool.fetchOne(db, sql: "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'book'")) ?? false
+        }
+        if !alreadyInitialized {
+            try queue.write(Schema.create)
+        }
     }
 
     // MARK: - Books
