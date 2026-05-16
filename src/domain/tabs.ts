@@ -98,5 +98,16 @@ export function equivalentFor(
   secondary: SecondaryLang,
 ): string {
   if (secondary === "en_kjv") return glossFor(strongsRow, secondary);
-  return english ?? "";
+  if (english == null) return "";
+  // STEPBible splits Hebrew morpheme compounds (prefix + root) with a slash on
+  // both surface and translation sides, e.g. הַ/שָּׁמַיִם → "the/ heavens".
+  // InterlinearWord.clean strips the slash on the Hebrew side; mirror that here
+  // by collapsing slashes to a single space. Angle-bracket placeholders
+  // (<obj.>, <the>) read better as parentheses.
+  return english
+    .replace(/\//g, " ")
+    .replace(/</g, "(")
+    .replace(/>/g, ")")
+    .replace(/\s+/g, " ")
+    .trim();
 }
