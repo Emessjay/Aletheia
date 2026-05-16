@@ -114,6 +114,11 @@ public struct Pipeline {
                   run: { try ingestSTEP(writer: writer, table: .tagot, language: "gk") }),
             Stage(name: "STEPBible Greek (NT)", languages: ["gk"], bookScoped: true,
                   run: { try ingestSTEP(writer: writer, table: .tagnt, language: "gk") }),
+            // Must run after Brenton LXX (Grk) (verses) AND STEPBible Greek (NT)
+            // (the surface→strongs reference data). See LXXTagger.swift for the
+            // rationale on surface-form (not lemma-form) matching.
+            Stage(name: "LXX surface-form tagging", languages: ["gk"], bookScoped: true,
+                  run: { try tagLXXSurfaces(writer: writer) }),
             Stage(name: "Lexicon — Hebrew BDB", languages: ["he"], bookScoped: false,
                   run: { try ingestLexicon(writer: writer, source: .hebrewBDB(self.sourceRoot.appendingPathComponent("openscriptures/HebrewLexicon.xml"))) }),
             Stage(name: "Lexicon — Greek Strong's", languages: ["gk"], bookScoped: false,
@@ -247,6 +252,11 @@ public struct Pipeline {
         } else {
             logger.info("    parsed \(totalWords) STEPBible words from \(candidates.count) file(s) (\(keptWords) after book filter)")
         }
+    }
+
+    private func tagLXXSurfaces(writer: CorpusWriter) throws {
+        let tagger = LXXTagger(writer: writer, logger: logger, bookFilter: bookFilter)
+        try tagger.run()
     }
 
     private func tableDirName(_ t: STEPBibleParser.Table) -> String {
