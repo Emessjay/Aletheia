@@ -80,12 +80,12 @@ public final class CorpusWriter {
         }
     }
 
-    public func insertWord(verseID: Int64, position: Int, surface: String, lemma: String?, strongs: String?, morphology: String?, baseText: String?) throws {
+    public func insertWord(verseID: Int64, position: Int, surface: String, lemma: String?, strongs: String?, morphology: String?, baseText: String?, english: String? = nil) throws {
         try queue.write { db in
             try db.execute(sql: """
-                INSERT OR IGNORE INTO word(verse_id, position, surface, lemma, strongs, morphology, base_text)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-                """, arguments: [verseID, position, surface, lemma, strongs, morphology, baseText])
+                INSERT OR IGNORE INTO word(verse_id, position, surface, lemma, strongs, morphology, base_text, english)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """, arguments: [verseID, position, surface, lemma, strongs, morphology, baseText, english])
         }
     }
 

@@ -76,3 +76,27 @@ export function glossFor(
   }
   return row.gloss ?? "";
 }
+
+/**
+ * Pick the under-word text for an interlinear column.
+ *
+ * BSB pair: reverse-interlinear mode — show the actual verse-specific English
+ * equivalent for this Hebrew/Greek word, sourced from STEPBible TAHOT/TAGNT
+ * column 3 (BSB-derived per-word translation, stored on `word.english`). When
+ * no alignment exists (e.g. LXX tokens, untagged words) we return the empty
+ * string so the caller can render an em-dash — we do NOT fall back to the
+ * dictionary gloss.
+ *
+ * KJV pair: dictionary-gloss mode (today). STEPBible doesn't publish a tagged
+ * KJV, and no other PD/CC-BY tagged-KJV source has materialised, so we still
+ * surface `glossFor`'s kjv_usage-derived gloss. If a tagged KJV is sourced
+ * later, this branch can switch to a real KJV `english` field on word rows.
+ */
+export function equivalentFor(
+  english: string | null,
+  strongsRow: StrongsRow | undefined,
+  secondary: SecondaryLang,
+): string {
+  if (secondary === "en_kjv") return glossFor(strongsRow, secondary);
+  return english ?? "";
+}

@@ -23,7 +23,7 @@ import { onAnyScroll } from "@/lib/onScroll";
 import { useSettingsStore } from "@/stores/useSettingsStore";
 import { TRANSLATION_LABELS } from "@/domain/translations";
 import {
-  glossFor,
+  equivalentFor,
   interlinearLabel,
   type InterlinearTab,
   type SingleTab,
@@ -859,14 +859,15 @@ function InterlinearVerseCell({
         <span data-verse-body={verse.number} className="al-il-body">
           {words.length > 0
             ? words.map((w, i) => {
-                const gloss = w.strongs
-                  ? glossFor(strongs?.get(w.strongs), tab.secondary)
-                  : "";
+                const row = w.strongs ? strongs?.get(w.strongs) : undefined;
+                const equivalent = equivalentFor(w.english, row, tab.secondary);
+                const showDash =
+                  tab.secondary === "en_bsb" && equivalent === "";
                 return (
                   <InterlinearWord
                     key={`${w.id}-${i}`}
                     surface={w.surface}
-                    gloss={gloss}
+                    gloss={showDash ? "—" : equivalent}
                     strongs={w.strongs}
                     lang={tokenLang}
                     onOpenStrongs={onOpenStrongs}

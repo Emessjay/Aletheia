@@ -37,7 +37,7 @@ export interface VerseRow {
   text_plain: string;
 }
 
-export type WordBaseText = "NA28" | "BYZ" | "TR" | null;
+export type WordBaseText = "NA28" | "BYZ" | "TR" | "LXX" | null;
 
 export interface WordRow {
   id: number;
@@ -48,6 +48,9 @@ export interface WordRow {
   strongs: string | null;
   morphology: string | null;
   base_text: WordBaseText;
+  // BSB-derived per-word English translation (from STEPBible TAHOT/TAGNT col 3).
+  // Present for he + gk-NT word rows; null for LXX tokens and any others.
+  english: string | null;
 }
 
 export interface StrongsRow {

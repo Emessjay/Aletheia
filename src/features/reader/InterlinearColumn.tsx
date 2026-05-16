@@ -4,7 +4,7 @@ import type { ChapterPayload } from "@/db/queries";
 import { getStrongsByIds } from "@/db/queries";
 import type { HighlightRow, NoteRow } from "@/db/types";
 import {
-  glossFor,
+  equivalentFor,
   interlinearLabel,
   type PrimaryLang,
   type SecondaryLang,
@@ -161,14 +161,18 @@ export function InterlinearColumn({
                 <span data-verse-body={v.number} className="al-il-body">
                   {words.length > 0
                     ? words.map((w, i) => {
-                        const gloss = w.strongs
-                          ? glossFor(strongs?.get(w.strongs), secondary)
-                          : "";
+                        const row = w.strongs ? strongs?.get(w.strongs) : undefined;
+                        const equivalent = equivalentFor(w.english, row, secondary);
+                        // BSB pair = reverse interlinear, empty = no aligned
+                        // word (em-dash, no fallback). KJV pair still uses the
+                        // dictionary gloss — empty there means the gloss row
+                        // was missing, render blank.
+                        const showDash = secondary === "en_bsb" && equivalent === "";
                         return (
                           <InterlinearWord
                             key={`${w.id}-${i}`}
                             surface={w.surface}
-                            gloss={gloss}
+                            gloss={showDash ? "—" : equivalent}
                             strongs={w.strongs}
                             lang={tokenLang}
                             onOpenStrongs={onOpenStrongs}

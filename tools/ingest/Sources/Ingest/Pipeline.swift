@@ -106,8 +106,6 @@ public struct Pipeline {
                   run: { try ingestGrcbrent(writer: writer) }),
             Stage(name: "KJV Apocrypha", languages: ["en_kjv"], bookScoped: true,
                   run: { try ingestKJVApocrypha(writer: writer) }),
-            Stage(name: "STEPBible KJV+Strongs", languages: ["en_kjv"], bookScoped: true,
-                  run: { try ingestSTEP(writer: writer, table: .tkjvs, language: "en_kjv") }),
             Stage(name: "STEPBible Hebrew (MT)", languages: ["he"], bookScoped: true,
                   run: { try ingestSTEP(writer: writer, table: .tahot, language: "he") }),
             Stage(name: "STEPBible Greek (LXX)", languages: ["gk"], bookScoped: true,
@@ -416,7 +414,7 @@ public struct Pipeline {
             for w in wordsInVerse {
                 try writer.insertWord(verseID: vid, position: w.position, surface: w.surface,
                                        lemma: w.lemma, strongs: w.strongs, morphology: w.morphology,
-                                       baseText: w.baseText)
+                                       baseText: w.baseText, english: w.english)
             }
         }
     }
