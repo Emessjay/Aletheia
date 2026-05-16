@@ -38,6 +38,9 @@ export function ReaderRoute() {
   const active = useSettingsStore((s) => s.activeTranslations);
   const [strongs, setStrongs] = useState<StrongsState | null>(null);
   const [selectedVerse, setSelectedVerse] = useState<number | null>(null);
+  const [toolbarAnchor, setToolbarAnchor] = useState<
+    { top: number; left: number; width: number; placement: "below" | "above" } | null
+  >(null);
   const location = useLocation();
 
   // Reset selection on chapter change.
@@ -53,6 +56,54 @@ export function ReaderRoute() {
       JSON.stringify({ work, book, chapter: chapterNum }),
     );
   }, [work, book, chapterNum, valid]);
+
+  // Anchor the floating verse toolbar to the bottom of the selected verse,
+  // tracking the position as the user scrolls or the layout reflows. We use
+  // viewport-relative coords so the toolbar can be `position: fixed` and live
+  // on a layer above the chapter text.
+  useLayoutEffect(() => {
+    if (selectedVerse === null) {
+      setToolbarAnchor(null);
+      return;
+    }
+    const compute = () => {
+      const verseEl = document.querySelector<HTMLElement>(
+        `[data-verse-text="${selectedVerse}"]`,
+      );
+      if (!verseEl) {
+        setToolbarAnchor(null);
+        return;
+      }
+      const verseRect = verseEl.getBoundingClientRect();
+      const section = verseEl.closest("section");
+      const colRect = section?.getBoundingClientRect();
+      const left = colRect?.left ?? verseRect.left;
+      const width = colRect?.width ?? verseRect.width;
+      // Prefer below; flip above if there isn't enough room.
+      const estHeight = 160;
+      const gap = 8;
+      const placeBelow =
+        window.innerHeight - verseRect.bottom >= estHeight + gap ||
+        verseRect.top < estHeight + gap;
+      const top = placeBelow
+        ? verseRect.bottom + gap
+        : verseRect.top - gap - estHeight;
+      setToolbarAnchor({
+        top,
+        left,
+        width,
+        placement: placeBelow ? "below" : "above",
+      });
+    };
+    compute();
+    const onScroll = () => compute();
+    window.addEventListener("resize", compute);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("resize", compute);
+      window.removeEventListener("scroll", onScroll);
+    };
+  }, [selectedVerse, active.join(",")]);
 
   // Scroll to #vN anchor after verses mount.
   useEffect(() => {
@@ -132,8 +183,24 @@ export function ReaderRoute() {
         onSelectVerse={setSelectedVerse}
         onOpenStrongs={(id, rect) => setStrongs({ id, rect })}
       />
-      {selectedVerse !== null ? (
-        <div style={{ marginTop: "1.5rem" }}>
+      {selectedVerse !== null && toolbarAnchor ? (
+        <div
+          role="dialog"
+          aria-label={`Annotations for verse ${selectedVerse}`}
+          style={{
+            position: "fixed",
+            top: toolbarAnchor.top,
+            left: toolbarAnchor.left,
+            width: toolbarAnchor.width,
+            maxHeight: "60vh",
+            overflowY: "auto",
+            background: "var(--color-bg)",
+            border: "1px solid var(--color-rule)",
+            boxShadow: "var(--shadow-pop)",
+            padding: "10px 14px",
+            zIndex: 150,
+          }}
+        >
           <VerseToolbar
             ref_={{
               workSlug: work,

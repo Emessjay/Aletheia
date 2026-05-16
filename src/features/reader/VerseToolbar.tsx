@@ -58,16 +58,10 @@ export function VerseToolbar({ ref_, highlights, notes, onDone }: Props) {
   return (
     <div
       style={{
-        marginTop: "0.25em",
-        marginBottom: "0.6em",
-        padding: "8px 0",
-        borderTop: "1px solid var(--color-rule)",
-        borderBottom: "1px solid var(--color-rule)",
         display: "flex",
         flexWrap: "wrap",
         alignItems: "center",
         gap: 14,
-        marginLeft: "2.5em",
       }}
     >
       <div style={{ display: "flex", gap: 6, alignItems: "center" }}>

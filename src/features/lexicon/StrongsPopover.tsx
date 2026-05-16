@@ -139,28 +139,9 @@ export function StrongsPopover({ strongsId, anchorRect, onClose }: Props) {
           gap: 8,
         }}
       >
-        <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-          {history.length > 0 ? (
-            <button
-              type="button"
-              onClick={goBack}
-              aria-label="Back to previous entry"
-              style={{
-                background: "none",
-                border: "none",
-                padding: 0,
-                cursor: "pointer",
-                fontSize: 14,
-                color: "var(--color-fg-subtle)",
-              }}
-            >
-              ←
-            </button>
-          ) : null}
-          <span style={{ fontSize: 20 }} lang={lang}>
-            {q.data?.lemma ?? (q.isPending ? "…" : "—")}
-          </span>
-        </div>
+        <span style={{ fontSize: 20 }} lang={lang}>
+          {q.data?.lemma ?? (q.isPending ? "…" : "—")}
+        </span>
         <span
           style={{
             fontFamily: "var(--font-mono)",
@@ -178,18 +159,11 @@ export function StrongsPopover({ strongsId, anchorRect, onClose }: Props) {
         </div>
       ) : null}
 
-      {q.data?.gloss ? (
-        <p style={{ marginTop: 10, fontSize: 15 }}>
-          {renderWithRefs(q.data.gloss, navigateTo)}
-        </p>
-      ) : null}
-
       {q.data?.definition ? (
         <p
           style={{
             marginTop: 10,
-            fontSize: 14,
-            color: "var(--color-fg-muted)",
+            fontSize: 15,
             whiteSpace: "pre-wrap",
           }}
         >
@@ -201,6 +175,26 @@ export function StrongsPopover({ strongsId, anchorRect, onClose }: Props) {
         <p style={{ color: "var(--color-accent)", fontSize: 13 }}>
           Couldn’t load entry.
         </p>
+      ) : null}
+
+      {history.length > 0 ? (
+        <div style={{ marginTop: 12 }}>
+          <button
+            type="button"
+            onClick={goBack}
+            aria-label="Back to previous entry"
+            style={{
+              background: "none",
+              border: "none",
+              padding: 0,
+              cursor: "pointer",
+              fontSize: 14,
+              color: "var(--color-fg-subtle)",
+            }}
+          >
+            ←
+          </button>
+        </div>
       ) : null}
     </div>
   );
