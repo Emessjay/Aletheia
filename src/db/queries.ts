@@ -147,6 +147,24 @@ export async function getStrongs(id: string): Promise<StrongsRow | null> {
   );
 }
 
+/**
+ * Bulk lookup of Strong's entries by id. Returns a Map keyed by Strong's id so
+ * callers can do O(1) gloss lookups while rendering a chapter's worth of words.
+ * SQLite has a generous parameter limit (~32k by default); a chapter rarely has
+ * more than a few hundred unique strongs ids, so one IN-clause query is fine.
+ */
+export async function getStrongsByIds(
+  ids: readonly string[],
+): Promise<Map<string, StrongsRow>> {
+  if (ids.length === 0) return new Map();
+  const placeholders = ids.map((_, i) => `$${i + 1}`).join(",");
+  const rows = await corpusSelect<StrongsRow>(
+    `SELECT * FROM strongs WHERE id IN (${placeholders})`,
+    [...ids],
+  );
+  return new Map(rows.map((r) => [r.id, r]));
+}
+
 export interface SearchHit {
   verse_id: number;
   book_slug: string;

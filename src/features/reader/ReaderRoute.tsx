@@ -18,6 +18,7 @@ import { kvSet } from "@/db/user";
 import { isTauri } from "@/lib/tauri";
 import { useSettingsStore } from "@/stores/useSettingsStore";
 import { TRANSLATION_LABELS } from "@/domain/translations";
+import type { Tab } from "@/domain/tabs";
 import { StrongsPopover } from "@/features/lexicon/StrongsPopover";
 import { VerseInline } from "./VerseInline";
 import { VerseToolbar } from "./VerseToolbar";
@@ -25,6 +26,7 @@ import { HighlightPopover } from "./HighlightPopover";
 import { ChapterNav } from "./ChapterNav";
 import { ChapterPicker } from "./ChapterPicker";
 import { LanguageToggle } from "./LanguageToggle";
+import { InterlinearColumn } from "./InterlinearColumn";
 import { toRoman } from "./roman";
 import { alignVerses } from "./alignVerses";
 
@@ -65,7 +67,12 @@ export function ReaderRoute() {
     work && book && Number.isFinite(chapterNum) && chapterNum >= 1,
   );
 
-  const active = useSettingsStore((s) => s.activeTranslations);
+  const tabs = useSettingsStore((s) => s.tabs);
+  const activeTabs = tabs.filter((t) => t.active);
+  // Primary language per active tab — drives chapter fan-out, selection, etc.
+  const activeLangs: CorpusLanguage[] = activeTabs.map((t) =>
+    t.kind === "single" ? t.lang : t.primary,
+  );
   const [strongs, setStrongs] = useState<StrongsState | null>(null);
   const [selectedVerse, setSelectedVerse] = useState<number | null>(null);
   const [toolbarAnchor, setToolbarAnchor] = useState<
@@ -139,7 +146,7 @@ export function ReaderRoute() {
       window.removeEventListener("resize", compute);
       window.removeEventListener("scroll", onScroll);
     };
-  }, [selectedVerse, active.join(",")]);
+  }, [selectedVerse, activeLangs.join(",")]);
 
   // Reset the highlight popover when the chapter changes.
   useEffect(() => {
@@ -152,7 +159,7 @@ export function ReaderRoute() {
   // range from the body start to the selection's anchor/focus.
   useEffect(() => {
     if (!valid) return;
-    const primary = active[0];
+    const primary = activeLangs[0];
     if (!primary) return;
     const onMouseUp = () => {
       // Defer one tick so the click that lands inside an existing highlight
@@ -190,7 +197,7 @@ export function ReaderRoute() {
     };
     document.addEventListener("mouseup", onMouseUp);
     return () => document.removeEventListener("mouseup", onMouseUp);
-  }, [valid, active.join(","), work, book, chapterNum]);
+  }, [valid, activeLangs.join(","), work, book, chapterNum]);
 
   // Scroll to #vN anchor after verses mount.
   useEffect(() => {
@@ -216,7 +223,7 @@ export function ReaderRoute() {
   // useChapter, so other consumers of the same (lang, book, chapter) tuple
   // (e.g. ChapterPicker via the primary) don't double-fetch.
   const chapterQueries = useQueries({
-    queries: active.map((lang) => ({
+    queries: activeLangs.map((lang) => ({
       queryKey: ["corpus", "chapter", lang, book, chapterNum],
       queryFn: () => getChapter(lang, book, chapterNum),
     })),
@@ -260,7 +267,7 @@ export function ReaderRoute() {
         bookSlug={book}
         workSlug={work}
         chapterNum={chapterNum}
-        active={active}
+        tabs={activeTabs}
         chapters={chapterQueries.map((q) => q.data ?? null)}
         pending={chapterQueries.map((q) => q.isPending)}
         errors={chapterQueries.map((q) => q.error)}
@@ -404,7 +411,7 @@ function ColumnsLayout({
   workSlug,
   bookSlug,
   chapterNum,
-  active,
+  tabs,
   chapters,
   pending,
   errors,
@@ -418,7 +425,7 @@ function ColumnsLayout({
   workSlug: string;
   bookSlug: string;
   chapterNum: number;
-  active: CorpusLanguage[];
+  tabs: Tab[];
   chapters: Array<ChapterPayload | null>;
   pending: boolean[];
   errors: Array<unknown>;
@@ -433,18 +440,16 @@ function ColumnsLayout({
   const dropCapsEnabled = useSettingsStore((s) => s.dropCapsEnabled);
   const fontSize = useSettingsStore((s) => s.fontSize);
 
-  // Cross-column alignment: re-run on chapter/lang changes, on settings that
-  // affect line wrapping, on font-load events, and on window resize.
-  //
-  // Dep includes per-column verse counts so the effect re-runs as each query
-  // resolves. ChapterPayload identity is stable per cache hit, so deep equality
-  // isn't needed.
+  const langsKey = tabs
+    .map((t) => (t.kind === "single" ? t.lang : `${t.primary}+${t.secondary}`))
+    .join(",");
+
   const verseCountsKey = chapters
     .map((c) => c?.verses.length ?? 0)
     .join(",");
 
   useLayoutEffect(() => {
-    if (active.length < 2) return;
+    if (tabs.length < 2) return;
     const run = () => alignVerses(containerRef.current);
 
     run();
@@ -452,8 +457,6 @@ function ColumnsLayout({
     const onResize = () => run();
     window.addEventListener("resize", onResize);
 
-    // Re-align once webfonts finish loading; before that, line wrapping is
-    // wrong and the first align bakes in stale spacer heights.
     if (typeof document !== "undefined" && document.fonts?.ready) {
       void document.fonts.ready.then(run);
     }
@@ -463,7 +466,7 @@ function ColumnsLayout({
     workSlug,
     bookSlug,
     chapterNum,
-    active.join(","),
+    langsKey,
     verseCountsKey,
     dropCapsEnabled,
     fontSize,
@@ -474,30 +477,54 @@ function ColumnsLayout({
       ref={containerRef}
       style={{
         display: "grid",
-        gridTemplateColumns: `repeat(${active.length}, minmax(0, 1fr))`,
+        gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))`,
         gap: "2.5rem",
         alignItems: "start",
       }}
     >
-      {active.map((lang, i) => (
-        <Column
-          key={lang}
-          language={lang}
-          chapter={chapters[i] ?? null}
-          isPending={pending[i] ?? false}
-          error={errors[i] ?? null}
-          chapterNum={chapterNum}
-          isPrimary={i === 0}
-          maxWidth={active.length > 1 ? "30em" : "var(--measure)"}
-          highlights={highlights}
-          notes={notes}
-          selectedVerse={selectedVerse}
-          onSelectVerse={onSelectVerse}
-          onOpenStrongs={onOpenStrongs}
-          onOpenHighlight={onOpenHighlight}
-          dropCapsEnabled={dropCapsEnabled}
-        />
-      ))}
+      {tabs.map((tab, i) => {
+        const isPrimary = i === 0;
+        const maxWidth = tabs.length > 1 ? "30em" : "var(--measure)";
+        if (tab.kind === "interlinear") {
+          return (
+            <InterlinearColumn
+              key={`il:${tab.primary}+${tab.secondary}:${i}`}
+              primary={tab.primary}
+              secondary={tab.secondary}
+              chapter={chapters[i] ?? null}
+              isPending={pending[i] ?? false}
+              error={errors[i] ?? null}
+              chapterNum={chapterNum}
+              maxWidth={maxWidth}
+              highlights={highlights}
+              notes={notes}
+              selectedVerse={selectedVerse}
+              onSelectVerse={onSelectVerse}
+              onOpenStrongs={onOpenStrongs}
+              isPrimary={isPrimary}
+            />
+          );
+        }
+        return (
+          <Column
+            key={`s:${tab.lang}:${i}`}
+            language={tab.lang}
+            chapter={chapters[i] ?? null}
+            isPending={pending[i] ?? false}
+            error={errors[i] ?? null}
+            chapterNum={chapterNum}
+            isPrimary={isPrimary}
+            maxWidth={maxWidth}
+            highlights={highlights}
+            notes={notes}
+            selectedVerse={selectedVerse}
+            onSelectVerse={onSelectVerse}
+            onOpenStrongs={onOpenStrongs}
+            onOpenHighlight={onOpenHighlight}
+            dropCapsEnabled={dropCapsEnabled}
+          />
+        );
+      })}
     </div>
   );
 }

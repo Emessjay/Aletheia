@@ -1,39 +1,61 @@
 import { useRef, useState } from "react";
 import { useSettingsStore } from "@/stores/useSettingsStore";
 import { TRANSLATION_LABELS } from "@/domain/translations";
-import type { CorpusLanguage } from "@/db/types";
+import {
+  interlinearLabel,
+  resolveInterlinear,
+  type Tab,
+} from "@/domain/tabs";
+
+type DropMode = "before" | "after" | "merge";
+
+const DRAG_MIME = "application/x-aletheia-tab-index";
 
 export function LanguageToggle() {
-  const active = useSettingsStore((s) => s.activeTranslations);
-  const toggle = useSettingsStore((s) => s.toggleTranslation);
-  const tabOrder = useSettingsStore((s) => s.tabOrder);
-  const setTabOrder = useSettingsStore((s) => s.setTabOrder);
+  const tabs = useSettingsStore((s) => s.tabs);
+  const toggleTabAt = useSettingsStore((s) => s.toggleTabAt);
+  const reorderTab = useSettingsStore((s) => s.reorderTab);
+  const mergeTabs = useSettingsStore((s) => s.mergeTabs);
+  const splitTab = useSettingsStore((s) => s.splitTab);
 
-  const [draggingLang, setDraggingLang] = useState<CorpusLanguage | null>(null);
-  const [dropTargetLang, setDropTargetLang] = useState<CorpusLanguage | null>(
-    null,
-  );
-  // Mirror of draggingLang for the drag event handlers. Event handlers from a
-  // previous render can fire before the post-setState re-render commits in
-  // WebKit; the ref guarantees they read the live value.
-  const draggingRef = useRef<CorpusLanguage | null>(null);
-  // Suppress the click that some browsers synthesize at the end of a successful
-  // drop on the source button — without this, the drop would also toggle the
-  // dragged translation off.
+  const [draggingIdx, setDraggingIdx] = useState<number | null>(null);
+  const [dropTarget, setDropTarget] = useState<
+    { idx: number; mode: DropMode } | null
+  >(null);
+  // Mirror state in a ref for handlers that may run before the next render.
+  const draggingRef = useRef<number | null>(null);
+  // Suppress the click some browsers synthesize after a successful drop on the
+  // source element — otherwise the post-drop click would toggle the tab.
   const suppressNextClickRef = useRef(false);
 
-  function moveTo(src: CorpusLanguage, dst: CorpusLanguage) {
-    if (src === dst) return;
-    const srcIdx = tabOrder.indexOf(src);
-    const dstIdx = tabOrder.indexOf(dst);
-    if (srcIdx < 0 || dstIdx < 0) return;
-    const next = tabOrder.filter((l) => l !== src);
-    const newDstIdx = next.indexOf(dst);
-    // Dragging forward (left→right) lands after the target; dragging backward
-    // lands before. This lets a tab reach any position, including the ends.
-    const insertAt = srcIdx < dstIdx ? newDstIdx + 1 : newDstIdx;
-    next.splice(insertAt, 0, src);
-    setTabOrder(next);
+  function computeDropMode(
+    e: React.DragEvent<HTMLButtonElement>,
+    target: Tab,
+    targetIdx: number,
+  ): DropMode | null {
+    const src = draggingRef.current;
+    if (src === null || src === targetIdx) return null;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const w = rect.width;
+    const leftEdge = w * 0.3;
+    const rightEdge = w * 0.7;
+    if (x < leftEdge) return "before";
+    if (x > rightEdge) return "after";
+    // Center 40%: a merge — only valid for single+single with a resolvable
+    // primary/secondary. If invalid, fall back to a reorder so the gesture
+    // still does *something* sensible.
+    const srcTab = tabs[src];
+    if (srcTab?.kind === "single" && target.kind === "single") {
+      if (resolveInterlinear(srcTab.lang, target.lang)) return "merge";
+    }
+    return x < w / 2 ? "before" : "after";
+  }
+
+  function labelFor(t: Tab): string {
+    return t.kind === "single"
+      ? TRANSLATION_LABELS[t.lang]
+      : interlinearLabel(t.primary, t.secondary);
   }
 
   return (
@@ -58,69 +80,87 @@ export function LanguageToggle() {
       >
         Translations
       </span>
-      {tabOrder.map((lang) => {
-        const on = active.includes(lang);
-        const isDragging = draggingLang === lang;
-        const isDropTarget = dropTargetLang === lang && draggingLang !== lang;
-        // Indicator side mirrors where the drop will land relative to this tab.
-        const dropAfter =
-          isDropTarget &&
-          draggingLang !== null &&
-          tabOrder.indexOf(draggingLang) < tabOrder.indexOf(lang);
+      {tabs.map((tab, idx) => {
+        const on = tab.active;
+        const isDragging = draggingIdx === idx;
+        const isDropTarget = dropTarget?.idx === idx && draggingIdx !== idx;
+        const mode = isDropTarget ? dropTarget?.mode : null;
+        const isMergeTarget = mode === "merge";
         return (
           <button
-            key={lang}
+            key={tabKey(tab, idx)}
             type="button"
             draggable
-            onClick={() => {
+            title={
+              tab.kind === "interlinear" ? "Double-click to split" : undefined
+            }
+            onClick={(e) => {
               if (suppressNextClickRef.current) {
                 suppressNextClickRef.current = false;
                 return;
               }
-              toggle(lang);
+              // Don't toggle on the first half of a double-click.
+              if (e.detail >= 2) return;
+              toggleTabAt(idx);
+            }}
+            onDoubleClick={() => {
+              if (tab.kind === "interlinear") splitTab(idx);
             }}
             onDragStart={(e) => {
-              draggingRef.current = lang;
-              setDraggingLang(lang);
+              draggingRef.current = idx;
+              setDraggingIdx(idx);
               e.dataTransfer.effectAllowed = "move";
-              // Firefox needs data to be set to initiate a drag.
-              e.dataTransfer.setData("text/plain", lang);
+              e.dataTransfer.setData(DRAG_MIME, String(idx));
+              // Firefox needs text/plain set too.
+              e.dataTransfer.setData("text/plain", labelFor(tab));
             }}
             onDragEnter={(e) => {
-              // WebKit (Tauri on macOS) refuses the drop unless dragenter also
-              // calls preventDefault. The spec says dragover alone is enough,
-              // but in practice without this the drop event never fires and
-              // the tab visually drags but doesn't move on release.
-              const src = draggingRef.current;
-              if (!src) return;
+              if (draggingRef.current === null) return;
               e.preventDefault();
-              if (src !== lang) setDropTargetLang(lang);
+              const m = computeDropMode(e, tab, idx);
+              if (m) setDropTarget({ idx, mode: m });
             }}
             onDragOver={(e) => {
-              if (draggingRef.current) {
-                e.preventDefault();
-                e.dataTransfer.dropEffect = "move";
+              if (draggingRef.current === null) return;
+              e.preventDefault();
+              e.dataTransfer.dropEffect = "move";
+              const m = computeDropMode(e, tab, idx);
+              if (m) {
+                setDropTarget((cur) =>
+                  cur && cur.idx === idx && cur.mode === m
+                    ? cur
+                    : { idx, mode: m },
+                );
               }
             }}
             onDragLeave={() => {
-              setDropTargetLang((cur) => (cur === lang ? null : cur));
+              setDropTarget((cur) => (cur?.idx === idx ? null : cur));
             }}
             onDrop={(e) => {
               e.preventDefault();
               const src = draggingRef.current;
-              if (src && src !== lang) moveTo(src, lang);
+              const target = dropTarget;
+              if (src !== null && target && target.idx === idx) {
+                if (target.mode === "merge") {
+                  mergeTabs(src, idx);
+                } else {
+                  reorderTab(src, idx, target.mode);
+                }
+              }
               suppressNextClickRef.current = true;
               draggingRef.current = null;
-              setDraggingLang(null);
-              setDropTargetLang(null);
+              setDraggingIdx(null);
+              setDropTarget(null);
             }}
             onDragEnd={() => {
               draggingRef.current = null;
-              setDraggingLang(null);
-              setDropTargetLang(null);
+              setDraggingIdx(null);
+              setDropTarget(null);
             }}
             style={{
-              background: "transparent",
+              background: isMergeTarget
+                ? "var(--color-bg-inset)"
+                : "transparent",
               border: 0,
               padding: "2px 0",
               font: "inherit",
@@ -130,19 +170,29 @@ export function LanguageToggle() {
               borderBottom: on
                 ? "1px solid var(--color-accent)"
                 : "1px solid transparent",
-              boxShadow: isDropTarget
-                ? dropAfter
-                  ? "6px 0 0 -3px var(--color-accent)"
-                  : "-6px 0 0 -3px var(--color-accent)"
+              outline: isMergeTarget
+                ? "1px dashed var(--color-accent)"
                 : "none",
+              outlineOffset: isMergeTarget ? "2px" : undefined,
+              boxShadow:
+                mode === "before"
+                  ? "-6px 0 0 -3px var(--color-accent)"
+                  : mode === "after"
+                    ? "6px 0 0 -3px var(--color-accent)"
+                    : "none",
               opacity: isDragging ? 0.4 : 1,
-              transition: "opacity 80ms",
+              transition: "opacity 80ms, background 80ms",
             }}
           >
-            {TRANSLATION_LABELS[lang]}
+            {labelFor(tab)}
           </button>
         );
       })}
     </div>
   );
+}
+
+function tabKey(tab: Tab, idx: number): string {
+  if (tab.kind === "single") return `s:${tab.lang}:${idx}`;
+  return `i:${tab.primary}+${tab.secondary}:${idx}`;
 }
