@@ -283,6 +283,62 @@ kbd {
   letter-spacing: 0.04em;
 }
 
+/* ── Interlinear column ───────────────────────────────────────────────────
+   Each primary word is an inline-block stack: the surface on top, a smaller
+   gloss beneath. Words flow inline like normal text so line wrapping behaves;
+   Hebrew primaries flip the container to RTL. */
+.al-il-flow {
+  /* Vertical breathing room so stacked words don't crash into each other. */
+  line-height: 1.9;
+}
+
+.al-il-verse .al-il-vnum {
+  /* The verse number is part of the inline flow alongside word stacks; pull it
+     out of super position so it sits to the left of the first stack and doesn't
+     drag baseline alignment around. */
+  vertical-align: baseline;
+  font-size: 0.7em;
+  margin-right: 0.2em;
+}
+
+:lang(he) .al-il-verse .al-il-vnum,
+.al-il-flow[dir="rtl"] .al-il-vnum {
+  margin: 0 0 0 0.2em;
+}
+
+.al-il-body {
+  display: inline;
+}
+
+.al-il-word {
+  display: inline-block;
+  vertical-align: top;
+  text-align: center;
+  margin: 0 0.18em 0.35em;
+  line-height: 1.15;
+}
+
+.al-il-surface {
+  display: block;
+  font-size: 1em;
+}
+
+.al-il-clickable {
+  cursor: pointer;
+  border-bottom: 1px dotted var(--color-rule-strong);
+}
+
+.al-il-gloss {
+  display: block;
+  font-size: 0.6em;
+  font-style: italic;
+  color: var(--color-fg-muted);
+  /* Glosses are dictionary form (English) — force LTR even inside RTL flows. */
+  direction: ltr;
+  unicode-bidi: isolate;
+  white-space: nowrap;
+}
+
 /* Highlights — desaturated tint + 1px bottom rule in the same hue */
 .al-hl {
   padding: 0 1px;

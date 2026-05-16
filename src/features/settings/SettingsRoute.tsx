@@ -19,7 +19,10 @@ export function SettingsRoute() {
   const setFontSize = useSettingsStore((s) => s.setFontSize);
   const dropCapsEnabled = useSettingsStore((s) => s.dropCapsEnabled);
   const setDropCapsEnabled = useSettingsStore((s) => s.setDropCapsEnabled);
-  const activeTranslations = useSettingsStore((s) => s.activeTranslations);
+  // Subscribe to tabs so the row re-renders when active state changes; derive
+  // per-language activeness from the snapshot rather than calling a method off
+  // a stable function reference (which would skip re-renders).
+  const tabs = useSettingsStore((s) => s.tabs);
   const toggleTranslation = useSettingsStore((s) => s.toggleTranslation);
 
   return (
@@ -79,7 +82,13 @@ export function SettingsRoute() {
       <Section title="Translations shown in the reader">
         <div style={{ display: "flex", flexWrap: "wrap", gap: 14 }}>
           {TRANSLATION_ORDER.map((lang) => {
-            const on = activeTranslations.includes(lang);
+            const on = tabs.some(
+              (t) =>
+                t.active &&
+                (t.kind === "single"
+                  ? t.lang === lang
+                  : t.primary === lang || t.secondary === lang),
+            );
             return (
               <button
                 key={lang}
