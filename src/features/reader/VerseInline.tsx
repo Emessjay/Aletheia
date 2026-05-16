@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type {
   CorpusLanguage,
   HighlightRow,
@@ -18,6 +19,7 @@ interface Props {
   selected?: boolean;
   onSelect?: () => void;
   onOpenStrongs: (strongsId: string, rect: DOMRect) => void;
+  onOpenHighlight?: (highlightId: string, rect: DOMRect) => void;
 }
 
 const LANG_ATTR: Partial<Record<CorpusLanguage, string>> = {
@@ -43,12 +45,21 @@ export function VerseInline({
   selected,
   onSelect,
   onOpenStrongs,
+  onOpenHighlight,
 }: Props) {
   const langAttr = LANG_ATTR[language];
 
-  const hl =
-    highlights?.find((h) => h.translation === null) ?? highlights?.[0] ?? null;
-  const hlClass = hl ? `al-hl al-hl-${hl.color}` : null;
+  // Verse-level highlights (no character range): universal first, else any.
+  const fullVerse = (highlights ?? []).filter(
+    (h) => h.start_token == null || h.end_token == null,
+  );
+  const fullHl =
+    fullVerse.find((h) => h.translation === null) ?? fullVerse[0] ?? null;
+  const fullHlClass = fullHl ? `al-hl al-hl-${fullHl.color}` : null;
+  const partials = (highlights ?? []).filter(
+    (h): h is HighlightRow & { start_token: number; end_token: number } =>
+      h.start_token != null && h.end_token != null,
+  );
   const hasNote = (notes?.length ?? 0) > 0;
 
   const body = renderBody({
@@ -56,13 +67,15 @@ export function VerseInline({
     words,
     language,
     withDropCap,
+    partials,
     onOpenStrongs,
+    onOpenHighlight,
   });
 
   const wrapperClass =
     [
       "al-verse-inline",
-      hlClass,
+      fullHlClass,
       selected ? "al-verse-selected" : null,
       hasNote ? "al-verse-noted" : null,
     ]
@@ -92,10 +105,17 @@ export function VerseInline({
         >
           {verse.number}
         </sup>
-        {body}
+        <span data-verse-body={verse.number}>{body}</span>
       </span>{" "}
     </>
   );
+}
+
+interface PartialHl {
+  id: string;
+  color: HighlightRow["color"];
+  start_token: number;
+  end_token: number;
 }
 
 function renderBody({
@@ -103,21 +123,23 @@ function renderBody({
   words,
   language,
   withDropCap,
+  partials,
   onOpenStrongs,
+  onOpenHighlight,
 }: {
   verse: VerseRowType;
   words?: WordRow[];
   language: CorpusLanguage;
   withDropCap?: boolean;
+  partials: PartialHl[];
   onOpenStrongs: (id: string, rect: DOMRect) => void;
+  onOpenHighlight?: (highlightId: string, rect: DOMRect) => void;
 }) {
+  // Tokenized languages (Hebrew/Greek): partial highlights not supported in
+  // v1 — the per-word renderer doesn't line up character-for-character with
+  // text_plain. Render the existing token stream.
   if ((language === "he" || language === "gk") && words && words.length > 0) {
     const tokenLang = language === "he" ? "he" : "grc";
-    // Drop cap on the first verse: peel off the first character of the first
-    // word, render it floated, and pass the rest to the WordToken so the
-    // Strong's hook still works on the remainder of the word. Hebrew flows
-    // RTL, so a drop-capped initial would interrupt the script direction;
-    // skip the float there.
     if (withDropCap && language === "gk") {
       const [first, ...rest] = words;
       const firstChar = first.surface.charAt(0);
@@ -163,12 +185,91 @@ function renderBody({
 
   const text = verse.text_plain;
   if (withDropCap && text.length > 0) {
+    const head = renderRuns(text.slice(0, 1), 0, partials, onOpenHighlight, "drop-cap");
+    const tail = renderRuns(text.slice(1), 1, partials, onOpenHighlight);
     return (
       <>
-        <span className="al-drop-cap">{text.charAt(0)}</span>
-        {text.slice(1)}
+        {head}
+        {tail}
       </>
     );
   }
-  return text;
+  return <>{renderRuns(text, 0, partials, onOpenHighlight)}</>;
+}
+
+function renderRuns(
+  text: string,
+  baseOffset: number,
+  partials: PartialHl[],
+  onOpenHighlight: ((id: string, rect: DOMRect) => void) | undefined,
+  variant?: "drop-cap",
+): ReactNode[] {
+  if (text.length === 0) return [];
+  const end = baseOffset + text.length;
+  const cuts = new Set<number>([baseOffset, end]);
+  for (const h of partials) {
+    if (h.end_token <= baseOffset || h.start_token >= end) continue;
+    cuts.add(Math.max(baseOffset, h.start_token));
+    cuts.add(Math.min(end, h.end_token));
+  }
+  const sorted = [...cuts].sort((a, b) => a - b);
+  const nodes: React.ReactNode[] = [];
+  for (let i = 0; i < sorted.length - 1; i++) {
+    const lo = sorted[i];
+    const hi = sorted[i + 1];
+    if (lo === hi) continue;
+    const slice = text.slice(lo - baseOffset, hi - baseOffset);
+    const hit = [...partials]
+      .reverse()
+      .find((h) => h.start_token <= lo && h.end_token >= hi);
+    const key = `r-${lo}-${hi}`;
+    if (variant === "drop-cap") {
+      nodes.push(
+        <span
+          key={key}
+          className={"al-drop-cap" + (hit ? ` al-hl al-hl-${hit.color}` : "")}
+          data-char-start={lo}
+          data-char-end={hi}
+          data-highlight-id={hit?.id}
+          onClick={
+            hit && onOpenHighlight
+              ? (e) => {
+                  e.stopPropagation();
+                  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                  onOpenHighlight(hit.id, rect);
+                }
+              : undefined
+          }
+        >
+          {slice}
+        </span>,
+      );
+    } else if (hit) {
+      nodes.push(
+        <span
+          key={key}
+          className={`al-hl al-hl-${hit.color}`}
+          data-char-start={lo}
+          data-char-end={hi}
+          data-highlight-id={hit.id}
+          onClick={(e) => {
+            if (!onOpenHighlight) return;
+            e.stopPropagation();
+            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+            onOpenHighlight(hit.id, rect);
+          }}
+          style={{ cursor: "pointer" }}
+        >
+          {slice}
+        </span>,
+      );
+    } else {
+      nodes.push(
+        <span key={key} data-char-start={lo} data-char-end={hi}>
+          {slice}
+        </span>,
+      );
+    }
+  }
+  return nodes;
 }

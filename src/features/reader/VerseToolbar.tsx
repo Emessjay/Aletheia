@@ -1,59 +1,26 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import type { HighlightColor, HighlightRow, NoteRow, VerseRef } from "@/db/types";
+import type { NoteRow, VerseRef } from "@/db/types";
 import { useVerseXrefs } from "@/db/hooks";
 import {
   useCreateBookmark,
-  useCreateHighlight,
   useCreateLibrary,
   useCreateNote,
-  useDeleteHighlight,
   useDeleteNote,
   useLibraries,
   useUpdateNote,
 } from "@/db/userHooks";
 
-const COLORS: HighlightColor[] = [
-  "yellow",
-  "green",
-  "blue",
-  "pink",
-  "purple",
-  "orange",
-];
-
-const COLOR_NAMES: Record<HighlightColor, string> = {
-  yellow: "Saffron",
-  green: "Sage",
-  blue: "Lapis",
-  pink: "Rose",
-  purple: "Iris",
-  orange: "Amber",
-};
-
 interface Props {
   ref_: VerseRef;
-  highlights: HighlightRow[];
   notes: NoteRow[];
   onDone: () => void;
 }
 
-export function VerseToolbar({ ref_, highlights, notes, onDone }: Props) {
+export function VerseToolbar({ ref_, notes, onDone }: Props) {
   const [noteOpen, setNoteOpen] = useState(notes.length > 0);
   const [bookmarkOpen, setBookmarkOpen] = useState(false);
   const [xrefOpen, setXrefOpen] = useState(false);
-
-  const createHl = useCreateHighlight();
-  const deleteHl = useDeleteHighlight();
-
-  const onColor = (color: HighlightColor) => {
-    const existing = highlights.find((h) => h.color === color);
-    if (existing) {
-      deleteHl.mutate({ id: existing.id, ref: ref_ });
-    } else {
-      createHl.mutate({ ref: ref_, color });
-    }
-  };
 
   return (
     <div
@@ -64,32 +31,6 @@ export function VerseToolbar({ ref_, highlights, notes, onDone }: Props) {
         gap: 14,
       }}
     >
-      <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-        {COLORS.map((c) => {
-          const on = highlights.some((h) => h.color === c);
-          return (
-            <button
-              key={c}
-              type="button"
-              aria-label={COLOR_NAMES[c]}
-              title={COLOR_NAMES[c]}
-              onClick={() => onColor(c)}
-              style={{
-                width: 18,
-                height: 18,
-                padding: 0,
-                background: `var(--color-hl-${c})`,
-                border: on
-                  ? "1.5px solid var(--color-accent)"
-                  : "1px solid var(--color-rule-strong)",
-                borderRadius: 0,
-                cursor: "pointer",
-              }}
-            />
-          );
-        })}
-      </div>
-
       <ToolbarButton
         active={noteOpen}
         onClick={() => setNoteOpen((v) => !v)}

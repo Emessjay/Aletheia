@@ -66,11 +66,13 @@ export function useCreateHighlight() {
       ref,
       color,
       translation,
+      range,
     }: {
       ref: VerseRef;
       color: HighlightColor;
       translation?: string | null;
-    }) => createHighlight(ref, color, translation ?? null),
+      range?: { startToken: number; endToken: number } | null;
+    }) => createHighlight(ref, color, translation ?? null, range ?? null),
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({
         queryKey: userChapterKey(
