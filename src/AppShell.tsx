@@ -129,6 +129,12 @@ export function AppShell() {
               <TopBarLink to="/design" active={loc.pathname.startsWith("/design")}>
                 Design
               </TopBarLink>
+              <TopBarLink
+                to="/attributions"
+                active={loc.pathname.startsWith("/attributions")}
+              >
+                Attributions
+              </TopBarLink>
             </>
           ) : null}
         </nav>
