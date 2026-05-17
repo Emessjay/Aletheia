@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { useQueries } from "@tanstack/react-query";
 import { useLocation, useParams, Navigate } from "react-router-dom";
 import { getChapter, type ChapterPayload } from "@/db/queries";
@@ -1023,22 +1023,35 @@ function Column({
           const verseNotes = notes.filter((n) => n.verse === v.number);
           const isSelected =
             selection?.number === v.number && selection?.side === colSide;
+          // Source-faithful paragraph spacing: when the verse's USFM lead
+          // marker indicates a paragraph or poetic-line start, insert a block
+          // break before it. Suppressed for the first verse of the chapter
+          // (the chapter heading already provides a section break).
+          const lead = i > 0 ? v.lead : null;
           return (
-            <VerseInline
-              key={v.id}
-              verse={v}
-              words={wordsByVerse[v.id]}
-              language={language}
-              withDropCap={i === 0 && chapterNum === 1 && dropCapsEnabled}
-              highlights={verseHls}
-              notes={verseNotes}
-              selected={isSelected}
-              onSelect={() =>
-                onSelectVerse(isSelected ? null : v.number, colSide)
-              }
-              onOpenStrongs={onOpenStrongs}
-              onOpenHighlight={onOpenHighlight}
-            />
+            <Fragment key={v.id}>
+              {lead && (
+                <span
+                  className={`al-paragraph-lead al-paragraph-lead--${lead}`}
+                  data-lead={lead}
+                  aria-hidden="true"
+                />
+              )}
+              <VerseInline
+                verse={v}
+                words={wordsByVerse[v.id]}
+                language={language}
+                withDropCap={i === 0 && chapterNum === 1 && dropCapsEnabled}
+                highlights={verseHls}
+                notes={verseNotes}
+                selected={isSelected}
+                onSelect={() =>
+                  onSelectVerse(isSelected ? null : v.number, colSide)
+                }
+                onOpenStrongs={onOpenStrongs}
+                onOpenHighlight={onOpenHighlight}
+              />
+            </Fragment>
           );
         })}
       </div>

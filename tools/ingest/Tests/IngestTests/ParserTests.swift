@@ -60,6 +60,60 @@ final class USFMParserTests: XCTestCase {
         XCTAssertFalse(result.rows[0].text.contains("+"))
     }
 
+    func testCapturesParagraphLeadOnVerseStart() throws {
+        let parser = USFMParser()
+        // \p before v1 → v1.lead == "p"; v2 continues → nil; \p before v3 → "p"
+        let usfm = """
+        \\id GEN Genesis
+        \\c 1
+        \\p
+        \\v 1 In the beginning God created the heavens and the earth.
+        \\v 2 And the earth was without form, and void.
+        \\p
+        \\v 3 And God said, Let there be light: and there was light.
+        """
+        let result = try parser.parse(text: usfm)
+        XCTAssertEqual(result.rows.count, 3)
+        XCTAssertEqual(result.rows[0].lead, "p")
+        XCTAssertNil(result.rows[1].lead)
+        XCTAssertEqual(result.rows[2].lead, "p")
+    }
+
+    func testCapturesPoetryLeadAndNormalisesBareQ() throws {
+        let parser = USFMParser()
+        // \q (bare) should normalise to "q1"; \q2 stays "q2".
+        let usfm = """
+        \\id PSA Psalms
+        \\c 1
+        \\q
+        \\v 1 Blessed is the man.
+        \\q2
+        \\v 2 But his delight is in the law.
+        """
+        let result = try parser.parse(text: usfm)
+        XCTAssertEqual(result.rows.count, 2)
+        XCTAssertEqual(result.rows[0].lead, "q1")
+        XCTAssertEqual(result.rows[1].lead, "q2")
+    }
+
+    func testLeadResetsAtChapterBoundary() throws {
+        let parser = USFMParser()
+        let usfm = """
+        \\id GEN Genesis
+        \\c 1
+        \\p
+        \\v 1 First verse.
+        \\c 2
+        \\v 1 First verse of chapter 2 (no \\p marker before it).
+        """
+        let result = try parser.parse(text: usfm)
+        XCTAssertEqual(result.rows.count, 2)
+        XCTAssertEqual(result.rows[0].lead, "p")
+        // No paragraph marker between \c 2 and its \v 1; lead should be nil
+        // even though pendingLead lingered before \c 2 cleared it.
+        XCTAssertNil(result.rows[1].lead)
+    }
+
     /// Regression test for Joshua 5:2 in the KJV: pilcrow, nested \+w marker
     /// inside \nd, and a footnote whose body uses inner \fr / \ft markers.
     func testKJVJoshua52Shape() throws {

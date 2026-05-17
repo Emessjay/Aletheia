@@ -135,7 +135,8 @@ public struct Pipeline {
         let rows = try parser.parse(fileURL: url)
         let filtered = bookFilter.isEmpty ? rows : rows.filter { bookFilter.contains($0.bookSlug) }
         logger.info("    parsed \(rows.count) BSB verses\(bookFilter.isEmpty ? "" : " (\(filtered.count) after book filter)")")
-        try writeBibleRows(filtered.map { ($0.bookSlug, $0.chapter, $0.verse, $0.text) },
+        // BSB source is plain TSV with no paragraph markup; lead is always nil.
+        try writeBibleRows(filtered.map { ($0.bookSlug, $0.chapter, $0.verse, $0.text, nil) },
                            language: "en_bsb", writer: writer)
     }
 
@@ -177,7 +178,7 @@ public struct Pipeline {
     private func splitPsalm151(_ rows: [USFMParser.Row]) -> [USFMParser.Row] {
         rows.map { row in
             (row.bookSlug == "ps" && row.chapter == 151)
-                ? USFMParser.Row(bookSlug: "ps151", chapter: 1, verse: row.verse, text: row.text)
+                ? USFMParser.Row(bookSlug: "ps151", chapter: 1, verse: row.verse, text: row.text, lead: row.lead)
                 : row
         }
     }
@@ -195,7 +196,7 @@ public struct Pipeline {
         return rows.map { row in
             guard row.bookSlug == "ezra", row.chapter >= 11 else { return row }
             return USFMParser.Row(bookSlug: "neh", chapter: row.chapter - 10,
-                                  verse: row.verse, text: row.text)
+                                  verse: row.verse, text: row.text, lead: row.lead)
         }
     }
 
@@ -222,7 +223,7 @@ public struct Pipeline {
                 let result = try parser.parse(fileURL: file)
                 let transformed = transform.map { $0(result.rows) } ?? result.rows
                 let filtered = bookFilter.isEmpty ? transformed : transformed.filter { bookFilter.contains($0.bookSlug) }
-                try writeBibleRows(filtered.map { ($0.bookSlug, $0.chapter, $0.verse, $0.text) },
+                try writeBibleRows(filtered.map { ($0.bookSlug, $0.chapter, $0.verse, $0.text, $0.lead) },
                                    language: language, writer: writer)
                 parsedBooks += 1
             } catch IngestError.malformed {
@@ -322,7 +323,7 @@ public struct Pipeline {
 
     // MARK: - Helpers
 
-    private func writeBibleRows(_ rows: [(bookSlug: String, chapter: Int, verse: Int, text: String)],
+    private func writeBibleRows(_ rows: [(bookSlug: String, chapter: Int, verse: Int, text: String, lead: String?)],
                                  language: String, writer: CorpusWriter) throws {
         var bookIDs: [String: Int64] = [:]
         var chapterIDs: [String: Int64] = [:]
@@ -341,7 +342,7 @@ public struct Pipeline {
             let cid: Int64
             if let cached = chapterIDs[chapKey] { cid = cached }
             else { cid = try writer.upsertChapter(bookID: bid, number: row.chapter); chapterIDs[chapKey] = cid }
-            _ = try writer.insertVerse(chapterID: cid, number: row.verse, text: row.text)
+            _ = try writer.insertVerse(chapterID: cid, number: row.verse, text: row.text, lead: row.lead)
         }
     }
 

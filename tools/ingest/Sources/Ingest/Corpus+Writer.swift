@@ -67,15 +67,15 @@ public final class CorpusWriter {
     /// Insert a verse, or return the existing row's ID if `(chapter_id, number)` already exists.
     /// Idempotent so the pipeline can rerun parts of the build, and tolerant of source-text
     /// quirks (e.g. Brenton's Daniel 3 additions split across two `\c 3` markers).
-    public func insertVerse(chapterID: Int64, number: Int, text: String, plain: String? = nil) throws -> Int64 {
+    public func insertVerse(chapterID: Int64, number: Int, text: String, plain: String? = nil, lead: String? = nil) throws -> Int64 {
         try queue.write { db in
             if let existing = try Int64.fetchOne(db, sql: "SELECT id FROM verse WHERE chapter_id = ? AND number = ?", arguments: [chapterID, number]) {
                 return existing
             }
             let plain = plain ?? stripMarkup(text)
             try db.execute(sql: """
-                INSERT INTO verse(chapter_id, number, text, text_plain) VALUES (?, ?, ?, ?)
-                """, arguments: [chapterID, number, text, plain])
+                INSERT INTO verse(chapter_id, number, text, text_plain, lead) VALUES (?, ?, ?, ?, ?)
+                """, arguments: [chapterID, number, text, plain, lead])
             return db.lastInsertedRowID
         }
     }
