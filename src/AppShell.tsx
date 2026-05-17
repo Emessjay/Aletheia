@@ -103,6 +103,12 @@ export function AppShell() {
               <TopBarLink to="/reader/bible/john/1" active={loc.pathname.startsWith("/reader")}>
                 Read
               </TopBarLink>
+              <TopBarLink
+                to="/commentaries"
+                active={loc.pathname.startsWith("/commentaries")}
+              >
+                Commentaries
+              </TopBarLink>
               <TopBarLink to="/libraries" active={loc.pathname.startsWith("/libraries")}>
                 Libraries
               </TopBarLink>

@@ -1,5 +1,10 @@
-# Bundled corpus (built by tools/ingest from data/sources/)
-data/sources/
+# Bundled corpus (built by tools/ingest from data/sources/) — ignore the
+# subdirectories of fetched raw data but keep the in-repo licensing notes.
+data/sources/*/
+data/sources/*.txt
+data/sources/*.json
+data/sources/*.xml
+data/sources/*.zip
 data/Aletheia.sqlite
 data/Aletheia.sqlite-*
 

@@ -3,11 +3,104 @@ import type {
   BookRow,
   ChapterRow,
   CorpusLanguage,
+  SectionRow,
   StrongsRow,
   VerseRow,
   WordRow,
+  WorkRow,
   XrefRow,
 } from "./types";
+
+// ── Commentaries (work/section) ───────────────────────────────────────────
+//
+// Commentaries are stored under the existing `work` / `section` tables with
+//   work.kind = 'commentary'
+//   section.ordinal_path =
+//     "<work>.<book>"          for book-kind rows
+//     "<work>.<book>.<ch>"     for chapter-kind rows
+//     "<work>.<book>.<ch>.<n>" for comment-kind rows
+// Every commentary always has a book + chapter row for each (book, chapter)
+// it covers, even when the source text has no introductory blurb at that
+// level — that way the picker can iterate `kind='book'` / `kind='chapter'`
+// rows directly without parsing ordinal_path strings.
+
+/** All commentaries, ordered by id (== ingest order). */
+export async function listCommentaries(): Promise<WorkRow[]> {
+  return corpusSelect<WorkRow>(
+    `SELECT * FROM work WHERE kind = 'commentary' ORDER BY id`,
+  );
+}
+
+/** Book-kind sections for a commentary, joined to the canonical book table
+ *  so the UI can sort and label them by the same order_index used in Reader. */
+export interface CommentaryBookEntry {
+  ordinal_path: string;
+  section_id: number;
+  book_slug: string;
+  book_name: string;
+  order_index: number;
+}
+
+export async function listCommentaryBooks(
+  workSlug: string,
+): Promise<CommentaryBookEntry[]> {
+  return corpusSelect<CommentaryBookEntry>(
+    `SELECT s.ordinal_path AS ordinal_path,
+            s.id           AS section_id,
+            COALESCE(s.label, '') AS book_slug,
+            COALESCE(b.name, s.label, '?') AS book_name,
+            COALESCE(b.order_index, 999) AS order_index
+       FROM section s
+       JOIN work w ON w.id = s.work_id
+       LEFT JOIN book b
+         ON b.slug = s.label AND b.language = 'en_bsb'
+      WHERE w.slug = $1 AND s.kind = 'book'
+      ORDER BY order_index, s.label`,
+    [workSlug],
+  );
+}
+
+/** Chapter-kind sections for a (commentary, book). `label` on a chapter row
+ *  is the chapter number as a string ("1", "2", ...). Ordering relies on the
+ *  ingest having written rows in chapter-number order. */
+export async function listCommentaryChapters(
+  workSlug: string,
+  bookSlug: string,
+): Promise<SectionRow[]> {
+  // ordinal_path is exactly "<work>.<book>.<ch>" — two dots deep.
+  // Excluding deeper paths keeps the result to chapter rows only.
+  return corpusSelect<SectionRow>(
+    `SELECT s.* FROM section s
+       JOIN work w ON w.id = s.work_id
+      WHERE w.slug = $1
+        AND s.kind = 'chapter'
+        AND s.ordinal_path LIKE $1 || '.' || $2 || '.%'
+        AND s.ordinal_path NOT LIKE $1 || '.' || $2 || '.%.%'
+      ORDER BY s.ordering`,
+    [workSlug, bookSlug],
+  );
+}
+
+/** All comment-kind sections for a (commentary, book, chapter), plus the
+ *  chapter intro (kind='chapter') itself if it has a body. Returned in
+ *  document order. */
+export async function listChapterCommentary(
+  workSlug: string,
+  bookSlug: string,
+  chapter: number,
+): Promise<SectionRow[]> {
+  return corpusSelect<SectionRow>(
+    `SELECT s.* FROM section s
+       JOIN work w ON w.id = s.work_id
+      WHERE w.slug = $1
+        AND (
+          s.ordinal_path = $1 || '.' || $2 || '.' || $3
+          OR s.ordinal_path LIKE $1 || '.' || $2 || '.' || $3 || '.%'
+        )
+      ORDER BY s.ordering`,
+    [workSlug, bookSlug, chapter],
+  );
+}
 
 // ── Cross-references ────────────────────────────────────────────────────────
 

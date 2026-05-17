@@ -72,6 +72,48 @@ export interface XrefRow {
   weight: number;
 }
 
+// ── Works (commentaries, etc.) ────────────────────────────────────────────
+// `work.kind` is a free-form text column at the SQL layer; the literal list
+// here matches what the ingest pipeline writes today.
+export type WorkKind = "commentary";
+
+export interface WorkRow {
+  id: number;
+  slug: string;
+  title: string;
+  author: string;
+  kind: WorkKind;
+}
+
+// Commentary sections form a 3-level tree:
+//   book      ordinal_path = "<work>.<book>"               — book intro/header
+//     chapter ordinal_path = "<work>.<book>.<ch>"          — chapter intro
+//       comment ordinal_path = "<work>.<book>.<ch>.<seq>"  — one comment block
+export type SectionKind = "book" | "chapter" | "comment";
+
+export interface SectionRow {
+  id: number;
+  work_id: number;
+  parent_id: number | null;
+  ordinal_path: string;
+  kind: SectionKind;
+  label: string | null;
+  language: "en";
+  body: string;
+  ordering: number;
+}
+
+export interface CitationRow {
+  id: number;
+  section_id: number;
+  book_slug: string;
+  chapter: number;
+  verse_start: number;
+  verse_end: number;
+  span_start: number;
+  span_end: number;
+}
+
 // Stable, value-type pointer into the corpus that survives DB rebuilds.
 // Mirrors VerseRef from the old SwiftUI app.
 export interface VerseRef {

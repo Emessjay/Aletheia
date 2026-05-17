@@ -191,4 +191,26 @@ find "${OGL_DIR}" -path "*tlg0645/tlg003*" -name "*grc*.xml" -exec cp {} "${PAT_
 # Athanasius (TLG 2035) — De Incarnatione Verbi is .tlg002
 find "${OGL_DIR}" -path "*tlg2035/tlg002*" -name "*grc*.xml" -exec cp {} "${PAT_DIR}/incarnation-gr.xml" \; 2>/dev/null
 
+# -----------------------------------------------------------------------------
+# Bible commentaries — all PD-by-age, sourced from licensing-clean digital
+# editions. See data/sources/COMMENTARIES.md for the licensing rationale and
+# why CCEL's XML is deliberately avoided in favor of CC0 or SWORD redistributions.
+# -----------------------------------------------------------------------------
+COMM_DIR="${SRC_DIR}/commentaries"
+mkdir -p "${COMM_DIR}"
+
+# Matthew Henry's Complete Commentary on the Whole Bible (1708–1710).
+# Source: lyteword/mhenry-complete on GitHub, CC0-1.0. Per-chapter markdown
+# organized as <repo>/volume-N/<book-name>/chapter-N.md.
+MH_DIR="${COMM_DIR}/matthew-henry"
+if [[ ! -d "${MH_DIR}/.git" ]]; then
+    note "Cloning Matthew Henry's Commentary (CC0)…"
+    git clone --depth=1 https://github.com/lyteword/mhenry-complete.git "${MH_DIR}"
+fi
+
+# SWORD modules — Calvin, JFB, Wesley, Clarke — are deferred to a follow-up
+# pass. Each ships as a binary zip from crosswire.org and needs `mod2imp`
+# (Homebrew `sword` package) or `pysword` (pip) to convert to a flat text
+# format before ingest. See COMMENTARIES.md for the planned tooling.
+
 note "Done. Next: \`cd tools/ingest && swift run aletheia-ingest -s ../../data/sources -o ../../data/Aletheia.sqlite\`"

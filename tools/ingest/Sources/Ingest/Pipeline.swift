@@ -122,7 +122,13 @@ public struct Pipeline {
             // Cross-refs index against en_bsb verses, so a partial book filter would
             // produce broken xrefs. Marked non-book-scoped so --books skips it.
             Stage(name: "Cross-references", languages: ["en_bsb"], bookScoped: false,
-                  run: { try ingestCrossRefs(writer: writer) })
+                  run: { try ingestCrossRefs(writer: writer) }),
+            // Commentaries — each writes one `work` row plus per-book/chapter/comment
+            // `section` rows. Language tag "en" is shared by all current commentaries;
+            // it does NOT match any of the Bible-side `en_*` tags, so a `--languages en_bsb`
+            // filter correctly skips these (and a bare `--languages en` runs only them).
+            Stage(name: "Commentary — Matthew Henry", languages: ["en"], bookScoped: false,
+                  run: { try ingestMatthewHenry(writer: writer) })
         ]
     }
 
@@ -294,6 +300,83 @@ public struct Pipeline {
         let parser = LexiconParser()
         let entries = try parser.parse(source)
         for entry in entries { try writer.upsertStrongs(entry) }
+    }
+
+    private func ingestMatthewHenry(writer: CorpusWriter) throws {
+        let root = sourceRoot.appendingPathComponent("commentaries/matthew-henry")
+        guard FileManager.default.fileExists(atPath: root.path) else {
+            throw IngestError.sourceMissing(root.path)
+        }
+        let parser = MatthewHenryParser()
+        let chapters = try parser.parse(rootDirectory: root)
+        guard !chapters.isEmpty else {
+            throw IngestError.sourceMissing("\(root.path): no chapter files parsed")
+        }
+
+        let workSlug = "matthew-henry"
+        let workID = try writer.insertWork(
+            slug: workSlug,
+            title: "Matthew Henry's Commentary on the Whole Bible",
+            author: "Matthew Henry",
+            kind: "commentary")
+
+        // Group chapters by book so the sections form the documented tree:
+        //   book → chapter → comment.
+        let byBook = Dictionary(grouping: chapters, by: { $0.bookSlug })
+        var ordering = 0
+        var totalComments = 0
+
+        // Iterate in canonical book order so `section.ordering` reflects the
+        // canon — that's what listCommentaryBooks() depends on for sort.
+        let orderedSlugs = byBook.keys.sorted {
+            BookCatalog.orderIndex(of: $0) < BookCatalog.orderIndex(of: $1)
+        }
+        for bookSlug in orderedSlugs {
+            let bookPath = "\(workSlug).\(bookSlug)"
+            let bookID = try writer.insertSection(
+                workID: workID,
+                parentID: nil,
+                ordinalPath: bookPath,
+                kind: "book",
+                label: bookSlug,            // queries.ts joins on this to resolve the canonical name
+                language: "en",
+                body: "",
+                ordering: ordering)
+            ordering += 1
+
+            let chs = byBook[bookSlug]!.sorted { $0.chapter < $1.chapter }
+            for ch in chs {
+                let chapterPath = "\(bookPath).\(ch.chapter)"
+                let chapterID = try writer.insertSection(
+                    workID: workID,
+                    parentID: bookID,
+                    ordinalPath: chapterPath,
+                    kind: "chapter",
+                    label: String(ch.chapter),
+                    language: "en",
+                    body: ch.intro,
+                    ordering: ordering)
+                ordering += 1
+
+                for (i, c) in ch.comments.enumerated() {
+                    // Zero-pad sequence so lexicographic sort on ordinal_path stays
+                    // numeric within a chapter — 3 digits is plenty for any chapter.
+                    let seq = String(format: "%03d", i + 1)
+                    _ = try writer.insertSection(
+                        workID: workID,
+                        parentID: chapterID,
+                        ordinalPath: "\(chapterPath).\(seq)",
+                        kind: "comment",
+                        label: c.label,
+                        language: "en",
+                        body: c.body,
+                        ordering: ordering)
+                    ordering += 1
+                    totalComments += 1
+                }
+            }
+        }
+        logger.info("    \(chapters.count) chapters, \(totalComments) comment blocks across \(byBook.count) books")
     }
 
     private func ingestCrossRefs(writer: CorpusWriter) throws {

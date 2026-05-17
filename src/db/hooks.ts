@@ -1,12 +1,17 @@
 import { useQuery } from "@tanstack/react-query";
-import type { CorpusLanguage } from "./types";
+import type { CorpusLanguage, SectionRow, WorkRow } from "./types";
 import {
   getChapter,
   getStrongs,
   listBooksByLanguage,
+  listChapterCommentary,
+  listCommentaries,
+  listCommentaryBooks,
+  listCommentaryChapters,
   listXrefsForVerse,
   searchVerses,
   type ChapterPayload,
+  type CommentaryBookEntry,
   type SearchHit,
   type XrefHit,
 } from "./queries";
@@ -70,5 +75,62 @@ export function useChapter(
   return useQuery<ChapterPayload | null>({
     queryKey: ["corpus", "chapter", language, bookSlug, chapterNumber],
     queryFn: () => getChapter(language, bookSlug, chapterNumber),
+  });
+}
+
+// ── Commentaries ──────────────────────────────────────────────────────────
+
+export function useCommentaries() {
+  return useQuery<WorkRow[]>({
+    queryKey: ["corpus", "commentaries"],
+    queryFn: listCommentaries,
+    staleTime: Infinity,
+  });
+}
+
+export function useCommentaryBooks(workSlug: string | null) {
+  return useQuery<CommentaryBookEntry[]>({
+    queryKey: ["corpus", "commentary", workSlug, "books"],
+    queryFn: () => (workSlug ? listCommentaryBooks(workSlug) : Promise.resolve([])),
+    enabled: !!workSlug,
+    staleTime: Infinity,
+  });
+}
+
+export function useCommentaryChapters(
+  workSlug: string | null,
+  bookSlug: string | null,
+) {
+  return useQuery<SectionRow[]>({
+    queryKey: ["corpus", "commentary", workSlug, "chapters", bookSlug],
+    queryFn: () =>
+      workSlug && bookSlug
+        ? listCommentaryChapters(workSlug, bookSlug)
+        : Promise.resolve([]),
+    enabled: !!workSlug && !!bookSlug,
+    staleTime: Infinity,
+  });
+}
+
+export function useChapterCommentary(
+  workSlug: string | null,
+  bookSlug: string | null,
+  chapter: number | null,
+) {
+  return useQuery<SectionRow[]>({
+    queryKey: [
+      "corpus",
+      "commentary",
+      workSlug,
+      "chapter-content",
+      bookSlug,
+      chapter,
+    ],
+    queryFn: () =>
+      workSlug && bookSlug && chapter != null
+        ? listChapterCommentary(workSlug, bookSlug, chapter)
+        : Promise.resolve([]),
+    enabled: !!workSlug && !!bookSlug && chapter != null && chapter > 0,
+    staleTime: Infinity,
   });
 }

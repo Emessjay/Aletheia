@@ -5,6 +5,7 @@ import { DesignRoute } from "@/features/design/DesignRoute";
 import { ReaderRoute } from "@/features/reader/ReaderRoute";
 import { SearchRoute } from "@/features/search/SearchRoute";
 import { LibrariesRoute } from "@/features/libraries/LibrariesRoute";
+import { CommentariesRoute } from "@/features/commentaries/CommentariesRoute";
 import { SettingsRoute } from "@/features/settings/SettingsRoute";
 
 export const router = createBrowserRouter([
@@ -17,6 +18,13 @@ export const router = createBrowserRouter([
       { path: "reader/:work/:book/:chapter", element: <ReaderRoute /> },
       { path: "search", element: <SearchRoute /> },
       { path: "libraries", element: <LibrariesRoute /> },
+      { path: "commentaries", element: <CommentariesRoute /> },
+      { path: "commentaries/:work", element: <CommentariesRoute /> },
+      { path: "commentaries/:work/:book", element: <CommentariesRoute /> },
+      {
+        path: "commentaries/:work/:book/:chapter",
+        element: <CommentariesRoute />,
+      },
       { path: "settings", element: <SettingsRoute /> },
     ],
   },
