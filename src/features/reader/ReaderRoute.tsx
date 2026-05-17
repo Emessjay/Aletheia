@@ -38,6 +38,7 @@ import { ChapterPicker } from "./ChapterPicker";
 import { InterlinearWord } from "./InterlinearWord";
 import { LanguageToggle } from "./LanguageToggle";
 import { InterlinearColumn } from "./InterlinearColumn";
+import { renderGloss } from "./glossRefs";
 import { toRoman } from "./roman";
 
 interface StrongsState {
@@ -652,7 +653,40 @@ function TabColumnCells({
     queryFn: () => getStrongsByIds(strongsIds),
     enabled: isInterlinear && strongsIds.length > 0,
   });
-  const strongs = strongsQuery.data;
+
+  // Pull in the lemma rows referenced by glosses so cross-refs resolve to a
+  // word rather than a bare "G1074" / bare Hebrew number.
+  const interlinearSecondary =
+    tab.kind === "interlinear" ? tab.secondary : null;
+  const xrefIds = useMemo(() => {
+    const data = strongsQuery.data;
+    if (!data || interlinearSecondary === null) return [] as string[];
+    const set = new Set<string>();
+    const RE = /\b(?:([GH])(\d{1,5})|(\d{2,5}))\b/g;
+    for (const row of data.values()) {
+      const text = glossFor(row, interlinearSecondary);
+      if (!text) continue;
+      const defaultPrefix: "G" | "H" = row.language === "he" ? "H" : "G";
+      RE.lastIndex = 0;
+      for (let m = RE.exec(text); m; m = RE.exec(text)) {
+        const prefix = (m[1] ?? defaultPrefix) as "G" | "H";
+        const num = m[2] ?? m[3];
+        const id = prefix + num;
+        if (!data.has(id)) set.add(id);
+      }
+    }
+    return Array.from(set).sort();
+  }, [strongsQuery.data, interlinearSecondary]);
+  const xrefQuery = useQuery({
+    queryKey: ["corpus", "strongsXrefIds", xrefIds.join(",")],
+    queryFn: () => getStrongsByIds(xrefIds),
+    enabled: xrefIds.length > 0,
+  });
+  const strongs = useMemo(() => {
+    const m = new Map<string, StrongsRow>(strongsQuery.data ?? []);
+    if (xrefQuery.data) for (const [k, v] of xrefQuery.data) m.set(k, v);
+    return m;
+  }, [strongsQuery.data, xrefQuery.data]);
 
   const headerCell = (
     <div
@@ -802,7 +836,7 @@ function InterlinearVerseCell({
   tab: InterlinearTab;
   verse: VerseRow;
   words: WordRow[];
-  strongs: Map<string, StrongsRow> | undefined;
+  strongs: Map<string, StrongsRow>;
   isPrimary: boolean;
   isSelected: boolean;
   highlights: HighlightRow[];
@@ -859,14 +893,18 @@ function InterlinearVerseCell({
         <span data-verse-body={verse.number} className="al-il-body">
           {words.length > 0
             ? words.map((w, i) => {
-                const gloss = w.strongs
-                  ? glossFor(strongs?.get(w.strongs), tab.secondary)
-                  : "";
+                const wordRow = w.strongs ? strongs.get(w.strongs) : undefined;
+                const glossText = glossFor(wordRow, tab.secondary);
+                const defaultPrefix: "G" | "H" =
+                  wordRow?.language === "he" ? "H" : "G";
+                const glossNode = glossText
+                  ? renderGloss(glossText, defaultPrefix, strongs)
+                  : null;
                 return (
                   <InterlinearWord
                     key={`${w.id}-${i}`}
                     surface={w.surface}
-                    gloss={gloss}
+                    gloss={glossNode}
                     strongs={w.strongs}
                     lang={tokenLang}
                     onOpenStrongs={onOpenStrongs}
