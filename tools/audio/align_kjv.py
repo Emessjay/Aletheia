@@ -390,15 +390,23 @@ def download_to_cache(url: str, dest: Path) -> None:
 def align_file(mp3: Path, chapter_texts: list[str]) -> list[tuple[float, float]]:
     """Run aeneas on a single MP3 with one fragment per chapter.
 
-    Prepends/appends dummy intro/outro fragments so any LibriVox
-    boilerplate speech gets its own timing segment (which we discard).
+    For single-chapter files, prepends/appends dummy intro/outro fragments
+    so LibriVox boilerplate gets its own timing segment (which we discard).
+    For multi-chapter files the dummies are omitted — the DTW is less
+    precise on long files and the dummy text can steal time from the first
+    chapter.  Multi-chapter files still get accurate internal chapter
+    boundaries; only the file-level intro/outro bleeds into the first/last
+    chapter.
 
     Returns a list of (start_sec, end_sec) tuples in chapter order.
     """
     ExecuteTask, Task = _aeneas()
 
-    # Wrap with intro/outro boundary fragments.
-    all_texts = [LIBRIVOX_INTRO] + chapter_texts + [LIBRIVOX_OUTRO]
+    use_dummies = len(chapter_texts) == 1
+    if use_dummies:
+        all_texts = [LIBRIVOX_INTRO] + chapter_texts + [LIBRIVOX_OUTRO]
+    else:
+        all_texts = list(chapter_texts)
 
     with tempfile.TemporaryDirectory() as td_str:
         td = Path(td_str)
@@ -427,8 +435,10 @@ def align_file(mp3: Path, chapter_texts: list[str]) -> list[tuple[float, float]]
             raise RuntimeError(
                 f"aeneas returned {len(out)} fragments, expected {len(all_texts)}"
             )
-        # Strip the intro (first) and outro (last) boundary fragments.
-        return out[1:-1]
+        if use_dummies:
+            # Strip the intro (first) and outro (last) boundary fragments.
+            return out[1:-1]
+        return out
 
 
 def main() -> int:
