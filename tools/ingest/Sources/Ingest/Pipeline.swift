@@ -458,7 +458,7 @@ public struct Pipeline {
             for w in wordsInVerse {
                 try writer.insertWord(verseID: vid, position: w.position, surface: w.surface,
                                        lemma: w.lemma, strongs: w.strongs, morphology: w.morphology,
-                                       baseText: w.baseText)
+                                       baseText: w.baseText, english: w.english)
             }
         }
     }

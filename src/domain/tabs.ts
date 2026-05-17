@@ -76,3 +76,32 @@ export function glossFor(
   }
   return row.gloss ?? "";
 }
+
+/**
+ * Pick the under-word text for an interlinear column.
+ *
+ * Both BSB and KJV pairs render STEPBible's per-word English translation
+ * (BSB-derived from TAHOT/TAGNT col 3, stored on word.english). The KJV pair
+ * previously fell back to a kjv_usage-derived dictionary gloss when no
+ * alignment existed; that fallback was removed when the KJV pair reached
+ * parity with BSB. The pair label still distinguishes the two for the
+ * parallel-column view; under-word text is the same.
+ *
+ * Returns '' for words STEPBible left blank (LXX surface tokens, untagged
+ * function words). Callers render an em-dash in that case — no dictionary
+ * fallback.
+ */
+export function equivalentFor(english: string | null): string {
+  if (english == null) return "";
+  // STEPBible splits Hebrew morpheme compounds (prefix + root) with a slash on
+  // both surface and translation sides, e.g. הַ/שָּׁמַיִם → "the/ heavens".
+  // InterlinearWord.clean strips the slash on the Hebrew side; mirror that here
+  // by collapsing slashes to a single space. Angle-bracket placeholders
+  // (<obj.>, <the>) read better as parentheses.
+  return english
+    .replace(/\//g, " ")
+    .replace(/</g, "(")
+    .replace(/>/g, ")")
+    .replace(/\s+/g, " ")
+    .trim();
+}

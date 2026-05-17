@@ -39,6 +39,7 @@ public struct STEPBibleParser {
         public let strongs: String?       // 'H6268' or 'G2316'
         public let morphology: String?
         public let baseText: String?      // TAGNT only
+        public let english: String?       // Per-word BSB-derived English translation (contextual)
     }
 
     /// Per-table column index map. Indices are 0-based positions in the tab-delimited row.
@@ -49,6 +50,7 @@ public struct STEPBibleParser {
         let morphology: Int
         let lemma: Int?
         let sourceFlags: Int?     // TAGNT base-text variant column
+        let english: Int?         // BSB-derived contextual English translation
     }
 
     private var columnMap: ColumnMap {
@@ -57,22 +59,22 @@ public struct STEPBibleParser {
             // Header (line 82 in Gen-Deu file):
             // Eng (Heb) Ref & Type | Hebrew | Transliteration | Translation | dStrongs | Grammar |
             //   Meaning Variants | Spelling Variants | Root dStrong+Instance | …
-            return ColumnMap(reference: 0, surface: 1, strongs: 4, morphology: 5, lemma: 8, sourceFlags: nil)
+            return ColumnMap(reference: 0, surface: 1, strongs: 4, morphology: 5, lemma: 8, sourceFlags: nil, english: 3)
         case .tagnt:
             // No header row in the data section; columns observed in the wild:
             // 0: NN_Book.Chap.Verse  (e.g. 41_Mat.001.001)
             // 1: variant flag (e.g. "=NA same TR ~~")
             // 2: Greek surface
-            // 3: English translation
+            // 3: English translation (BSB-derived, per-word, verse-specific)
             // 4: Strong's (e.g. G0976)
             // 5: morphology code (e.g. N-NSF)
             // 6: lemma
             // 7: gloss
             // 8: source flags (NA28+Tyn+SBL+WH+Treg+TR+Byz+NIV)
-            return ColumnMap(reference: 0, surface: 2, strongs: 4, morphology: 5, lemma: 6, sourceFlags: 8)
+            return ColumnMap(reference: 0, surface: 2, strongs: 4, morphology: 5, lemma: 6, sourceFlags: 8, english: 3)
         case .tagot, .tkjvs:
             // Not currently published. Sensible defaults so the parser is callable.
-            return ColumnMap(reference: 0, surface: 1, strongs: 4, morphology: 5, lemma: 8, sourceFlags: nil)
+            return ColumnMap(reference: 0, surface: 1, strongs: 4, morphology: 5, lemma: 8, sourceFlags: nil, english: nil)
         }
     }
 
@@ -118,6 +120,7 @@ public struct STEPBibleParser {
             let morph = cellAt(cells, map.morphology)
             let lemma = map.lemma.flatMap { cellAt(cells, $0) }
             let baseText = map.sourceFlags.flatMap { cellAt(cells, $0) }
+            let english = map.english.flatMap { cellAt(cells, $0) }
 
             let position: Int
             if parsed.position > 0 {
@@ -136,7 +139,8 @@ public struct STEPBibleParser {
                 lemma: (lemma?.isEmpty == false) ? lemma : nil,
                 strongs: strongs,
                 morphology: (morph?.isEmpty == false) ? morph : nil,
-                baseText: (baseText?.isEmpty == false) ? baseText : nil
+                baseText: (baseText?.isEmpty == false) ? baseText : nil,
+                english: (english?.isEmpty == false) ? english : nil
             ))
         }
         return rows

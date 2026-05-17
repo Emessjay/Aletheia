@@ -3,7 +3,7 @@ import GRDB
 
 /// Schema version. Bump when adding/removing tables; the app's SQLite consumer doesn't migrate
 /// (the file is shipped read-only) — instead, regenerate the bundle and ship a new build.
-public let schemaVersion: Int = 1
+public let schemaVersion: Int = 2
 
 public enum Schema {
     public static func create(_ db: Database) throws {
@@ -58,6 +58,7 @@ public enum Schema {
                 strongs     TEXT,                     -- 'H6268' or 'G2316'
                 morphology  TEXT,
                 base_text   TEXT,                     -- 'NA28' | 'BYZ' | 'TR' | NULL
+                english     TEXT,                     -- BSB-derived contextual English (STEPBible col 3)
                 UNIQUE(verse_id, position, base_text)
             );
             """)

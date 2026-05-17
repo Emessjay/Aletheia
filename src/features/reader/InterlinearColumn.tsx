@@ -1,16 +1,12 @@
-import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
 import type { ChapterPayload } from "@/db/queries";
-import { getStrongsByIds } from "@/db/queries";
-import type { HighlightRow, NoteRow, StrongsRow } from "@/db/types";
+import type { HighlightRow, NoteRow } from "@/db/types";
 import {
-  glossFor,
+  equivalentFor,
   interlinearLabel,
   type PrimaryLang,
   type SecondaryLang,
 } from "@/domain/tabs";
 import { InterlinearWord } from "./InterlinearWord";
-import { renderGloss } from "./glossRefs";
 import { toRoman } from "./roman";
 
 interface Props {
@@ -51,60 +47,6 @@ export function InterlinearColumn({
   isPrimary,
 }: Props) {
   const label = interlinearLabel(primary, secondary);
-
-  // Collect unique Strong's ids in this chapter. wordsByVerse is empty for
-  // non-tagged langs; primary is always he|gk so this is safe.
-  const strongsIds = useMemo(() => {
-    if (!chapter) return [] as string[];
-    const set = new Set<string>();
-    for (const verseWords of Object.values(chapter.wordsByVerse)) {
-      for (const w of verseWords) {
-        if (w.strongs) set.add(w.strongs);
-      }
-    }
-    return Array.from(set).sort();
-  }, [chapter]);
-
-  const strongsQuery = useQuery({
-    queryKey: ["corpus", "strongsByIds", strongsIds.join(",")],
-    queryFn: () => getStrongsByIds(strongsIds),
-    enabled: strongsIds.length > 0,
-  });
-
-  // Glosses reference other Strong's entries (e.g. G1078's gloss is
-  // "from the same as G1074"). Pull those referenced rows so the gloss can
-  // render the lemma in place of the bare ID.
-  const xrefIds = useMemo(() => {
-    const data = strongsQuery.data;
-    if (!data) return [] as string[];
-    const set = new Set<string>();
-    const RE = /\b(?:([GH])(\d{1,5})|(\d{2,5}))\b/g;
-    for (const row of data.values()) {
-      const text = glossFor(row, secondary);
-      if (!text) continue;
-      const defaultPrefix: "G" | "H" = row.language === "he" ? "H" : "G";
-      RE.lastIndex = 0;
-      for (let m = RE.exec(text); m; m = RE.exec(text)) {
-        const prefix = (m[1] ?? defaultPrefix) as "G" | "H";
-        const num = m[2] ?? m[3];
-        const id = prefix + num;
-        if (!data.has(id)) set.add(id);
-      }
-    }
-    return Array.from(set).sort();
-  }, [strongsQuery.data, secondary]);
-
-  const xrefQuery = useQuery({
-    queryKey: ["corpus", "strongsXrefIds", xrefIds.join(",")],
-    queryFn: () => getStrongsByIds(xrefIds),
-    enabled: xrefIds.length > 0,
-  });
-
-  const strongsMap = useMemo(() => {
-    const m = new Map<string, StrongsRow>(strongsQuery.data ?? []);
-    if (xrefQuery.data) for (const [k, v] of xrefQuery.data) m.set(k, v);
-    return m;
-  }, [strongsQuery.data, xrefQuery.data]);
 
   if (isPending) {
     return (
@@ -196,20 +138,16 @@ export function InterlinearColumn({
                 <span data-verse-body={v.number} className="al-il-body">
                   {words.length > 0
                     ? words.map((w, i) => {
-                        const wordRow = w.strongs
-                          ? strongsMap.get(w.strongs)
-                          : undefined;
-                        const glossText = glossFor(wordRow, secondary);
-                        const defaultPrefix: "G" | "H" =
-                          wordRow?.language === "he" ? "H" : "G";
-                        const glossNode = glossText
-                          ? renderGloss(glossText, defaultPrefix, strongsMap)
-                          : null;
+                        // Both BSB and KJV pairs render STEPBible's per-word
+                        // English (BSB-derived from TAHOT/TAGNT col 3). No
+                        // dictionary-gloss fallback — show '—' when no
+                        // aligned word exists, same for both pairs.
+                        const equivalent = equivalentFor(w.english);
                         return (
                           <InterlinearWord
                             key={`${w.id}-${i}`}
                             surface={w.surface}
-                            gloss={glossNode}
+                            gloss={equivalent === "" ? "—" : equivalent}
                             strongs={w.strongs}
                             lang={tokenLang}
                             onOpenStrongs={onOpenStrongs}
