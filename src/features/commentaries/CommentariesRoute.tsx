@@ -1,6 +1,7 @@
-import { useMemo } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
 import {
+  useChapter,
   useChapterCommentary,
   useCommentaries,
   useCommentaryBookIntro,
@@ -8,6 +9,7 @@ import {
   useCommentaryChapters,
 } from "@/db/hooks";
 import { isTauri } from "@/lib/tauri";
+import type { ChapterPayload } from "@/db/queries";
 import type { SectionRow, WorkRow } from "@/db/types";
 
 /**
@@ -226,6 +228,11 @@ function ChapterView({
   const books = useCommentaryBooks(workSlug);
   const chapters = useCommentaryChapters(workSlug, bookSlug);
   const sections = useChapterCommentary(workSlug, bookSlug, chapter);
+  const kjv = useChapter("en_kjv", bookSlug, chapter);
+
+  const [openCommentId, setOpenCommentId] = useState<number | null>(null);
+  // Reset selection when the user navigates between chapters / books / works.
+  useEffect(() => setOpenCommentId(null), [workSlug, bookSlug, chapter]);
 
   const bookEntry = (books.data ?? []).find((b) => b.book_slug === bookSlug);
   const numbers = useMemo(
@@ -236,76 +243,239 @@ function ChapterView({
   const prev = idx > 0 ? numbers[idx - 1] : null;
   const next = idx >= 0 && idx < numbers.length - 1 ? numbers[idx + 1] : null;
 
-  if (sections.isPending) return <Loading />;
-  if (sections.isError) return <Failure error={sections.error} />;
-
   const list = sections.data ?? [];
   const chapterIntro = list.find((s) => s.kind === "chapter");
-  const comments = list.filter((s) => s.kind === "comment");
+  const comments = useMemo(
+    () => list.filter((s) => s.kind === "comment"),
+    [list],
+  );
+  // verse number → comment section. A "Verses 1–3" comment registers under
+  // 1, 2, and 3 (the first match wins, so we don't double-register if two
+  // ranges overlap — that would be a data bug anyway).
+  const commentByVerse = useMemo(() => {
+    const m = new Map<number, SectionRow>();
+    for (const c of comments) {
+      for (const v of parseVerseLabel(c.label ?? "")) {
+        if (!m.has(v)) m.set(v, c);
+      }
+    }
+    return m;
+  }, [comments]);
+
+  const openComment = openCommentId
+    ? comments.find((c) => c.id === openCommentId) ?? null
+    : null;
+  // Highlight all verses that the open comment covers (for ranges like
+  // "Verses 1–3" we want every one of those verses styled, not just the
+  // one the user clicked on).
+  const activeVerses = useMemo(() => {
+    if (!openComment) return new Set<number>();
+    return new Set(parseVerseLabel(openComment.label ?? ""));
+  }, [openComment]);
+
+  const header = (
+    <Header
+      eyebrow={
+        <span>
+          <Link to="/commentaries" style={crumbLink}>
+            Commentaries
+          </Link>
+          {" · "}
+          <Link to={`/commentaries/${workSlug}`} style={crumbLink}>
+            {work.data?.title ?? workSlug}
+          </Link>
+        </span>
+      }
+      title={`${bookEntry?.book_name ?? bookSlug} ${chapter}`}
+    />
+  );
+
+  const chapterNavEl = (
+    <nav style={chapterNav}>
+      <div>
+        {prev ? (
+          <Link
+            to={`/commentaries/${workSlug}/${bookSlug}/${prev}`}
+            style={linkReset}
+          >
+            ← Chapter {prev}
+          </Link>
+        ) : null}
+      </div>
+      <div>
+        {next ? (
+          <Link
+            to={`/commentaries/${workSlug}/${bookSlug}/${next}`}
+            style={linkReset}
+          >
+            Chapter {next} →
+          </Link>
+        ) : null}
+      </div>
+    </nav>
+  );
 
   return (
-    <article style={wrap}>
-      <Header
-        eyebrow={
-          <span>
-            <Link to="/commentaries" style={crumbLink}>
-              Commentaries
-            </Link>
-            {" · "}
-            <Link to={`/commentaries/${workSlug}`} style={crumbLink}>
-              {work.data?.title ?? workSlug}
-            </Link>
-          </span>
-        }
-        title={`${bookEntry?.book_name ?? bookSlug} ${chapter}`}
+    <div
+      style={{
+        display: "flex",
+        height: "100%",
+        minHeight: 0,
+        position: "relative",
+      }}
+    >
+      <article style={textColumn}>
+        {header}
+
+        {chapterIntro && chapterIntro.body.trim() ? (
+          <div style={{ marginBottom: "1.75rem" }}>
+            <SectionBody body={chapterIntro.body} />
+          </div>
+        ) : null}
+
+        {sections.isPending || kjv.isPending ? (
+          <p style={{ color: "var(--color-fg-muted)" }}>Loading…</p>
+        ) : sections.isError ? (
+          <Failure error={sections.error} />
+        ) : kjv.data ? (
+          <KJVChapter
+            chapter={kjv.data}
+            commentByVerse={commentByVerse}
+            activeVerses={activeVerses}
+            onSelectVerse={(v) => {
+              const c = commentByVerse.get(v);
+              setOpenCommentId(c ? c.id : null);
+            }}
+          />
+        ) : (
+          <p style={{ color: "var(--color-fg-muted)" }}>
+            KJV text not available for this chapter.
+          </p>
+        )}
+
+        {comments.length === 0 && !chapterIntro?.body?.trim() ? (
+          <p style={{ marginTop: "1.5rem", color: "var(--color-fg-muted)" }}>
+            No commentary text available for this chapter.
+          </p>
+        ) : null}
+
+        {chapterNavEl}
+      </article>
+
+      <CommentaryPanel
+        comment={openComment}
+        empty={comments.length === 0}
+        onClose={() => setOpenCommentId(null)}
+        bookSlug={bookSlug}
+        chapter={chapter}
       />
+    </div>
+  );
+}
 
-      {chapterIntro && chapterIntro.body.trim() ? (
-        <SectionBody body={chapterIntro.body} />
-      ) : null}
-
-      {comments.length === 0 && !chapterIntro?.body?.trim() ? (
-        <p style={{ color: "var(--color-fg-muted)" }}>
-          No commentary text available for this chapter.
-        </p>
-      ) : null}
-
-      {comments.map((c) => (
-        <section key={c.id} style={{ marginTop: "1.5rem" }}>
-          {c.label ? (
-            <CommentLabel
-              label={c.label}
-              bookSlug={bookSlug}
-              chapter={chapter}
-            />
-          ) : null}
-          <SectionBody body={c.body} />
-        </section>
-      ))}
-
-      <nav style={chapterNav}>
-        <div>
-          {prev ? (
-            <Link
-              to={`/commentaries/${workSlug}/${bookSlug}/${prev}`}
-              style={linkReset}
+/** Render the KJV chapter inline-prose style. Each verse is one continuous
+ *  span; verses that have commentary get a dotted underline and a click
+ *  handler. The verse with the currently-open comment renders with a
+ *  stronger accent so the reader can see which one is anchored. */
+function KJVChapter({
+  chapter,
+  commentByVerse,
+  activeVerses,
+  onSelectVerse,
+}: {
+  chapter: ChapterPayload;
+  commentByVerse: Map<number, SectionRow>;
+  activeVerses: Set<number>;
+  onSelectVerse: (verse: number) => void;
+}) {
+  return (
+    <div className="al-chapter-flow" lang="en">
+      {chapter.verses.map((v, i) => {
+        const hasComment = commentByVerse.has(v.number);
+        const isActive = activeVerses.has(v.number);
+        const className = [
+          "al-verse-inline",
+          hasComment ? "al-commentary-verse" : null,
+          isActive ? "is-active" : null,
+        ]
+          .filter(Boolean)
+          .join(" ");
+        const lead = i > 0 ? v.lead : null;
+        return (
+          <Fragment key={v.id}>
+            {lead ? (
+              <span
+                className={`al-paragraph-lead al-paragraph-lead--${lead}`}
+                data-lead={lead}
+                aria-hidden="true"
+              />
+            ) : null}
+            <span className="al-verse-spacer" data-spacer={v.number} />
+            <span
+              className={className}
+              data-verse-text={v.number}
+              onClick={hasComment ? () => onSelectVerse(v.number) : undefined}
             >
-              ← Chapter {prev}
-            </Link>
-          ) : null}
-        </div>
-        <div>
-          {next ? (
-            <Link
-              to={`/commentaries/${workSlug}/${bookSlug}/${next}`}
-              style={linkReset}
-            >
-              Chapter {next} →
-            </Link>
-          ) : null}
-        </div>
-      </nav>
-    </article>
+              <sup
+                id={`v${v.number}`}
+                data-verse-anchor={v.number}
+                className="al-verse-num-inline"
+              >
+                {v.number}
+              </sup>
+              <span data-verse-body={v.number}>{v.text_plain}</span>
+            </span>{" "}
+          </Fragment>
+        );
+      })}
+    </div>
+  );
+}
+
+function CommentaryPanel({
+  comment,
+  empty,
+  onClose,
+  bookSlug,
+  chapter,
+}: {
+  comment: SectionRow | null;
+  empty: boolean;
+  onClose: () => void;
+  bookSlug: string;
+  chapter: number;
+}) {
+  return (
+    <aside style={panelOuter}>
+      <div style={panelInner}>
+        {comment ? (
+          <>
+            <header style={panelHeader}>
+              <CommentLabel
+                label={comment.label ?? ""}
+                bookSlug={bookSlug}
+                chapter={chapter}
+              />
+              <button
+                type="button"
+                aria-label="Close commentary panel"
+                onClick={onClose}
+                style={panelClose}
+              >
+                ×
+              </button>
+            </header>
+            <SectionBody body={comment.body} />
+          </>
+        ) : (
+          <p style={panelPlaceholder}>
+            {empty
+              ? "No commentary for this chapter."
+              : "Click an underlined verse to read the commentary."}
+          </p>
+        )}
+      </div>
+    </aside>
   );
 }
 
@@ -360,6 +530,33 @@ function parseFirstVerse(label: string): number | null {
   // "Verse 12" / "Verses 1–3" / "Verses 1, 3" / "Ver. 12"
   const m = label.match(/(\d+)/);
   return m ? Number.parseInt(m[1], 10) : null;
+}
+
+/** Expand a comment label like "Verses 1–3" or "Verses 1, 3" into the list of
+ *  verse numbers it covers. Matthew Henry uses ranges; SWORD modules use
+ *  single verses ("Verse 12"). Anything we can't parse returns []. */
+function parseVerseLabel(label: string): number[] {
+  // Strip leading "Verse(s)" / "Ver." and optional trailing "."
+  const stripped = label
+    .trim()
+    .replace(/^(?:Verses?|Ver\.)\s+/i, "")
+    .replace(/\.+$/, "");
+  if (!stripped) return [];
+  const out: number[] = [];
+  for (const part of stripped.split(/,\s*/)) {
+    const range = part.match(/^(\d+)\s*[–—-]\s*(\d+)$/);
+    if (range) {
+      const lo = Number.parseInt(range[1], 10);
+      const hi = Number.parseInt(range[2], 10);
+      if (Number.isFinite(lo) && Number.isFinite(hi) && lo <= hi && hi - lo < 200) {
+        for (let v = lo; v <= hi; v++) out.push(v);
+      }
+      continue;
+    }
+    const single = part.match(/^(\d+)$/);
+    if (single) out.push(Number.parseInt(single[1], 10));
+  }
+  return out;
 }
 
 function SectionBody({ body }: { body: string }) {
@@ -479,4 +676,52 @@ const chapterNav: React.CSSProperties = {
   marginTop: "3rem",
   paddingTop: "1.5rem",
   borderTop: "1px solid var(--color-rule)",
+};
+
+// ── chapter-with-panel layout ─────────────────────────────────────────────
+// Two-column reader: KJV text on the left, a docked commentary panel on the
+// right. The panel stays in the layout flow (rather than overlaying) so the
+// text column reflows to a comfortable measure when the panel is open.
+const textColumn: React.CSSProperties = {
+  flex: 1,
+  minWidth: 0,
+  overflow: "auto",
+  maxWidth: "var(--measure)",
+  margin: "0 auto",
+  padding: "2.5rem 2rem 6rem",
+};
+const panelOuter: React.CSSProperties = {
+  flexShrink: 0,
+  width: "min(420px, 38vw)",
+  borderLeft: "1px solid var(--color-rule)",
+  background: "var(--color-bg-elevated)",
+  overflowY: "auto",
+};
+const panelInner: React.CSSProperties = {
+  padding: "1.75rem 1.5rem 2rem",
+};
+const panelHeader: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "baseline",
+  gap: 12,
+  marginBottom: "0.75rem",
+  paddingBottom: "0.5rem",
+  borderBottom: "1px solid var(--color-rule)",
+};
+const panelClose: React.CSSProperties = {
+  background: "transparent",
+  border: 0,
+  padding: 0,
+  font: "inherit",
+  fontSize: 18,
+  lineHeight: 1,
+  color: "var(--color-fg-subtle)",
+  cursor: "pointer",
+};
+const panelPlaceholder: React.CSSProperties = {
+  color: "var(--color-fg-subtle)",
+  fontStyle: "italic",
+  fontSize: 14,
+  margin: 0,
 };
