@@ -833,13 +833,19 @@ function InterlinearVerseCell({
   );
   const hl = verseHls[0];
   const hasNote = notes.some((n) => n.verse === verse.number);
+  // Highlight tints only primary-text spans (verse number + each surface
+  // token), never the gloss row beneath each word — matches the normal-side
+  // rule that highlights cover only primary text.
+  const hlClass = hl ? `al-hl al-hl-${hl.color}` : null;
   const wrapperClass = [
     "al-verse-inline",
     "al-il-verse",
-    hl ? `al-hl al-hl-${hl.color}` : null,
     isSelected ? "al-verse-selected" : null,
     hasNote ? "al-verse-noted" : null,
   ]
+    .filter(Boolean)
+    .join(" ");
+  const vnumClass = ["al-verse-num-inline", "al-il-vnum", hlClass]
     .filter(Boolean)
     .join(" ");
   return (
@@ -859,7 +865,7 @@ function InterlinearVerseCell({
         <sup
           id={`v${verse.number}`}
           data-verse-anchor={verse.number}
-          className="al-verse-num-inline al-il-vnum"
+          className={vnumClass}
         >
           {verse.number}
         </sup>
@@ -874,11 +880,14 @@ function InterlinearVerseCell({
                     gloss={equivalent === "" ? "—" : equivalent}
                     strongs={w.strongs}
                     lang={tokenLang}
+                    highlightColor={hl?.color ?? null}
                     onOpenStrongs={onOpenStrongs}
                   />
                 );
               })
-            : verse.text_plain}
+            : hlClass
+              ? <span className={hlClass}>{verse.text_plain}</span>
+              : verse.text_plain}
         </span>
       </span>
     </span>

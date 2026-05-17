@@ -1,10 +1,12 @@
 import { useRef, type ReactNode } from "react";
+import type { HighlightColor } from "@/db/types";
 
 interface Props {
   surface: string;
   gloss: ReactNode;
   strongs: string | null;
   lang: "he" | "grc";
+  highlightColor: HighlightColor | null;
   onOpenStrongs: (strongsId: string, rect: DOMRect) => void;
 }
 
@@ -18,10 +20,18 @@ export function InterlinearWord({
   gloss,
   strongs,
   lang,
+  highlightColor,
   onOpenStrongs,
 }: Props) {
   const ref = useRef<HTMLSpanElement>(null);
   const clickable = !!strongs;
+  const surfaceClass = [
+    "al-il-surface",
+    clickable ? "al-il-clickable" : null,
+    highlightColor ? `al-hl al-hl-${highlightColor}` : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
   return (
     <span
       className="al-il-word"
@@ -36,13 +46,7 @@ export function InterlinearWord({
       }
       style={clickable ? { cursor: "pointer" } : undefined}
     >
-      <span
-        ref={ref}
-        className={
-          clickable ? "al-il-surface al-il-clickable" : "al-il-surface"
-        }
-        lang={lang}
-      >
+      <span ref={ref} className={surfaceClass} lang={lang}>
         {clean(surface)}
       </span>
       <span className="al-il-gloss">{gloss ?? " "}</span>
