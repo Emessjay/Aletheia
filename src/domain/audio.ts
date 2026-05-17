@@ -361,12 +361,8 @@ const KJV_VIRTUAL: Record<string, KjvTimingEntry> = kjvTimingJson as Record<
 >;
 
 function kjvChapter(slug: string, chapter: number): ChapterAudio | null {
-  const full = KJV_FULL_BOOKS[slug];
-  if (full && chapter >= 1 && chapter <= full.chapters) {
-    return fullChapter(
-      `https://archive.org/download/${full.id}/${full.filename(chapter)}`,
-    );
-  }
+  // Prefer the timing table — it covers both multi-chapter and per-chapter
+  // files, with boundaries that exclude LibriVox intro/outro boilerplate.
   const virtual = KJV_VIRTUAL[`${slug}:${chapter}`];
   if (virtual) {
     return {
@@ -375,6 +371,15 @@ function kjvChapter(slug: string, chapter: number): ChapterAudio | null {
       startSec: virtual.start_sec,
       endSec: virtual.end_sec,
     };
+  }
+  // Fallback for books not yet in the timing table (plays full file,
+  // including any LibriVox intro/outro — will go away once all books
+  // are aligned via tools/audio/align_kjv.py --force).
+  const full = KJV_FULL_BOOKS[slug];
+  if (full && chapter >= 1 && chapter <= full.chapters) {
+    return fullChapter(
+      `https://archive.org/download/${full.id}/${full.filename(chapter)}`,
+    );
   }
   return null;
 }

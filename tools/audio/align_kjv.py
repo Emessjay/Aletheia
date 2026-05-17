@@ -44,6 +44,21 @@ OUT_FILE = DATA_DIR / "audio" / "kjv-timing.json"
 CORPUS_DB = DATA_DIR / "Aletheia.sqlite"
 CACHE_DIR = Path(tempfile.gettempdir()) / "aletheia-align-cache"
 
+# Standard LibriVox intro/outro boilerplate used as boundary-absorbing
+# fragments.  The exact wording varies by reader, but aeneas DTW is
+# tolerant of approximate matches — what matters is having a fragment
+# boundary so the intro/outro speech doesn't bleed into the first/last
+# chapter's timing.
+LIBRIVOX_INTRO = (
+    "This is a LibriVox recording. "
+    "All LibriVox recordings are in the public domain. "
+    "For more information, or to volunteer, please visit librivox dot org."
+)
+LIBRIVOX_OUTRO = (
+    "End of recording. "
+    "This recording is in the public domain."
+)
+
 
 @dataclass
 class SourceFile:
@@ -61,10 +76,121 @@ class BookSource:
     files: list[SourceFile]
 
 
-# Multi-chapter LibriVox KJV sources for NT + Apocrypha. Chapter ranges
-# come from the archive.org file titles, which all follow consistent
-# "Chapter X - Y" formats — verified by hand against the metadata API.
+# LibriVox KJV sources. Chapter ranges come from the archive.org file
+# titles, which all follow consistent "Chapter X - Y" formats — verified
+# by hand against the metadata API.
+#
+# Both multi-chapter and per-chapter recordings are included: the alignment
+# pass adds intro/outro dummy fragments so aeneas pushes the LibriVox
+# boilerplate into those boundary segments (which we then discard).
 SOURCES: list[BookSource] = [
+    # ── Per-chapter books (one MP3 per chapter) ─────────────────────────
+    # OT
+    BookSource(
+        "josh",
+        "bible_kjv_joshua_jc_librivox",
+        [SourceFile(f"joshua_{c:02d}_kjv.mp3", c, c) for c in range(1, 25)],
+    ),
+    BookSource(
+        "judg",
+        "bible_judges_kjv_jc_librivox",
+        [SourceFile(f"judges_{c:02d}_kjv.mp3", c, c) for c in range(1, 22)],
+    ),
+    BookSource(
+        "1sam",
+        "bible_1samuel_kjv_0903_librivox",
+        [SourceFile(f"1samuel_{c:02d}_kjv.mp3", c, c) for c in range(1, 32)],
+    ),
+    BookSource(
+        "2sam",
+        "bible_2samuel_kjv_jc_librivox",
+        [SourceFile(f"2samuel_{c:02d}_kjv.mp3", c, c) for c in range(1, 25)],
+    ),
+    BookSource(
+        "1kgs",
+        "bible_kjv_11_1king_0909_librivox",
+        [SourceFile(f"1kings_{c:02d}_kjv.mp3", c, c) for c in range(1, 23)],
+    ),
+    BookSource(
+        "2kgs",
+        "bible_kjv_2kings_jc_librivox",
+        [SourceFile(f"2kings_{c:02d}_kjv.mp3", c, c) for c in range(1, 26)],
+    ),
+    BookSource(
+        "1chr",
+        "1chronicles_jc_librivox",
+        [SourceFile(f"1chronicles_{c:02d}_kjv.mp3", c, c) for c in range(1, 30)],
+    ),
+    BookSource(
+        "prov",
+        "proverbs_kjv_mp_librivox",
+        [SourceFile(f"proverbs_{c:02d}_kjv.mp3", c, c) for c in range(1, 32)],
+    ),
+    BookSource(
+        "lam",
+        "bible_kjv_25_lamentations_mp_0909_librivox",
+        [SourceFile(f"lamentations_{c}_kjv.mp3", c, c) for c in range(1, 6)],
+    ),
+    # NT — per-chapter
+    BookSource(
+        "matt",
+        "matthew_kjv_mp_librivox",
+        [SourceFile(f"matthew_{c:02d}_kjv.mp3", c, c) for c in range(1, 29)],
+    ),
+    BookSource(
+        "gal",
+        "galatians_kjv_1412_librivox",
+        [SourceFile(f"galatians_{c}_kjv.mp3", c, c) for c in range(1, 7)],
+    ),
+    BookSource(
+        "phil",
+        "philippians_kjv_vm_librivox",
+        [SourceFile(f"philippians_{c}_kjv.mp3", c, c) for c in range(1, 5)],
+    ),
+    BookSource(
+        "phlm",
+        "bible_philemon_kjv_1007_librivox",
+        [SourceFile("philemon_01_kjv.mp3", 1, 1)],
+    ),
+    BookSource(
+        "rev",
+        "bible_kjvnt_27_revelation_1401_librivox",
+        [
+            SourceFile(
+                f"bible_kjvnt_27_revelation_{c:02d}_kingjamesversion(kjv).mp3",
+                c,
+                c,
+            )
+            for c in range(1, 23)
+        ],
+    ),
+    BookSource(
+        "1john",
+        "bible_epistlesjohn_rt_librivox",
+        [SourceFile(f"epistlesofjohn_{c}_kjv.mp3", c, c) for c in range(1, 6)],
+    ),
+    BookSource(
+        "2john",
+        "bible_epistlesjohn_rt_librivox",
+        [SourceFile("epistlesofjohn_6_kjv.mp3", 1, 1)],
+    ),
+    BookSource(
+        "3john",
+        "bible_epistlesjohn_rt_librivox",
+        [SourceFile("epistlesofjohn_7_kjv.mp3", 1, 1)],
+    ),
+    # Apocrypha — per-chapter
+    BookSource(
+        "tob",
+        "tobit_kjv_1512_librivox",
+        [SourceFile(f"tobit_{c:02d}_kjv.mp3", c, c) for c in range(1, 15)],
+    ),
+    BookSource(
+        "man",
+        "prayer_manasseh_ss_librivox",
+        [SourceFile("prayerofmanasseh_01_kjv.mp3", 1, 1)],
+    ),
+    # ── Multi-chapter books (one MP3 spanning several chapters) ─────────
     BookSource(
         "mark",
         "mark_kjv_sw_librivox",
@@ -261,24 +387,17 @@ def download_to_cache(url: str, dest: Path) -> None:
     tmp.rename(dest)
 
 
-def align_file(mp3: Path, chapter_texts: list[str]) -> list[tuple[float, float]]:
-    """Run aeneas on a single MP3 with one fragment per chapter.
-
-    Returns a list of (start_sec, end_sec) tuples in chapter order.
-    """
+def _run_aeneas(mp3: Path, texts: list[str]) -> list[tuple[float, float]]:
+    """Low-level aeneas alignment: one fragment per text line."""
     ExecuteTask, Task = _aeneas()
-
     with tempfile.TemporaryDirectory() as td_str:
         td = Path(td_str)
         text_file = td / "text.txt"
-        # is_text_type=plain treats each non-empty line as one fragment.
-        # We additionally collapse any embedded newlines in the chapter text.
         text_file.write_text(
-            "\n".join(re.sub(r"\s+", " ", t).strip() for t in chapter_texts) + "\n",
+            "\n".join(re.sub(r"\s+", " ", t).strip() for t in texts) + "\n",
             encoding="utf-8",
         )
         sync_file = td / "sync.json"
-
         config = "task_language=eng|os_task_file_format=json|is_text_type=plain"
         task = Task(config_string=config)
         task.audio_file_path_absolute = str(mp3)
@@ -286,19 +405,122 @@ def align_file(mp3: Path, chapter_texts: list[str]) -> list[tuple[float, float]]
         task.sync_map_file_path_absolute = str(sync_file)
         ExecuteTask(task).execute()
         task.output_sync_map_file()
-
         data = json.loads(sync_file.read_text())
-        out = []
-        for frag in data["fragments"]:
-            out.append((float(frag["begin"]), float(frag["end"])))
-        if len(out) != len(chapter_texts):
+        out = [(float(f["begin"]), float(f["end"])) for f in data["fragments"]]
+        if len(out) != len(texts):
             raise RuntimeError(
-                f"aeneas returned {len(out)} fragments, expected {len(chapter_texts)}"
+                f"aeneas returned {len(out)} fragments, expected {len(texts)}"
             )
         return out
 
 
+def _detect_boundary(mp3: Path, region: str) -> float | None:
+    """Use ffmpeg silence detection to find the intro end or outro start.
+
+    `region` is "head" (find intro end in first 60 s) or "tail" (find
+    outro start in last 60 s).  Returns an absolute timestamp, or None
+    if no clear boundary was found.
+
+    Heuristic: the LibriVox intro/outro is separated from the biblical
+    text by a noticeable pause.  We look for the first (head) or last
+    (tail) merged silence gap >= 0.8 s.
+    """
+    import subprocess
+
+    if region == "head":
+        cmd = ["ffmpeg", "-i", str(mp3), "-t", "60",
+               "-af", "silencedetect=noise=-40dB:d=0.25",
+               "-f", "null", "-"]
+        offset = 0.0
+    else:
+        # Get duration first.
+        probe = subprocess.run(
+            ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+             "-of", "default=noprint_wrappers=1:nokey=1", str(mp3)],
+            capture_output=True, text=True, check=True,
+        )
+        duration = float(probe.stdout.strip())
+        offset = max(0.0, duration - 60)
+        cmd = ["ffmpeg", "-ss", str(offset), "-i", str(mp3),
+               "-af", "silencedetect=noise=-40dB:d=0.25",
+               "-f", "null", "-"]
+
+    result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+
+    # Parse silence intervals from stderr.
+    intervals: list[list[float]] = []
+    pending_start: float | None = None
+    for line in result.stderr.splitlines():
+        m = re.search(r"silence_start:\s*([\d.]+)", line)
+        if m:
+            pending_start = float(m.group(1))
+        m = re.search(r"silence_end:\s*([\d.]+)", line)
+        if m and pending_start is not None:
+            intervals.append([pending_start, float(m.group(1))])
+            pending_start = None
+
+    # Merge adjacent intervals (gap < 0.3 s).
+    merged: list[list[float]] = []
+    for iv in intervals:
+        if merged and iv[0] - merged[-1][1] < 0.3:
+            merged[-1][1] = iv[1]
+        else:
+            merged.append(list(iv))
+
+    if region == "head":
+        # First merged silence >= 0.8 s that starts after 3 s.
+        for start, end in merged:
+            if start >= 3.0 and (end - start) >= 0.8:
+                return end  # intro ends here
+    else:
+        # Last merged silence >= 0.8 s.
+        for start, end in reversed(merged):
+            if (end - start) >= 0.8:
+                return offset + start  # outro begins here
+
+    return None
+
+
+def align_file(mp3: Path, chapter_texts: list[str]) -> list[tuple[float, float]]:
+    """Run aeneas on a single MP3 with one fragment per chapter.
+
+    Uses aeneas for internal chapter boundaries, and ffmpeg silence
+    detection to find intro/outro boundaries (more reliable than DTW
+    with dummy text, which drifts on longer files).
+
+    Returns a list of (start_sec, end_sec) tuples in chapter order.
+    """
+    if len(chapter_texts) == 1:
+        # Single chapter: silence detection for both boundaries.
+        import subprocess
+        probe = subprocess.run(
+            ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+             "-of", "default=noprint_wrappers=1:nokey=1", str(mp3)],
+            capture_output=True, text=True, check=True,
+        )
+        duration = float(probe.stdout.strip())
+        intro_end = _detect_boundary(mp3, "head") or 0.0
+        outro_start = _detect_boundary(mp3, "tail")
+        end = outro_start if outro_start and outro_start > intro_end else duration
+        return [(intro_end, end)]
+
+    # Multi-chapter: aeneas for internal boundaries.
+    spans = _run_aeneas(mp3, chapter_texts)
+
+    # Override file-level intro/outro with silence detection.
+    intro_end = _detect_boundary(mp3, "head")
+    if intro_end and intro_end < spans[0][1]:
+        spans[0] = (intro_end, spans[0][1])
+
+    outro_start = _detect_boundary(mp3, "tail")
+    if outro_start and outro_start > spans[-1][0]:
+        spans[-1] = (spans[-1][0], outro_start)
+
+    return spans
+
+
 def main() -> int:
+    force = "--force" in sys.argv
     if not CORPUS_DB.exists():
         print(f"corpus DB not found at {CORPUS_DB}", file=sys.stderr)
         return 1
@@ -307,12 +529,17 @@ def main() -> int:
 
     # Resume support: load existing JSON so we can re-run after a crash and
     # skip work that's already done. Keyed by `<book>:<chapter>`.
+    # --force discards all prior timings to re-align from scratch (needed
+    # after changing the alignment strategy, e.g. adding intro/outro
+    # boundary fragments).
     existing: dict[str, dict] = {}
-    if OUT_FILE.exists():
+    if not force and OUT_FILE.exists():
         try:
             existing = json.loads(OUT_FILE.read_text())
         except Exception:
             existing = {}
+    if force:
+        print("--force: discarding existing timings, re-aligning everything")
 
     output: dict[str, dict] = dict(existing)
 
