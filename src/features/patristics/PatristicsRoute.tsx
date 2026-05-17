@@ -157,15 +157,21 @@ function SectionView({
       >
         <div>
           {prev ? (
-            <Link to={`/patristics/${workSlug}/${encodeURIComponent(prev.ordinal_path)}`}>
-              ← {prev.label ?? prev.ordinal_path}
+            <Link
+              to={`/patristics/${workSlug}/${encodeURIComponent(prev.ordinal_path)}`}
+              title={prev.label ?? undefined}
+            >
+              ← {shortenLabel(prev.label ?? prev.ordinal_path)}
             </Link>
           ) : null}
         </div>
         <div>
           {next ? (
-            <Link to={`/patristics/${workSlug}/${encodeURIComponent(next.ordinal_path)}`}>
-              {next.label ?? next.ordinal_path} →
+            <Link
+              to={`/patristics/${workSlug}/${encodeURIComponent(next.ordinal_path)}`}
+              title={next.label ?? undefined}
+            >
+              {shortenLabel(next.label ?? next.ordinal_path)} →
             </Link>
           ) : null}
         </div>
@@ -259,7 +265,9 @@ function PatristicsSidebar({
                 }}
               />
             ) : null}
-            {s.label ?? s.ordinal_path}
+            <span title={s.label ?? undefined}>
+              {shortenLabel(s.label ?? s.ordinal_path)}
+            </span>
           </Link>
         ))
       )}
@@ -280,6 +288,18 @@ function filterForToc(s: SectionRow): boolean {
 
 function depth(path: string): number {
   return Math.max(0, path.split(".").length - 2);
+}
+
+// Some patristic chapter/subchapter labels are full sentences or paragraphs.
+// Cap displayed text at the first sentence so the sidebar and prev/next nav
+// stay scannable; the unabridged label is exposed via the `title` attribute.
+function shortenLabel(label: string): string {
+  if (label.length <= 80) return label;
+  const match = label.match(/^[^.!?]*[.!?]/);
+  if (match && match[0].length > 0 && match[0].length < label.length) {
+    return match[0];
+  }
+  return label.slice(0, 80).trimEnd() + "…";
 }
 
 function hasMeaningfulBody(s: SectionRow): boolean {
