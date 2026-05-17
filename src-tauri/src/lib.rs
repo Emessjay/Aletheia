@@ -1,12 +1,21 @@
 mod audio;
 
-use std::fs;
-use std::path::PathBuf;
+use std::fs::{self, Metadata};
+use std::path::{Path, PathBuf};
+use std::time::UNIX_EPOCH;
 
 use tauri::{AppHandle, Manager};
 use tauri_plugin_sql::{Migration, MigrationKind};
 
 const CORPUS_FILENAME: &str = "Aletheia.sqlite";
+
+/// Sidecar next to the user-data corpus copy that records the source
+/// bundle's fingerprint at the time of the last copy. We compare against
+/// this — not the dest file's own mtime — because the dest is opened by
+/// SQLite at runtime and its mtime drifts forward via WAL checkpoints
+/// during normal reads, which would mask a freshly re-ingested bundle and
+/// leave the user reading stale corpus data forever.
+const CORPUS_SIDECAR_SUFFIX: &str = ".source-fingerprint";
 
 /// Locate the bundled corpus.
 ///
@@ -37,6 +46,26 @@ fn locate_corpus(app: &AppHandle) -> Result<PathBuf, String> {
     ))
 }
 
+/// `<size>:<mtime_nanos>` — recopy when either changes. Size handles
+/// "different bundle, same mtime" (rare but possible after a hard rebuild
+/// that preserves filesystem timestamps); mtime handles "same size,
+/// different content" (also rare given the bundle is hundreds of MB).
+fn source_fingerprint(meta: &Metadata) -> String {
+    let mtime_ns = meta
+        .modified()
+        .ok()
+        .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
+        .map(|d| d.as_nanos())
+        .unwrap_or(0);
+    format!("{}:{}", meta.len(), mtime_ns)
+}
+
+fn sidecar_path(dest: &Path) -> PathBuf {
+    let mut p = dest.as_os_str().to_owned();
+    p.push(CORPUS_SIDECAR_SUFFIX);
+    PathBuf::from(p)
+}
+
 #[tauri::command]
 fn corpus_db_path(app: AppHandle) -> Result<String, String> {
     let source = locate_corpus(&app)?;
@@ -47,18 +76,27 @@ fn corpus_db_path(app: AppHandle) -> Result<String, String> {
         .map_err(|e| format!("app_data_dir: {e}"))?;
     fs::create_dir_all(&app_data).map_err(|e| format!("mkdir app_data: {e}"))?;
     let dest: PathBuf = app_data.join(CORPUS_FILENAME);
+    let sidecar = sidecar_path(&dest);
 
-    let needs_copy = match (fs::metadata(&dest), fs::metadata(&source)) {
-        (Err(_), Ok(_)) => true,
-        (Ok(dm), Ok(sm)) => match (sm.modified(), dm.modified()) {
-            (Ok(st), Ok(dt)) => st > dt,
-            _ => false,
-        },
-        (_, Err(e)) => return Err(format!("bundled corpus missing: {e}")),
+    let source_meta =
+        fs::metadata(&source).map_err(|e| format!("bundled corpus missing: {e}"))?;
+    let source_fp = source_fingerprint(&source_meta);
+
+    let needs_copy = if !dest.exists() {
+        true
+    } else {
+        // If the sidecar is missing or mismatched, the dest copy predates
+        // this staleness mechanism (or the bundle has been re-ingested) —
+        // either way, refresh.
+        match fs::read_to_string(&sidecar) {
+            Ok(stored) => stored.trim() != source_fp,
+            Err(_) => true,
+        }
     };
 
     if needs_copy {
         fs::copy(&source, &dest).map_err(|e| format!("copy corpus: {e}"))?;
+        fs::write(&sidecar, &source_fp).map_err(|e| format!("write sidecar: {e}"))?;
     }
 
     Ok(dest.to_string_lossy().into_owned())
