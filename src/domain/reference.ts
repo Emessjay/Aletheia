@@ -91,6 +91,24 @@ const BOOKS: BookEntry[] = [
   { slug: "3john", aliases: ["3john", "3jn", "3jhn", "3j"] },
   { slug: "jude", aliases: ["jude", "jud", "jd"] },
   { slug: "rev", aliases: ["revelation", "apocalypse", "rev", "re", "rv"] },
+  // Deuterocanon — placed after Revelation in the reader (BookCatalog.swift order_index 300+).
+  { slug: "1es", aliases: ["1esdras", "1esd", "1es"] },
+  { slug: "2es", aliases: ["2esdras", "2esd", "2es"] },
+  { slug: "tob", aliases: ["tobit", "tob", "tb"] },
+  { slug: "jdt", aliases: ["judith", "jdt", "jdth", "jth"] },
+  { slug: "wis", aliases: ["wisdomofsolomon", "wisdom", "wis", "ws"] },
+  { slug: "sir", aliases: ["ecclesiasticus", "sirach", "ecclus", "sir"] },
+  { slug: "bar", aliases: ["baruch", "bar"] },
+  { slug: "lje", aliases: ["letterofjeremiah", "epistleofjeremiah", "epjer", "letjer", "lje"] },
+  { slug: "s3y", aliases: ["prayerofazariah", "songofthethreeyoungmen", "songofthethree", "songofthree", "prazar", "s3y"] },
+  { slug: "sus", aliases: ["susanna", "sus"] },
+  { slug: "bel", aliases: ["belandthedragon", "bel"] },
+  { slug: "man", aliases: ["prayerofmanasseh", "prman", "man"] },
+  { slug: "1mac", aliases: ["1maccabees", "1macc", "1mac", "1ma", "1m"] },
+  { slug: "2mac", aliases: ["2maccabees", "2macc", "2mac", "2ma", "2m"] },
+  { slug: "3mac", aliases: ["3maccabees", "3macc", "3mac", "3ma", "3m"] },
+  { slug: "4mac", aliases: ["4maccabees", "4macc", "4mac", "4ma", "4m"] },
+  { slug: "ps151", aliases: ["psalm151", "ps151"] },
 ];
 
 // Build a flat alias index sorted by length desc so the longest match wins.

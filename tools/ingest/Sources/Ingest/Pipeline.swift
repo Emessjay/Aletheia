@@ -106,6 +106,8 @@ public struct Pipeline {
                   run: { try ingestGrcbrent(writer: writer) }),
             Stage(name: "KJV Apocrypha", languages: ["en_kjv"], bookScoped: true,
                   run: { try ingestKJVApocrypha(writer: writer) }),
+            Stage(name: "WEB (Eng + Apocrypha)", languages: ["en_web"], bookScoped: true,
+                  run: { try ingestWEB(writer: writer) }),
             Stage(name: "STEPBible KJV+Strongs", languages: ["en_kjv"], bookScoped: true,
                   run: { try ingestSTEP(writer: writer, table: .tkjvs, language: "en_kjv") }),
             Stage(name: "STEPBible Hebrew (MT)", languages: ["he"], bookScoped: true,
@@ -162,23 +164,45 @@ public struct Pipeline {
     }
 
     private func ingestBrenton(writer: CorpusWriter) throws {
-        try ingestUSFMDirectory(named: "brenton", language: "en_brenton", writer: writer)
+        try ingestUSFMDirectory(named: "brenton", language: "en_brenton", writer: writer,
+                                transform: splitPsalm151)
     }
 
     /// Brenton's Greek LXX (eBible.org `grcbrent`). Untagged Greek text under
-    /// `language="gk"` alongside the existing Greek NT, so the reader's Greek
-    /// column resolves for OT chapters. Books not present in [[BookCatalog]]
-    /// (LJE, SUS, BEL, MAN, 1ES, 3MA, 4MA) are silently skipped by the USFM
-    /// parser; DAG/ESG are remapped to dan/esth via the catalog's alias table.
+    /// `language="gk"` alongside the existing Greek NT. DAG/ESG remap to
+    /// dan/esth via the catalog's alias table, so Theodotion's Daniel additions
+    /// and the Greek Esther additions are merged into their protocanonical
+    /// counterparts on the Greek column. Psalm 151 is extracted from the end of
+    /// the LXX Psalter into its own `ps151` book — see the row transform below.
     private func ingestGrcbrent(writer: CorpusWriter) throws {
-        try ingestUSFMDirectory(named: "grcbrent", language: "gk", writer: writer)
+        try ingestUSFMDirectory(named: "grcbrent", language: "gk", writer: writer,
+                                transform: splitPsalm151)
     }
 
     private func ingestKJVApocrypha(writer: CorpusWriter) throws {
         try ingestUSFMDirectory(named: "kjv-apocrypha", language: "en_kjv", writer: writer)
     }
 
-    private func ingestUSFMDirectory(named: String, language: String, writer: CorpusWriter) throws {
+    /// World English Bible with Apocrypha (eBible.org `eng-webbe`). Proto + deutero
+    /// are shipped in one flat directory; the USFM parser routes by `\id` code.
+    private func ingestWEB(writer: CorpusWriter) throws {
+        try ingestUSFMDirectory(named: "web", language: "en_web", writer: writer)
+    }
+
+    /// LXX Psalm 151 is appended to the standard Psalter as `\c 151`. Move those
+    /// rows into the standalone `ps151` deuterocanonical book at chapter 1, so
+    /// the Psalms book stays at the canonical 150 chapters and Psalm 151 sorts
+    /// after the NT alongside the other Orthodox apocrypha.
+    private func splitPsalm151(_ rows: [USFMParser.Row]) -> [USFMParser.Row] {
+        rows.map { row in
+            (row.bookSlug == "ps" && row.chapter == 151)
+                ? USFMParser.Row(bookSlug: "ps151", chapter: 1, verse: row.verse, text: row.text)
+                : row
+        }
+    }
+
+    private func ingestUSFMDirectory(named: String, language: String, writer: CorpusWriter,
+                                     transform: (([USFMParser.Row]) -> [USFMParser.Row])? = nil) throws {
         let dir = sourceRoot.appendingPathComponent(named)
         guard let allFiles = try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)
                 .filter({ ["usfm", "USFM", "sfm"].contains($0.pathExtension) }) else {
@@ -198,8 +222,8 @@ public struct Pipeline {
         for file in files {
             do {
                 let result = try parser.parse(fileURL: file)
-                let rows = result.rows
-                let filtered = bookFilter.isEmpty ? rows : rows.filter { bookFilter.contains($0.bookSlug) }
+                let transformed = transform.map { $0(result.rows) } ?? result.rows
+                let filtered = bookFilter.isEmpty ? transformed : transformed.filter { bookFilter.contains($0.bookSlug) }
                 try writeBibleRows(filtered.map { ($0.bookSlug, $0.chapter, $0.verse, $0.text) },
                                    language: language, writer: writer)
                 parsedBooks += 1

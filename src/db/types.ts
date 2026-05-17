@@ -6,6 +6,7 @@ export type CorpusLanguage =
   | "en_bsb"
   | "en_kjv"
   | "en_brenton"
+  | "en_web"
   | "la";
 
 export type Testament = "old" | "deutero" | "new";

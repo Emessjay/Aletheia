@@ -26,6 +26,7 @@ export const MAX_FONT_SIZE = 24;
 export const TOGGLEABLE_LANGS: CorpusLanguage[] = [
   "en_bsb",
   "en_kjv",
+  "en_web",
   "gk",
   "he",
 ];

@@ -63,14 +63,27 @@ public enum BookCatalog {
         .init(slug: "mal",  name: "Malachi",        abbreviation: "Mal",  testament: "old", canon: "protestant", osisID: "Mal",  usfmID: "MAL")
     ]
 
+    /// Deuterocanonical books in KJV 1611 reading order, with the Eastern
+    /// Orthodox additions (3 Macc, 4 Macc, Psalm 151) appended at the end.
+    /// Placed after the NT in the reader (order_index 300+) — see `orderIndex(of:)`.
     public static let deutero: [CanonBook] = [
-        .init(slug: "tob",   name: "Tobit",                 abbreviation: "Tob",   testament: "deutero", canon: "deutero", osisID: "Tob", usfmID: "TOB"),
-        .init(slug: "jdt",   name: "Judith",                abbreviation: "Jdt",   testament: "deutero", canon: "deutero", osisID: "Jdt", usfmID: "JDT"),
-        .init(slug: "wis",   name: "Wisdom",                abbreviation: "Wis",   testament: "deutero", canon: "deutero", osisID: "Wis", usfmID: "WIS"),
-        .init(slug: "sir",   name: "Sirach",                abbreviation: "Sir",   testament: "deutero", canon: "deutero", osisID: "Sir", usfmID: "SIR"),
-        .init(slug: "bar",   name: "Baruch",                abbreviation: "Bar",   testament: "deutero", canon: "deutero", osisID: "Bar", usfmID: "BAR"),
-        .init(slug: "1mac",  name: "1 Maccabees",           abbreviation: "1Mac",  testament: "deutero", canon: "deutero", osisID: "1Macc", usfmID: "1MA"),
-        .init(slug: "2mac",  name: "2 Maccabees",           abbreviation: "2Mac",  testament: "deutero", canon: "deutero", osisID: "2Macc", usfmID: "2MA")
+        .init(slug: "1es",   name: "1 Esdras",              abbreviation: "1Esd",  testament: "deutero", canon: "deutero", osisID: "1Esd",   usfmID: "1ES"),
+        .init(slug: "2es",   name: "2 Esdras",              abbreviation: "2Esd",  testament: "deutero", canon: "deutero", osisID: "2Esd",   usfmID: "2ES"),
+        .init(slug: "tob",   name: "Tobit",                 abbreviation: "Tob",   testament: "deutero", canon: "deutero", osisID: "Tob",    usfmID: "TOB"),
+        .init(slug: "jdt",   name: "Judith",                abbreviation: "Jdt",   testament: "deutero", canon: "deutero", osisID: "Jdt",    usfmID: "JDT"),
+        .init(slug: "wis",   name: "Wisdom of Solomon",     abbreviation: "Wis",   testament: "deutero", canon: "deutero", osisID: "Wis",    usfmID: "WIS"),
+        .init(slug: "sir",   name: "Sirach",                abbreviation: "Sir",   testament: "deutero", canon: "deutero", osisID: "Sir",    usfmID: "SIR"),
+        .init(slug: "bar",   name: "Baruch",                abbreviation: "Bar",   testament: "deutero", canon: "deutero", osisID: "Bar",    usfmID: "BAR"),
+        .init(slug: "lje",   name: "Letter of Jeremiah",    abbreviation: "EpJer", testament: "deutero", canon: "deutero", osisID: "EpJer",  usfmID: "LJE"),
+        .init(slug: "s3y",   name: "Song of the Three",     abbreviation: "S3Y",   testament: "deutero", canon: "deutero", osisID: "PrAzar", usfmID: "S3Y"),
+        .init(slug: "sus",   name: "Susanna",               abbreviation: "Sus",   testament: "deutero", canon: "deutero", osisID: "Sus",    usfmID: "SUS"),
+        .init(slug: "bel",   name: "Bel and the Dragon",    abbreviation: "Bel",   testament: "deutero", canon: "deutero", osisID: "Bel",    usfmID: "BEL"),
+        .init(slug: "man",   name: "Prayer of Manasseh",    abbreviation: "PrMan", testament: "deutero", canon: "deutero", osisID: "PrMan",  usfmID: "MAN"),
+        .init(slug: "1mac",  name: "1 Maccabees",           abbreviation: "1Mac",  testament: "deutero", canon: "deutero", osisID: "1Macc",  usfmID: "1MA"),
+        .init(slug: "2mac",  name: "2 Maccabees",           abbreviation: "2Mac",  testament: "deutero", canon: "deutero", osisID: "2Macc",  usfmID: "2MA"),
+        .init(slug: "3mac",  name: "3 Maccabees",           abbreviation: "3Mac",  testament: "deutero", canon: "deutero", osisID: "3Macc",  usfmID: "3MA"),
+        .init(slug: "4mac",  name: "4 Maccabees",           abbreviation: "4Mac",  testament: "deutero", canon: "deutero", osisID: "4Macc",  usfmID: "4MA"),
+        .init(slug: "ps151", name: "Psalm 151",             abbreviation: "Ps151", testament: "deutero", canon: "deutero", osisID: "AddPs",  usfmID: "PS2")
     ]
 
     public static let nt: [CanonBook] = [
@@ -103,11 +116,13 @@ public enum BookCatalog {
         .init(slug: "rev",  name: "Revelation",     abbreviation: "Rev",  testament: "new", canon: "protestant", osisID: "Rev",  usfmID: "REV")
     ]
 
-    /// Canonical order index — gaps left so deutero can slot in if needed.
+    /// Canonical order index — OT then NT then deuterocanon, with the
+    /// deuterocanonical books appearing after Revelation so the reader treats
+    /// them as an appendix in KJV 1611 reading order.
     public static func orderIndex(of slug: String) -> Int {
         if let i = ot.firstIndex(where: { $0.slug == slug }) { return i }
-        if let i = deutero.firstIndex(where: { $0.slug == slug }) { return 100 + i }
         if let i = nt.firstIndex(where: { $0.slug == slug }) { return 200 + i }
+        if let i = deutero.firstIndex(where: { $0.slug == slug }) { return 300 + i }
         return 999
     }
 
