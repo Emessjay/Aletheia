@@ -134,6 +134,57 @@ final class USFMParserTests: XCTestCase {
     }
 }
 
+final class SwordCommentaryParserTests: XCTestCase {
+    /// Regression: Clarke's Gen 1:1 SWORD entry packs the book preface and
+    /// the verse-1 commentary into one body, separated by a bare "Verse 1"
+    /// label (no preceding "Chapter 1" banner — that's Calvin/JFB's shape).
+    /// Before this fix the parser dumped everything into the book intro and
+    /// dropped the verse-1 exegesis on the floor, so clicking Gen 1:1 in
+    /// the reader showed no commentary.
+    func testClarkeBareVerseLabelSplitsPrefaceFromCommentary() throws {
+        let body = """
+            Preface to the Book of Genesis
+
+            \(String(repeating: "Lorem ipsum dolor sit amet. ", count: 400))
+
+            Verse 1
+
+            God in the beginning created the heavens and the earth - the actual exegesis paragraph runs here.
+            """
+        let json = """
+            [{"book":"Genesis","osis":"Gen","chapter":1,"verse":1,"body":\(jsonString(body))}]
+            """
+        let chapters = try runParse(json: json)
+        XCTAssertEqual(chapters.count, 1)
+        let ch = chapters[0]
+        XCTAssertEqual(ch.bookSlug, "gen")
+        XCTAssertEqual(ch.chapter, 1)
+        XCTAssertNotNil(ch.bookIntro, "preface should land in bookIntro")
+        XCTAssertTrue(ch.bookIntro!.hasPrefix("Preface to the Book of Genesis"))
+        XCTAssertFalse(ch.bookIntro!.contains("the actual exegesis"),
+                       "verse-1 commentary leaked into bookIntro")
+        XCTAssertEqual(ch.comments.count, 1, "verse-1 commentary should be reinstated")
+        let c = ch.comments[0]
+        XCTAssertEqual(c.label, "Verse 1")
+        XCTAssertEqual(c.verseStart, 1)
+        XCTAssertTrue(c.body.hasPrefix("God in the beginning"),
+                      "bare 'Verse 1' label should be consumed; got: \(c.body.prefix(40))")
+    }
+
+    private func runParse(json: String) throws -> [SwordCommentaryParser.ChapterContent] {
+        let url = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("sword-test-\(UUID().uuidString).json")
+        try json.data(using: .utf8)!.write(to: url)
+        defer { try? FileManager.default.removeItem(at: url) }
+        return try SwordCommentaryParser().parse(fileURL: url)
+    }
+
+    private func jsonString(_ s: String) -> String {
+        let data = try! JSONEncoder().encode(s)
+        return String(data: data, encoding: .utf8)!
+    }
+}
+
 final class LexiconParserTests: XCTestCase {
     /// Regression: nested inline children inside <source>/<meaning> used to
     /// wipe the text accumulator, leaving H1961's definition as just `);`

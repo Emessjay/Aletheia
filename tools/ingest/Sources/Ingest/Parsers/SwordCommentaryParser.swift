@@ -214,7 +214,11 @@ public struct SwordCommentaryParser {
             of: #"(?i)\bChapter\s+\d+\.?\s*\n\n"#,
             options: .regularExpression
         ) else {
-            return (body, nil)
+            // Clarke variant: no "Chapter N" banner — the preface runs
+            // straight into a bare "Verse 1" label, with the actual verse-1
+            // exegesis after it. Same idea, simpler split: everything before
+            // the label is the book intro, everything after is the comment.
+            return splitOnVerseLabel(body, verse: verse)
         }
         let splitPoint: String.Index = {
             if let prevBreak = body.range(
@@ -268,6 +272,32 @@ public struct SwordCommentaryParser {
             before.isEmpty ? body : before,
             commentary.isEmpty ? nil : commentary
         )
+    }
+
+    /// Clarke's SWORD packaging uses no "Chapter N" banner — its v1 entries
+    /// are shaped `Preface to the Book of X\n\n…\n\nVerse 1\n\nGod in the
+    /// beginning…`. Split on the bare verse label: everything before is the
+    /// book intro, everything after is the verse-1 exegesis. The label
+    /// itself is consumed (the UI renders "Verse 1" above the body, so
+    /// keeping it in the body would duplicate the header).
+    private func splitOnVerseLabel(
+        _ body: String,
+        verse: Int
+    ) -> (intro: String, verseCommentary: String?) {
+        let pattern = #"\n\s*Verse\s+"# + "\(verse)" + #"\s*\n\n"#
+        guard let r = body.range(of: pattern, options: .regularExpression) else {
+            return (body, nil)
+        }
+        let before = String(body[..<r.lowerBound])
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let after = String(body[r.upperBound...])
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        if before.isEmpty {
+            // No actual preface — whole body is the verse comment, leave it
+            // alone and let the caller treat it as a normal v1 entry.
+            return (body, nil)
+        }
+        return (before, after.isEmpty ? nil : after)
     }
 
     /// Best-effort "where does the verse-1 commentary start" when there is
