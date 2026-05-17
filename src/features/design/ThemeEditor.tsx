@@ -13,6 +13,19 @@ import { formatRgba, parseColor, toHex } from "@/theme/colorFormat";
 
 const SCRIM_TOKEN_KEYS = new Set<ColorTokenKey>(["color-scrim", "color-scrim-soft"]);
 
+/** Encode a (theme, scheme) pair as the <option value="…"> string. */
+function selectionKey(themeId: string, scheme: Scheme): string {
+  return `${themeId}::${scheme}`;
+}
+function parseSelection(key: string): { themeId: string; scheme: Scheme } | null {
+  const idx = key.lastIndexOf("::");
+  if (idx < 0) return null;
+  const themeId = key.slice(0, idx);
+  const scheme = key.slice(idx + 2) as Scheme;
+  if (scheme !== "light" && scheme !== "dark") return null;
+  return { themeId, scheme };
+}
+
 export function ThemeEditor() {
   const themes = useThemeStore((s) => s.themes);
   const activeThemeId = useThemeStore((s) => s.activeThemeId);
@@ -25,14 +38,33 @@ export function ThemeEditor() {
   const upsertTheme = useThemeStore((s) => s.upsertTheme);
 
   const mode = useSettingsStore((s) => s.theme);
+  const setMode = useSettingsStore((s) => s.setTheme);
   const resolved = resolveTheme(mode);
-  // Editing scheme defaults to the currently-rendered one — but the user
-  // can switch independently to author the *other* mode's overrides.
+  // The edit-scheme is the user's last explicit pick in the dropdown.
+  // It defaults to whichever scheme the app is currently rendering so the
+  // editor and the live preview line up on first open.
   const [editScheme, setEditScheme] = useState<Scheme>(resolved);
 
   const active = themes[activeThemeId];
   const isBuiltIn = !!active?.builtIn;
   const grouped = tokensByGroup();
+
+  // Picking a "(Light)" or "(Dark)" entry both selects the theme and pins the
+  // app's rendered scheme to match — otherwise editing a dark palette while
+  // the window stays light would make every swatch and preview misleading.
+  const onSelectionChange = (key: string) => {
+    const parsed = parseSelection(key);
+    if (!parsed) return;
+    setActiveTheme(parsed.themeId);
+    setEditScheme(parsed.scheme);
+    if (resolved !== parsed.scheme) setMode(parsed.scheme);
+  };
+
+  // If the rendered scheme changes from outside (e.g. the header toggle), keep
+  // the editor's scheme in sync so the swatches reflect what's on screen.
+  useEffect(() => {
+    setEditScheme(resolved);
+  }, [resolved]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -84,19 +116,21 @@ export function ThemeEditor() {
       <Header
         themeIds={themeIds()}
         themes={themes}
-        active={active}
+        activeSelection={selectionKey(active.id, editScheme)}
         isBuiltIn={isBuiltIn}
-        onActiveChange={setActiveTheme}
+        onSelectionChange={onSelectionChange}
         onDuplicate={() => duplicateTheme()}
         onDelete={() => {
-          if (confirm(`Delete theme "${active.name}"?`)) deleteTheme(active.id);
+          if (confirm(`Delete theme "${active.name}"? Both its light and dark palettes will be removed.`)) {
+            deleteTheme(active.id);
+          }
         }}
         onRename={() => {
           const name = prompt("Rename theme", active.name);
           if (name && name.trim()) renameTheme(active.id, name.trim());
         }}
         onResetAll={() => {
-          if (confirm("Reset every customised token in this theme to its default?")) resetAll();
+          if (confirm("Reset every customised token in this theme (light + dark) to its default?")) resetAll();
         }}
         onExport={onExport}
         onImport={onImportClick}
@@ -109,7 +143,10 @@ export function ThemeEditor() {
         onChange={onImportChange}
       />
 
-      <SchemeSwitch value={editScheme} onChange={setEditScheme} />
+      <p style={{ marginTop: 10, marginBottom: 0, fontSize: 12, color: "var(--color-fg-subtle)" }}>
+        Editing the <strong>{editScheme}</strong> palette of <strong>{active.name}</strong>. The light and
+        dark variants are stored on the same theme — switch between them above.
+      </p>
 
       <div style={{ marginTop: 12 }}>
         {TOKEN_GROUPS.map((group) => (
@@ -136,9 +173,9 @@ export function ThemeEditor() {
 function Header(props: {
   themeIds: string[];
   themes: Record<string, Theme>;
-  active: Theme;
+  activeSelection: string;
   isBuiltIn: boolean;
-  onActiveChange: (id: string) => void;
+  onSelectionChange: (selection: string) => void;
   onDuplicate: () => void;
   onDelete: () => void;
   onRename: () => void;
@@ -146,11 +183,15 @@ function Header(props: {
   onExport: () => void;
   onImport: () => void;
 }) {
+  // Flatten themes into one option per (theme, scheme) so the dark variant of
+  // every theme is selectable directly, no hidden sub-tab. Each theme's two
+  // entries are grouped together via <optgroup> so the dropdown reads as
+  // "Aletheia Default → Light / Dark" rather than an undifferentiated list.
   return (
     <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
       <select
-        value={props.active.id}
-        onChange={(e) => props.onActiveChange(e.target.value)}
+        value={props.activeSelection}
+        onChange={(e) => props.onSelectionChange(e.target.value)}
         style={{
           font: "inherit",
           padding: "5px 8px",
@@ -160,12 +201,17 @@ function Header(props: {
           borderRadius: 2,
         }}
       >
-        {props.themeIds.map((id) => (
-          <option key={id} value={id}>
-            {props.themes[id]?.name}
-            {props.themes[id]?.builtIn ? " (built-in)" : ""}
-          </option>
-        ))}
+        {props.themeIds.map((id) => {
+          const t = props.themes[id];
+          if (!t) return null;
+          const suffix = t.builtIn ? " (built-in)" : "";
+          return (
+            <optgroup key={id} label={`${t.name}${suffix}`}>
+              <option value={selectionKey(id, "light")}>{t.name} — Light</option>
+              <option value={selectionKey(id, "dark")}>{t.name} — Dark</option>
+            </optgroup>
+          );
+        })}
       </select>
       <button onClick={props.onDuplicate} style={buttonStyle}>Duplicate</button>
       <button
@@ -192,28 +238,6 @@ function Header(props: {
       <span style={{ flex: 1 }} />
       <button onClick={props.onImport} style={buttonStyle}>Import…</button>
       <button onClick={props.onExport} style={buttonStyle}>Export</button>
-    </div>
-  );
-}
-
-function SchemeSwitch({ value, onChange }: { value: Scheme; onChange: (s: Scheme) => void }) {
-  const tabStyle = (selected: boolean): CSSProperties => ({
-    padding: "5px 12px",
-    border: 0,
-    borderBottom: `2px solid ${selected ? "var(--color-accent)" : "transparent"}`,
-    background: "transparent",
-    color: selected ? "var(--color-fg)" : "var(--color-fg-muted)",
-    font: "inherit",
-    fontSize: 13,
-    cursor: "pointer",
-  });
-  return (
-    <div style={{ marginTop: 14, display: "flex", gap: 8, borderBottom: "1px solid var(--color-rule)" }}>
-      <button style={tabStyle(value === "light")} onClick={() => onChange("light")}>Light</button>
-      <button style={tabStyle(value === "dark")} onClick={() => onChange("dark")}>Dark</button>
-      <span style={{ marginLeft: "auto", alignSelf: "center", fontSize: 12, color: "var(--color-fg-subtle)" }}>
-        Editing overrides for the {value} scheme.
-      </span>
     </div>
   );
 }
