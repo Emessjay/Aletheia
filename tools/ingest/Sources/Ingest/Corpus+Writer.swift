@@ -122,8 +122,10 @@ public final class CorpusWriter {
     public func insertSection(workID: Int64, parentID: Int64?, ordinalPath: String, kind: String, label: String?, language: String, body: String, ordering: Int) throws -> Int64 {
         try queue.write { db in
             if let existing = try Int64.fetchOne(db, sql: "SELECT id FROM section WHERE work_id = ? AND ordinal_path = ? AND language = ?", arguments: [workID, ordinalPath, language]) {
-                // Update the body to the newer one but keep the row ID stable.
-                try db.execute(sql: "UPDATE section SET body = ?, label = COALESCE(label, ?) WHERE id = ?",
+                // Update body and label to the newer ones but keep the row ID stable.
+                // New label wins when present so re-ingests can replace stale headings;
+                // fall back to the existing label only when the parser produced none.
+                try db.execute(sql: "UPDATE section SET body = ?, label = COALESCE(?, label) WHERE id = ?",
                                arguments: [body, label, existing])
                 return existing
             }

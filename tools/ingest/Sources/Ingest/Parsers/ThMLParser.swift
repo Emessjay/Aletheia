@@ -191,12 +191,22 @@ private final class ThMLDelegate: NSObject, XMLParserDelegate {
                 commitCurrentSection()
             }
         }
-        if !inNote, lower == "p" {
+        if !inNote, lower == "p" || isHeadingTag(lower) {
+            // Heading tags (h1-h6) get the same paragraph break as <p>. Trypho marks
+            // chapter titles with bare <h3> outside any <p>, and without a break the
+            // heading text fuses onto the first body sentence — "Chapter I.—Introduction.While
+            // I was going about…". The break lets `commitCurrentSection` see the heading
+            // as its own paragraph and strip it.
             if var section = currentSection {
                 section.body += "\n\n"
                 currentSection = section
             }
         }
+    }
+
+    private func isHeadingTag(_ lower: String) -> Bool {
+        guard lower.count == 2, lower.first == "h" else { return false }
+        return ("1"..."6").contains(String(lower.last!))
     }
 
     func parserDidEndDocument(_ parser: XMLParser) {
@@ -205,17 +215,186 @@ private final class ThMLDelegate: NSObject, XMLParserDelegate {
 
     private func commitCurrentSection() {
         guard let current = currentSection else { return }
-        let cleaned = current.body.replacingOccurrences(of: #"[\t ]+"#, with: " ", options: .regularExpression)
-                                  .replacingOccurrences(of: #"\n{3,}"#, with: "\n\n", options: .regularExpression)
-                                  .trimmingCharacters(in: .whitespacesAndNewlines)
-        if !cleaned.isEmpty {
+        let normalized = current.body
+            .replacingOccurrences(of: #"[\t ]+"#, with: " ", options: .regularExpression)
+            .replacingOccurrences(of: #"\n{3,}"#, with: "\n\n", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // If the label is just an ordinal ("Discourse IV") or missing, derive a
+        // descriptive snippet from the heading/body *before* we strip — the heading
+        // paragraph that we're about to discard often is the chapter summary.
+        var finalLabel = current.label
+        if ThMLParser.isOrdinalOnlyLabel(finalLabel) {
+            if let snippet = ThMLParser.headingSnippet(from: normalized) {
+                let base = finalLabel?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                finalLabel = base.isEmpty ? snippet : "\(base) — \(snippet)"
+            }
+        }
+
+        let stripped = ThMLParser.stripLeadingHeadingParagraphs(from: normalized, label: current.label)
+
+        // Container-only sections (e.g. confessions Books) end up with an empty body once
+        // their title-page contents are stripped. Still emit them — the UI navigates by
+        // label and renders just the heading.
+        let labelText = finalLabel?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if !stripped.isEmpty || !labelText.isEmpty {
             sections.append(ThMLParser.Section(
                 ordinalPath: current.ordinalPath,
                 kind: current.kind,
-                label: current.label,
-                body: cleaned
+                label: finalLabel,
+                body: stripped
             ))
         }
         currentSection = nil
+    }
+
+}
+
+// MARK: - Heading detection / cleanup (file-scope so tests can exercise it)
+
+extension ThMLParser {
+    /// Structural prefixes that can stand in for a chapter title in the source.
+    /// Match must be case-insensitive (e.g. "CHAPTER I" appears in some volumes).
+    fileprivate static let structuralPrefixPattern =
+        #"^(?i)(chapter|book|discourse|section|letter|treatise|part|article|homily)\b"#
+
+    /// True if `label` is missing or only carries an ordinal (e.g. "Discourse IV",
+    /// "Chapter 3.") with no descriptive content — meaning we should synthesize a
+    /// better label from the body.
+    static func isOrdinalOnlyLabel(_ label: String?) -> Bool {
+        let trimmed = label?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if trimmed.isEmpty { return true }
+        return trimmed.range(
+            of: #"^(?i)(chapter|book|discourse|section|letter|treatise|part|article|homily)\s+[ivxlcdm0-9]+\.?$"#,
+            options: .regularExpression
+        ) != nil
+    }
+
+    /// Strip leading heading / preface paragraphs from a section body. The first
+    /// paragraph that doesn't look like a heading stops the loop, so real prose at
+    /// the top of the body is preserved.
+    static func stripLeadingHeadingParagraphs(from body: String, label: String?) -> String {
+        var paragraphs = body.components(separatedBy: "\n\n")
+        let labelNorm = label.map(normalizeWhitespace).flatMap { $0.isEmpty ? nil : $0 }
+        var stripped = 0
+        let maxStrip = 6
+        // The "looks like a volume title" heuristic — short / no-comma / single-sentence —
+        // can false-positive on a body opener (e.g. "Whereas in what precedes we have drawn
+        // out a sufficient account."). It only fires before any explicit chapter / § / label
+        // strike, since work titles always precede those in CCEL volumes.
+        var sawStructural = false
+        while let first = paragraphs.first, stripped < maxStrip {
+            let para = normalizeWhitespace(first)
+            if para.isEmpty {
+                paragraphs.removeFirst()
+                continue
+            }
+            let outcome = classifyHeadingParagraph(para, labelNorm: labelNorm, allowTitleHeuristic: !sawStructural)
+            switch outcome {
+            case .keep:
+                return paragraphs.joined(separator: "\n\n").trimmingCharacters(in: .whitespacesAndNewlines)
+            case .strip(let structural):
+                paragraphs.removeFirst()
+                stripped += 1
+                if structural { sawStructural = true }
+            }
+        }
+        return paragraphs.joined(separator: "\n\n").trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// Look through the first few paragraphs for a descriptive heading (e.g.
+    /// "§§1–5. The substantiality of the Word…") and return its first sentence
+    /// with any structural prefix stripped — used to synthesize a label when the
+    /// source provides only an ordinal.
+    static func headingSnippet(from body: String) -> String? {
+        for raw in body.components(separatedBy: "\n\n").prefix(6) {
+            var para = normalizeWhitespace(raw)
+            if para.isEmpty { continue }
+            if para.range(of: #"^[—–\-_·•\s]+$"#, options: .regularExpression) != nil { continue }
+            // Skip bare ordinals ("Discourse IV.", "Book I."); the descriptive
+            // text is in a later paragraph.
+            if para.range(
+                of: #"^(?i)(chapter|book|discourse|section|letter|treatise|part|article|homily)\s+[ivxlcdm0-9]+\.?$"#,
+                options: .regularExpression
+            ) != nil { continue }
+            // Pull off a "Chapter X.—" / "§N." / "§§1–5." prefix to get the description.
+            para = para.replacingOccurrences(
+                of: #"^(?i)(chapter|book|discourse|section|letter|treatise|part|article|homily)\s+[ivxlcdm0-9]+\.?\s*[—–-]?\s*"#,
+                with: "",
+                options: .regularExpression
+            )
+            para = para.replacingOccurrences(
+                of: #"^§{1,2}\s*\d+(?:\s*[–\-—]\s*\d+)?\.?\s*"#,
+                with: "",
+                options: .regularExpression
+            ).trimmingCharacters(in: .whitespacesAndNewlines)
+            if para.isEmpty { continue }
+            let sentence = firstSentence(of: para, maxChars: 100)
+            if !sentence.isEmpty { return sentence }
+        }
+        return nil
+    }
+
+    fileprivate enum HeadingOutcome {
+        /// Paragraph is not a heading; stop stripping and keep it.
+        case keep
+        /// Paragraph is a heading; drop it. `structural` is true for explicit chapter /
+        /// section / § / label-match markers — once we've seen one, the looser
+        /// "looks like a volume title" rule must not fire again, otherwise it eats prose.
+        case strip(structural: Bool)
+    }
+
+    fileprivate static func classifyHeadingParagraph(_ para: String, labelNorm: String?, allowTitleHeuristic: Bool) -> HeadingOutcome {
+        // Horizontal rule (em-dash / en-dash / hyphen / underscore / bullet).
+        if para.range(of: #"^[—–\-_·•\s]+$"#, options: .regularExpression) != nil {
+            return .strip(structural: false)
+        }
+        // "Chapter I.—…", "Book II.", "Discourse IV", "Section 3 — …"
+        if para.range(of: structuralPrefixPattern + #"\s+([ivxlcdm]+|\d+)\b"#, options: .regularExpression) != nil {
+            return .strip(structural: true)
+        }
+        // §-prefixed summary line: "§1.", "§§1–5.", "§ 12 …"
+        if para.range(of: #"^§{1,2}\s*\d"#, options: .regularExpression) != nil {
+            return .strip(structural: true)
+        }
+        // Body paragraph that exactly reproduces the recorded label (confessions Books).
+        if let lbl = labelNorm, para == lbl { return .strip(structural: true) }
+        // Stand-alone work / volume title — short, single-sentence, no comma, ends with '.'
+        // ("Four Discourses Against the Arians.", "On the Incarnation of the Word."). Gated
+        // by `allowTitleHeuristic` because the same shape matches some body openers.
+        if allowTitleHeuristic,
+           para.count <= 80,
+           para.hasSuffix("."),
+           !para.dropLast().contains(". "),
+           !para.contains(","),
+           para.contains(where: \.isLetter) {
+            return .strip(structural: false)
+        }
+        return .keep
+    }
+
+    fileprivate static func firstSentence(of text: String, maxChars: Int) -> String {
+        var idx = text.startIndex
+        while idx < text.endIndex {
+            let ch = text[idx]
+            if ch == "." || ch == "?" || ch == "!" {
+                let next = text.index(after: idx)
+                if next == text.endIndex || text[next].isWhitespace {
+                    return String(text[..<idx]).trimmingCharacters(in: .whitespacesAndNewlines)
+                }
+            }
+            idx = text.index(after: idx)
+        }
+        if text.count <= maxChars { return text }
+        let prefix = text.prefix(maxChars)
+        if let space = prefix.lastIndex(of: " ") {
+            return String(prefix[..<space]).trimmingCharacters(in: .whitespacesAndNewlines) + "…"
+        }
+        return String(prefix) + "…"
+    }
+
+    fileprivate static func normalizeWhitespace(_ s: String) -> String {
+        s.replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
+         .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }

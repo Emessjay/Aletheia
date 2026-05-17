@@ -225,3 +225,70 @@ final class CrossReferenceParserTests: XCTestCase {
         XCTAssertEqual(rows[1].toVerseEnd, 12)
     }
 }
+
+final class ThMLHeadingTests: XCTestCase {
+    // Trypho-style: chapter heading sits in <h3> outside <p>, body label echoes it verbatim.
+    func testStripsTryphoChapterHeading() {
+        let label = "Chapter I.—Introduction."
+        let body = "Chapter I.—Introduction.\n\nWhile I was going about one morning in the walks of the Xystus, a certain man greeted me."
+        let cleaned = ThMLParser.stripLeadingHeadingParagraphs(from: body, label: label)
+        XCTAssertEqual(cleaned, "While I was going about one morning in the walks of the Xystus, a certain man greeted me.")
+    }
+
+    // Incarnation-style: §N prefix on an italic summary paragraph, then prose.
+    func testStripsParagraphMarkHeading() {
+        let label = "Introductory. The subject of this treatise."
+        let body = "On the Incarnation of the Word.\n\n————————————\n\n§1. Introductory. The subject of this treatise.\n\nWhereas in what precedes we have drawn out a sufficient account."
+        let cleaned = ThMLParser.stripLeadingHeadingParagraphs(from: body, label: label)
+        XCTAssertEqual(cleaned, "Whereas in what precedes we have drawn out a sufficient account.")
+    }
+
+    // Confessions Book: title page is the whole body, label has the description.
+    func testStripsBookTitlePageEntirely() {
+        let label = "Commencing with the invocation of God, Augustin relates in detail the beginning of his life."
+        let body = "Book I.\n\n————————————\n\nCommencing with the invocation of God, Augustin relates in detail the beginning of his life.\n\n————————————"
+        let cleaned = ThMLParser.stripLeadingHeadingParagraphs(from: body, label: label)
+        XCTAssertEqual(cleaned, "")
+    }
+
+    // Discourses-against-Arians first chapter: work title + discourse title + rule + chapter heading + body.
+    func testStripsCascadedDiscourseHeadings() {
+        let label = "Introduction. Reason for writing."
+        let body = "Four Discourses Against the Arians.\n\nDiscourse I.\n\n————————————\n\nChapter I.—Introduction. Reason for writing.\n\n1. Of all other heresies which have departed from the truth."
+        let cleaned = ThMLParser.stripLeadingHeadingParagraphs(from: body, label: label)
+        XCTAssertEqual(cleaned, "1. Of all other heresies which have departed from the truth.")
+    }
+
+    // Real body starting with a quoted dialogue (commas, internal punctuation) must not be stripped.
+    func testKeepsBodyOpeningWithDialogue() {
+        let label = "Chapter II.—Justin describes his studies in philosophy."
+        let body = "Chapter II.—Justin describes his studies in philosophy.\n\n“I will tell you,” said I, “what seems to me; for philosophy is the greatest possession.”"
+        let cleaned = ThMLParser.stripLeadingHeadingParagraphs(from: body, label: label)
+        XCTAssertEqual(cleaned, "“I will tell you,” said I, “what seems to me; for philosophy is the greatest possession.”")
+    }
+
+    func testOrdinalOnlyLabelDetection() {
+        XCTAssertTrue(ThMLParser.isOrdinalOnlyLabel("Discourse IV"))
+        XCTAssertTrue(ThMLParser.isOrdinalOnlyLabel("Chapter 3."))
+        XCTAssertTrue(ThMLParser.isOrdinalOnlyLabel("Book II"))
+        XCTAssertTrue(ThMLParser.isOrdinalOnlyLabel(nil))
+        XCTAssertTrue(ThMLParser.isOrdinalOnlyLabel(""))
+        XCTAssertFalse(ThMLParser.isOrdinalOnlyLabel("Conclusion."))
+        XCTAssertFalse(ThMLParser.isOrdinalOnlyLabel("Chapter I.—Introduction."))
+        XCTAssertFalse(ThMLParser.isOrdinalOnlyLabel("He Proclaims the Greatness of God."))
+    }
+
+    func testHeadingSnippetFromSummary() {
+        // "Discourse IV" section: descriptive content lives in the §§1–5 summary paragraph.
+        let body = "Discourse IV.\n\n————————————\n\n§§1–5. The substantiality of the Word proved from Scripture. If the One Origin be substantial, Its Word is substantial."
+        let snippet = ThMLParser.headingSnippet(from: body)
+        XCTAssertEqual(snippet, "The substantiality of the Word proved from Scripture")
+    }
+
+    func testHeadingSnippetFallsThroughToBody() {
+        // No summary paragraph: snippet falls through to first sentence of prose.
+        let body = "Chapter II.\n\n————————————\n\nGreat art Thou, O Lord, and greatly to be praised."
+        let snippet = ThMLParser.headingSnippet(from: body)
+        XCTAssertEqual(snippet, "Great art Thou, O Lord, and greatly to be praised")
+    }
+}
