@@ -292,3 +292,44 @@ final class ThMLHeadingTests: XCTestCase {
         XCTAssertEqual(snippet, "Great art Thou, O Lord, and greatly to be praised")
     }
 }
+
+final class SummaSubsectionTests: XCTestCase {
+    func testStripsObjectionPrefix() {
+        let body = "Objection 1: It seems that, besides philosophical science, we have no need of any further knowledge."
+        let stripped = SummaParser.stripLeadingHeading(body, kind: "objection", number: 1)
+        XCTAssertEqual(stripped, "It seems that, besides philosophical science, we have no need of any further knowledge.")
+    }
+
+    func testStripsReplyPrefix() {
+        let body = "Reply to Objection 3: Although those things which are beyond man's knowledge…"
+        let stripped = SummaParser.stripLeadingHeading(body, kind: "reply", number: 3)
+        XCTAssertEqual(stripped, "Although those things which are beyond man's knowledge…")
+    }
+
+    func testStripsSedContraPrefix() {
+        let body = "On the contrary, It is written: \"All Scripture is profitable.\""
+        let stripped = SummaParser.stripLeadingHeading(body, kind: "sedcontra")
+        XCTAssertEqual(stripped, "It is written: \"All Scripture is profitable.\"")
+    }
+
+    func testStripsRespondeoPrefix() {
+        let body = "I answer that, It was necessary for man's salvation."
+        let stripped = SummaParser.stripLeadingHeading(body, kind: "respondeo")
+        XCTAssertEqual(stripped, "It was necessary for man's salvation.")
+    }
+
+    // Numbered prefixes must match the actual sub-section number, otherwise we'd
+    // strip prose that happens to lead with a different objection's wording.
+    func testLeavesBodyAloneWhenObjectionNumberMismatch() {
+        let body = "Objection 2: Sciences are differentiated according to means."
+        let stripped = SummaParser.stripLeadingHeading(body, kind: "objection", number: 1)
+        XCTAssertEqual(stripped, body)
+    }
+
+    // Body without the formal opener (rare but possible) is left unchanged.
+    func testLeavesBodyAloneWhenNoPrefix() {
+        let body = "Sciences are differentiated according to means."
+        let stripped = SummaParser.stripLeadingHeading(body, kind: "objection", number: 1)
+        XCTAssertEqual(stripped, body)
+    }
+}

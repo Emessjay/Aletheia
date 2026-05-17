@@ -57,8 +57,10 @@ public struct SummaParser {
             guard let part = json[partKey] as? [String: Any] else { continue }
             let partTitle = (part["title"] as? String) ?? partKey
             let partPath = "summa.\(partKey)"
+            // Container sections (part / question / article) carry their title in `label`;
+            // emitting it again in `body` produced a duplicate line under the page heading.
             sections.append(.init(ordinalPath: partPath, kind: "part",
-                                  label: partTitle, body: partTitle, parentPath: nil))
+                                  label: partTitle, body: "", parentPath: nil))
 
             // questions is a dict keyed by string question number; sort numerically.
             let questions = (part["questions"] as? [String: Any]) ?? [:]
@@ -69,7 +71,7 @@ public struct SummaParser {
                 let qTitle = q["title"] as? String ?? "Question \(qNum)"
                 sections.append(.init(ordinalPath: qPath, kind: "question",
                                       label: "Question \(qNum). \(qTitle)",
-                                      body: qTitle, parentPath: partPath))
+                                      body: "", parentPath: partPath))
 
                 // Question-level prologue ("outer")
                 if let outer = q["outer"] as? [String: Any], let text = textBody(outer) {
@@ -86,7 +88,7 @@ public struct SummaParser {
                     let aTitle = stringFromList(art["title"]) ?? "Article \(aNum)"
                     sections.append(.init(ordinalPath: aPath, kind: "article",
                                           label: "Article \(aNum). \(aTitle)",
-                                          body: aTitle, parentPath: qPath))
+                                          body: "", parentPath: qPath))
 
                     if let objections = art["objections"] as? [String: Any] {
                         let sortedObj = objections.keys.compactMap { Int($0) }.sorted()
@@ -96,7 +98,8 @@ public struct SummaParser {
                                 sections.append(.init(ordinalPath: "\(aPath).obj\(n)",
                                                        kind: "objection",
                                                        label: "Objection \(n)",
-                                                       body: text, parentPath: aPath))
+                                                       body: Self.stripLeadingHeading(text, kind: "objection", number: n),
+                                                       parentPath: aPath))
                             }
                         }
                     }
@@ -106,7 +109,8 @@ public struct SummaParser {
                             sections.append(.init(ordinalPath: "\(aPath).sedcontra",
                                                    kind: "sedcontra",
                                                    label: "On the contrary",
-                                                   body: text, parentPath: aPath))
+                                                   body: Self.stripLeadingHeading(text, kind: "sedcontra"),
+                                                   parentPath: aPath))
                         }
                     }
                     // Respondeo ("body")
@@ -114,7 +118,8 @@ public struct SummaParser {
                         sections.append(.init(ordinalPath: "\(aPath).respondeo",
                                                kind: "respondeo",
                                                label: "I answer that",
-                                               body: text, parentPath: aPath))
+                                               body: Self.stripLeadingHeading(text, kind: "respondeo"),
+                                               parentPath: aPath))
                     }
                     // Replies
                     if let replies = art["replies"] as? [String: Any] {
@@ -125,7 +130,8 @@ public struct SummaParser {
                                 sections.append(.init(ordinalPath: "\(aPath).rep\(n)",
                                                        kind: "reply",
                                                        label: "Reply to Objection \(n)",
-                                                       body: text, parentPath: aPath))
+                                                       body: Self.stripLeadingHeading(text, kind: "reply", number: n),
+                                                       parentPath: aPath))
                             }
                         }
                     }
@@ -133,6 +139,34 @@ public struct SummaParser {
             }
         }
         return sections
+    }
+
+    /// Strip the structural formula that opens each Summa sub-section in the English
+    /// translation ("Objection 1: …", "On the contrary, …", "I answer that, …",
+    /// "Reply to Objection 1: …"). The UI renders the kind in the heading, so the
+    /// opener is redundant when the body sits under it.
+    static func stripLeadingHeading(_ body: String, kind: String, number: Int? = nil) -> String {
+        let trimmed = body.trimmingCharacters(in: .whitespacesAndNewlines)
+        let pattern: String
+        switch kind {
+        case "objection":
+            guard let n = number else { return trimmed }
+            pattern = #"^Objection\s+"# + String(n) + #"\s*[:.]\s+"#
+        case "reply":
+            guard let n = number else { return trimmed }
+            pattern = #"^Reply\s+to\s+Objection\s+"# + String(n) + #"\s*[:.]\s+"#
+        case "sedcontra":
+            pattern = #"^On\s+the\s+contrary\s*,\s+"#
+        case "respondeo":
+            pattern = #"^I\s+answer\s+that\s*,\s+"#
+        default:
+            return trimmed
+        }
+        guard let range = trimmed.range(of: pattern, options: [.regularExpression, .caseInsensitive]),
+              range.lowerBound == trimmed.startIndex else {
+            return trimmed
+        }
+        return String(trimmed[range.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     /// Extract a body string from any of the shapes the schema uses:
