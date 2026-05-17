@@ -35,29 +35,59 @@ import sys
 from pathlib import Path
 
 
-# Whitespace normalization + entity cleanup applied to every body. Decoding
-# standard HTML entities catches `&amp;`; the explicit `&c;` substitution
-# handles a non-standard old-print convention some SWORD modules carry
-# (Wesley uses `&c;` for "&c." / "etcetera"). Whitespace collapse turns runs
-# of internal whitespace into single spaces, which mirrors how the source
-# texts are punctuated for prose reading.
+# Whitespace + entity cleanup applied to every body. `&c;` is a non-standard
+# convention some modules carry (Wesley uses it for "&c." / "etcetera"); the
+# rest is standard HTML entity decoding.
 _C_ENT = re.compile(r"&c;")
-_WS = re.compile(r"\s+")
+
 # pysword's `clean=True` strips most OSIS markup, but commentary modules
 # carry inline footnote tags like `<note n="…">…</note>` and bare reference
-# anchors that aren't part of pysword's allowlist. Drop the notes wholesale
-# (they're translator annotations, not the author's prose, and inlining them
-# mid-sentence reads as gibberish) and strip any remaining bare tags.
+# anchors that aren't part of pysword's allowlist. We disable pysword's
+# cleaner (`clean=False`) so we keep paragraph milestones, then drop the
+# notes wholesale (they're translator annotations, not the author's prose,
+# and inlining them mid-sentence reads as gibberish) and strip remaining
+# bare tags ourselves.
 _NOTE_BLOCK = re.compile(r"<note\b[^>]*>.*?</note>", re.DOTALL | re.IGNORECASE)
+
+# OSIS marks paragraph boundaries with empty-element <div sID/eID type="x-p"/>
+# milestones. Convert them to a sentinel before the generic tag-strip pass so
+# they survive as real paragraph breaks in the output. We use sID
+# (paragraph-start) milestones only — eID closes the same paragraph it opens,
+# and converting both would inject an extra blank line at every boundary.
+_PARA_START = re.compile(
+    r"<div\b(?=[^>]*type=[\"']x-p[\"'])(?=[^>]*sID=)[^>]*/>",
+    re.IGNORECASE,
+)
+_LINE_BREAK = re.compile(r"<lb\b[^>]*/?>", re.IGNORECASE)
+_PARA_TAG = re.compile(r"<p\b[^>]*>", re.IGNORECASE)
+
 _BARE_TAG = re.compile(r"<[^>]+>")
+
+# After tag stripping, normalize whitespace: collapse horizontal runs, then
+# fold any run of newlines into either " " (1 newline → source line wrap)
+# or "\n\n" (2+ newlines → real paragraph boundary from the x-p milestones).
+_HWS = re.compile(r"[ \t]+")
+_NL_RUN = re.compile(r"[ \t]*(?:\r?\n[ \t]*)+")
+
+
+def _normalize_newlines(text: str) -> str:
+    return _NL_RUN.sub(
+        lambda m: "\n\n" if m.group(0).count("\n") >= 2 else " ",
+        text,
+    )
 
 
 def clean_body(text: str) -> str:
     text = _NOTE_BLOCK.sub("", text)
+    # Convert paragraph milestones to sentinels BEFORE wiping bare tags.
+    text = _PARA_START.sub("\n\n", text)
+    text = _LINE_BREAK.sub("\n\n", text)
+    text = _PARA_TAG.sub("\n\n", text)
     text = _BARE_TAG.sub("", text)
     text = _C_ENT.sub("&c.", text)
     text = html.unescape(text)
-    text = _WS.sub(" ", text)
+    text = _HWS.sub(" ", text)
+    text = _normalize_newlines(text)
     return text.strip()
 
 
@@ -113,6 +143,7 @@ def main() -> int:
                             books=[book_name],
                             chapters=[chapter],
                             verses=[verse],
+                            clean=False,
                         )
                     except Exception:
                         text = ""

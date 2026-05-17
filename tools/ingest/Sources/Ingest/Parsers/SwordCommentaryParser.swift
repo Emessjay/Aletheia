@@ -81,7 +81,7 @@ public struct SwordCommentaryParser {
                 label: "Verse \(e.verse)",
                 verseStart: e.verse,
                 verseEnd: e.verse,
-                body: trimmed))
+                body: stripLeadingVerseNumber(trimmed, verse: e.verse)))
         }
 
         var results: [ChapterContent] = []
@@ -146,6 +146,25 @@ public struct SwordCommentaryParser {
             }
         }
         return s
+    }
+
+    /// Comments in SWORD modules customarily open with the verse number from
+    /// the source's bold lemma marker: "2. And the earth was without form…"
+    /// — but the UI already shows a "Verse N" label above each comment, so
+    /// the bare leading number duplicates it. Strip the prefix only when the
+    /// number matches the verse we know we're rendering.
+    private func stripLeadingVerseNumber(_ body: String, verse: Int) -> String {
+        let v = String(verse)
+        for pattern in [
+            #"^"# + v + #"\.\s+"#,   // "2. "
+            #"^"# + v + #"\s+"#,      // "2 "
+        ] {
+            if let r = body.range(of: pattern, options: .regularExpression),
+               r.lowerBound == body.startIndex {
+                return String(body[r.upperBound...])
+            }
+        }
+        return body
     }
 
     private func startsWithVerseAnchor(_ body: String) -> Bool {

@@ -272,7 +272,13 @@ function ChapterView({
 
       {comments.map((c) => (
         <section key={c.id} style={{ marginTop: "1.5rem" }}>
-          {c.label ? <p style={commentLabel}>{c.label}</p> : null}
+          {c.label ? (
+            <CommentLabel
+              label={c.label}
+              bookSlug={bookSlug}
+              chapter={chapter}
+            />
+          ) : null}
           <SectionBody body={c.body} />
         </section>
       ))}
@@ -320,6 +326,40 @@ function useCommentaryEntry(slug: string) {
     ...all,
     data: (all.data ?? []).find((w: WorkRow) => w.slug === slug) ?? null,
   };
+}
+
+/** Comment headers like "Verse 12" or "Verses 1–3" become Links to the Bible
+ *  reader, scrolled to the first verse referenced. Labels we can't parse
+ *  (rare) render as plain text. */
+function CommentLabel({
+  label,
+  bookSlug,
+  chapter,
+}: {
+  label: string;
+  bookSlug: string;
+  chapter: number;
+}) {
+  const firstVerse = parseFirstVerse(label);
+  if (firstVerse == null) {
+    return <p style={commentLabel}>{label}</p>;
+  }
+  return (
+    <p style={commentLabel}>
+      <Link
+        to={`/reader/bible/${bookSlug}/${chapter}#v${firstVerse}`}
+        style={{ color: "inherit", textDecoration: "none" }}
+      >
+        {label}
+      </Link>
+    </p>
+  );
+}
+
+function parseFirstVerse(label: string): number | null {
+  // "Verse 12" / "Verses 1–3" / "Verses 1, 3" / "Ver. 12"
+  const m = label.match(/(\d+)/);
+  return m ? Number.parseInt(m[1], 10) : null;
 }
 
 function SectionBody({ body }: { body: string }) {
