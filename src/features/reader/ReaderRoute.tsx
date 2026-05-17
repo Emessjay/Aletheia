@@ -85,6 +85,7 @@ export function ReaderRoute() {
   );
 
   const tabs = useSettingsStore((s) => s.tabs);
+  const audioBarEnabled = useSettingsStore((s) => s.audioBarEnabled);
   const activeTabs = tabs.filter((t) => t.active);
   // Primary language per active tab — drives chapter fan-out, selection, etc.
   const activeLangs: CorpusLanguage[] = activeTabs.map((t) =>
@@ -383,7 +384,7 @@ export function ReaderRoute() {
           all={chapterNumbers}
         />
       ) : null}
-      {work === "bible" && audioLangs.length > 0 ? (
+      {work === "bible" && audioLangs.length > 0 && audioBarEnabled ? (
         <AudioPlayer
           available={audioLangs}
           workSlug={work}

@@ -16,6 +16,7 @@ const LEGACY_TRANSLATIONS_KEY = "aletheia.translations";
 const LEGACY_TAB_ORDER_KEY = "aletheia.tabOrder";
 const FONT_SIZE_KEY = "aletheia.fontSize";
 const DROP_CAPS_KEY = "aletheia.dropCaps";
+const AUDIO_BAR_KEY = "aletheia.audioBar";
 
 export const DEFAULT_FONT_SIZE = 17;
 export const MIN_FONT_SIZE = 13;
@@ -177,6 +178,12 @@ function readDropCaps(): boolean {
   return raw === null ? true : raw === "1";
 }
 
+function readAudioBar(): boolean {
+  if (typeof window === "undefined") return true;
+  const raw = window.localStorage.getItem(AUDIO_BAR_KEY);
+  return raw === null ? true : raw === "1";
+}
+
 function ensureAtLeastOneActive(tabs: Tab[]): Tab[] {
   if (tabs.some((t) => t.active)) return tabs;
   // Reactivate BSB if present; else the first single tab; else the first tab.
@@ -212,6 +219,8 @@ interface SettingsState {
   setFontSize: (n: number) => void;
   dropCapsEnabled: boolean;
   setDropCapsEnabled: (v: boolean) => void;
+  audioBarEnabled: boolean;
+  setAudioBarEnabled: (v: boolean) => void;
 }
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
@@ -368,6 +377,13 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       window.localStorage.setItem(DROP_CAPS_KEY, v ? "1" : "0");
     }
     set({ dropCapsEnabled: v });
+  },
+  audioBarEnabled: readAudioBar(),
+  setAudioBarEnabled: (v) => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(AUDIO_BAR_KEY, v ? "1" : "0");
+    }
+    set({ audioBarEnabled: v });
   },
 }));
 

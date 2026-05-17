@@ -20,6 +20,8 @@ export function SettingsRoute() {
   const setFontSize = useSettingsStore((s) => s.setFontSize);
   const dropCapsEnabled = useSettingsStore((s) => s.dropCapsEnabled);
   const setDropCapsEnabled = useSettingsStore((s) => s.setDropCapsEnabled);
+  const audioBarEnabled = useSettingsStore((s) => s.audioBarEnabled);
+  const setAudioBarEnabled = useSettingsStore((s) => s.setAudioBarEnabled);
   // Subscribe to tabs so the row re-renders when active state changes; derive
   // per-language activeness from the snapshot rather than calling a method off
   // a stable function reference (which would skip re-renders).
@@ -137,6 +139,12 @@ export function SettingsRoute() {
           Chapters download on demand and play from the local file thereafter.
           All recordings are public-domain dedications by their narrators.
         </p>
+        <Row label="Show audio bar in reader">
+          <CheckRow
+            on={audioBarEnabled}
+            onClick={() => setAudioBarEnabled(!audioBarEnabled)}
+          />
+        </Row>
         {(["en_bsb", "en_web", "en_kjv"] as AudioTranslation[]).map((t) => {
           const src = AUDIO_SOURCES[t];
           return (
