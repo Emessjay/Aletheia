@@ -72,7 +72,7 @@ public struct SwordCommentaryParser {
                 !startsWithVerseAnchor(trimmed)
 
             if looksLikeFrontMatter {
-                bookIntros[book.slug] = trimmed
+                bookIntros[book.slug] = stripCCELBoilerplate(trimmed)
                 continue
             }
 
@@ -120,6 +120,34 @@ public struct SwordCommentaryParser {
     /// verse 1 rather than with preface prose. Conservative — false positives
     /// are fine (means we keep the entry as a v1 comment, which is the
     /// status-quo behavior for short bodies anyway).
+    /// CCEL's SWORD packagings of older PD commentaries prepend a title-page
+    /// banner, and in Calvin's case stack TWO translator's prefaces (King 1847,
+    /// Tymme 1578) before Calvin's own dedicatory letter. None of that is the
+    /// author's intro to the book — strip it.
+    ///
+    /// Pass 1 ("CCEL banner"): drop everything up to and including the CCEL URL
+    /// or "CHRISTIAN CLASSICS ETHEREAL LIBRARY" header.
+    /// Pass 2 ("translator prefaces"): if the result still leads with a
+    /// translator's preface, fast-forward to "THE AUTHOR'S EPISTLE DEDICATORY"
+    /// (Calvin's own header, preserved by the SWORD flattening). Curly + straight
+    /// apostrophe variants both checked.
+    /// Idempotent: no marker present → no change.
+    private func stripCCELBoilerplate(_ body: String) -> String {
+        var s = body
+        if let r = s.range(of: "http://www.ccel.org") {
+            s = String(s[r.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
+        } else if let r = s.range(of: "CHRISTIAN CLASSICS ETHEREAL LIBRARY") {
+            s = String(s[r.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        for marker in ["THE AUTHOR\u{2019}S EPISTLE DEDICATORY", "THE AUTHOR'S EPISTLE DEDICATORY"] {
+            if let r = s.range(of: marker) {
+                s = String(s[r.lowerBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
+                break
+            }
+        }
+        return s
+    }
+
     private func startsWithVerseAnchor(_ body: String) -> Bool {
         let head = body.prefix(120)
         // Examples that should match: "1. In the beginning", "1 In the…",

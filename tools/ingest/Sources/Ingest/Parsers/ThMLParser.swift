@@ -110,21 +110,33 @@ private final class ThMLDelegate: NSObject, XMLParserDelegate {
         // Section-defining containers in ThML.
         //
         // Conventionally these are `div1/div2/div3` with a `type` attribute like "chapter" /
-        // "section". But CCEL is inconsistent — Justin Martyr's *Dialogue with Trypho* leaves
-        // its `<div3>` chapter elements without a `type` attribute and signals chapter-ness
-        // only through `shorttitle="Chapter I.—…"`. So:
-        //   • Without a containerID scope (whole-file parse): require a recognized `type`.
-        //   • With a containerID (we're scoped to one work): treat *any* descendant
-        //     `<div2>` / `<div3>` as a section, defaulting `kind = "chapter"`.
+        // "book" / "discourse". But CCEL is inconsistent — Justin Martyr's *Dialogue with
+        // Trypho* leaves its `<div3>` chapter elements without a `type` attribute and signals
+        // chapter-ness only through `shorttitle="Chapter I.—…"`. So we accept either:
+        //   • a recognized `type` attribute, OR
+        //   • a `shorttitle` (or `title`) that begins with a known structural prefix.
+        //
+        // The strict signal matters because CCEL volumes wrap each work in a pile of editorial
+        // divs — Translator's Preface, Introductory Notice, Argument, Excursus — that look like
+        // sections by depth alone. Requiring a positive signal filters those out.
         //
         // ThML divs always carry a globally-unique `id` attribute (e.g. "viii.iv.iii");
         // that becomes our ordinal_path so chapter numbers can repeat across works
         // within the same volume without colliding.
         let typeAttr = attributes["type"]?.lowercased()
-        let recognizedType = typeAttr.map { ["chapter", "section", "article", "subsection"].contains($0) } ?? false
-        let isContainerScopedDiv = (containerID != nil) && containerStackDepth > 0
-            && (lower == "div2" || lower == "div3")
-        if inContainer, lower.hasPrefix("div"), recognizedType || isContainerScopedDiv {
+        let structuralTypes: Set<String> = [
+            "chapter", "section", "subsection", "article",
+            "book", "discourse", "letter", "treatise", "part", "homily"
+        ]
+        let recognizedType = typeAttr.map { structuralTypes.contains($0) } ?? false
+        let labelText = attributes["shorttitle"] ?? attributes["title"] ?? ""
+        let structuralPrefixes = [
+            "Chapter ", "Book ", "Discourse ", "Letter ", "Treatise ",
+            "Section ", "Part ", "Article ", "Homily "
+        ]
+        let prefixMatch = structuralPrefixes.contains(where: { labelText.hasPrefix($0) })
+        let isSectionDiv = (lower == "div2" || lower == "div3" || lower == "div4" || lower == "div5")
+        if inContainer, isSectionDiv, recognizedType || prefixMatch {
             commitCurrentSection()
             sectionCounter += 1
             let identifier = attributes["id"] ?? attributes["n"] ?? String(sectionCounter)
