@@ -94,9 +94,9 @@ pub fn run() {
         )
         .invoke_handler(tauri::generate_handler![
             corpus_db_path,
-            audio::audio_chapter_path,
-            audio::audio_book_downloaded,
-            audio::audio_download_chapter,
+            audio::audio_source_path,
+            audio::audio_book_sources_present,
+            audio::audio_download_source,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

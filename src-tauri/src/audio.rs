@@ -1,12 +1,14 @@
-// Audio narration: on-demand chapter MP3 downloads.
+// Audio narration: on-demand source-MP3 downloads.
 //
-// Files are stored under `<app_data_dir>/audio/<translation>/<book_slug>/<NNN>.mp3`
-// — a flat, deterministic layout that the frontend manifest also assumes when
-// it asks "is this chapter already downloaded?"
+// Files are stored under `<app_data_dir>/audio/<translation>/<book_slug>/<filename>`,
+// where `<filename>` is the basename of the upstream URL (e.g.
+// "BSB_01_Gen_001.mp3" or "gospeljohn_2_kjv.mp3"). One source MP3 may
+// contain several "virtual" chapters (multi-chapter LibriVox recordings);
+// the runtime player consults a timing manifest to seek into the right
+// segment, so we only download each upstream file once per book.
 //
-// All three Tauri commands here treat the on-disk store as authoritative. There
-// is no SQLite tracking table; the file system *is* the index. That keeps the
-// model self-healing: deleting the audio directory is a valid uninstall.
+// All three commands treat the filesystem as authoritative — there is no
+// SQLite tracking table. Deleting the audio directory is a valid uninstall.
 
 use std::path::PathBuf;
 
@@ -17,23 +19,46 @@ use tokio::io::AsyncWriteExt;
 
 const AUDIO_SUBDIR: &str = "audio";
 
-/// Validate the (translation, book_slug, chapter) triple to defend against
-/// path traversal — the strings flow into a filesystem path.
-fn validate(translation: &str, book_slug: &str, chapter: u32) -> Result<(), String> {
-    if !matches!(translation, "en_bsb" | "en_kjv" | "en_web") {
-        return Err(format!("unsupported translation: {translation}"));
+fn validate_slug(s: &str, field: &str) -> Result<(), String> {
+    if s.is_empty() || s.len() > 32 {
+        return Err(format!("invalid {field}: {s}"));
     }
-    if book_slug.is_empty() || book_slug.len() > 16 {
-        return Err(format!("invalid book slug: {book_slug}"));
-    }
-    if !book_slug
+    if !s
         .bytes()
-        .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit())
+        .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_')
     {
-        return Err(format!("book slug must be lowercase ascii: {book_slug}"));
+        return Err(format!(
+            "{field} must be lowercase ascii + digits + underscore: {s}"
+        ));
     }
-    if chapter == 0 || chapter > 200 {
-        return Err(format!("chapter out of range: {chapter}"));
+    Ok(())
+}
+
+/// The filename comes from the upstream URL's basename. We allow a slightly
+/// wider character set than the slugs (LibriVox filenames include hyphens,
+/// parens, mixed case), but never anything that could escape the book
+/// directory or shell-out via metacharacters.
+fn validate_filename(s: &str) -> Result<(), String> {
+    if s.is_empty() || s.len() > 128 {
+        return Err(format!("invalid filename length: {s}"));
+    }
+    if s.contains('/') || s.contains('\\') || s.contains("..") {
+        return Err(format!("filename contains path separators: {s}"));
+    }
+    if !s.bytes().all(|b| {
+        b.is_ascii_alphanumeric() || matches!(b, b'.' | b'_' | b'-' | b'(' | b')')
+    }) {
+        return Err(format!("filename has disallowed characters: {s}"));
+    }
+    if !s.ends_with(".mp3") {
+        return Err(format!("only .mp3 files are supported: {s}"));
+    }
+    Ok(())
+}
+
+fn validate_translation(t: &str) -> Result<(), String> {
+    if !matches!(t, "en_bsb" | "en_kjv" | "en_web") {
+        return Err(format!("unsupported translation: {t}"));
     }
     Ok(())
 }
@@ -50,58 +75,58 @@ fn book_dir<R: Runtime>(
     Ok(base.join(AUDIO_SUBDIR).join(translation).join(book_slug))
 }
 
-fn chapter_path<R: Runtime>(
+fn source_path<R: Runtime>(
     app: &AppHandle<R>,
     translation: &str,
     book_slug: &str,
-    chapter: u32,
+    filename: &str,
 ) -> Result<PathBuf, String> {
-    Ok(book_dir(app, translation, book_slug)?.join(format!("{:03}.mp3", chapter)))
+    Ok(book_dir(app, translation, book_slug)?.join(filename))
 }
 
 #[derive(Serialize)]
-pub struct ChapterPath {
-    /// Absolute filesystem path where this chapter lives (or would live).
+pub struct SourcePath {
+    /// Absolute filesystem path where this MP3 lives (or would live).
     pub path: String,
     /// True if the file exists on disk and is non-empty.
     pub exists: bool,
 }
 
-/// Resolve the canonical local path for a (translation, book, chapter) and
-/// report whether it's already downloaded. Returning the path even when the
-/// file is missing lets the frontend pre-bind an `<audio>` element to the
-/// future location.
+/// Resolve the canonical local path for an upstream source MP3 and report
+/// whether it's already downloaded. Returning the path even when the file
+/// is missing lets the frontend pre-compute the asset-protocol URL.
 #[tauri::command]
-pub async fn audio_chapter_path<R: Runtime>(
+pub async fn audio_source_path<R: Runtime>(
     app: AppHandle<R>,
     translation: String,
     book_slug: String,
-    chapter: u32,
-) -> Result<ChapterPath, String> {
-    validate(&translation, &book_slug, chapter)?;
-    let p = chapter_path(&app, &translation, &book_slug, chapter)?;
+    filename: String,
+) -> Result<SourcePath, String> {
+    validate_translation(&translation)?;
+    validate_slug(&book_slug, "book_slug")?;
+    validate_filename(&filename)?;
+    let p = source_path(&app, &translation, &book_slug, &filename)?;
     let exists = tokio::fs::metadata(&p)
         .await
         .map(|m| m.is_file() && m.len() > 0)
         .unwrap_or(false);
-    Ok(ChapterPath {
+    Ok(SourcePath {
         path: p.to_string_lossy().into_owned(),
         exists,
     })
 }
 
-/// List the chapter numbers (1-indexed) already downloaded for this book.
-/// Used by the player to render a "16 / 50 downloaded" progress label and
-/// decide whether to offer the download-all button.
+/// List the source MP3 filenames already present for this book — used by
+/// the player to render a "16 / 22 chapters downloaded" indicator (the
+/// frontend combines this with its manifest to map filenames → chapters).
 #[tauri::command]
-pub async fn audio_book_downloaded<R: Runtime>(
+pub async fn audio_book_sources_present<R: Runtime>(
     app: AppHandle<R>,
     translation: String,
     book_slug: String,
-) -> Result<Vec<u32>, String> {
-    if !matches!(translation.as_str(), "en_bsb" | "en_kjv" | "en_web") {
-        return Err(format!("unsupported translation: {translation}"));
-    }
+) -> Result<Vec<String>, String> {
+    validate_translation(&translation)?;
+    validate_slug(&book_slug, "book_slug")?;
     let dir = book_dir(&app, &translation, &book_slug)?;
     let mut out = Vec::new();
     let mut rd = match tokio::fs::read_dir(&dir).await {
@@ -115,46 +140,44 @@ pub async fn audio_book_downloaded<R: Runtime>(
         .map_err(|e| format!("read_dir entry: {e}"))?
     {
         let name = entry.file_name();
-        let name = name.to_string_lossy();
-        // We only count <NNN>.mp3, and only if the file is non-empty so a
-        // half-written download from a previous interrupted session doesn't
-        // mask itself as "done".
-        let Some(stem) = name.strip_suffix(".mp3") else {
+        let name = name.to_string_lossy().to_string();
+        if !name.ends_with(".mp3") {
             continue;
-        };
-        let Ok(n) = stem.parse::<u32>() else {
-            continue;
-        };
+        }
+        // Half-written downloads from a previous interrupted session land as
+        // `.part` files, which already fail the extension check above; the
+        // empty-file guard catches any other zero-byte stragglers.
         if entry
             .metadata()
             .await
             .map(|m| m.is_file() && m.len() > 0)
             .unwrap_or(false)
         {
-            out.push(n);
+            out.push(name);
         }
     }
-    out.sort_unstable();
+    out.sort();
     Ok(out)
 }
 
-/// Download one chapter MP3 from `url` into the canonical local path. Writes
-/// to a sibling `.part` file first and renames on success, so a cancelled or
-/// failed download never leaves a truncated file masquerading as complete.
+/// Download a source MP3 from `url` into the canonical local path. Writes to
+/// a sibling `.part` file first and renames on success.
 #[tauri::command]
-pub async fn audio_download_chapter<R: Runtime>(
+pub async fn audio_download_source<R: Runtime>(
     app: AppHandle<R>,
     translation: String,
     book_slug: String,
-    chapter: u32,
     url: String,
+    filename: String,
 ) -> Result<String, String> {
-    validate(&translation, &book_slug, chapter)?;
+    validate_translation(&translation)?;
+    validate_slug(&book_slug, "book_slug")?;
+    validate_filename(&filename)?;
     if !(url.starts_with("https://") || url.starts_with("http://")) {
         return Err(format!("refusing non-http(s) URL: {url}"));
     }
 
-    let dest = chapter_path(&app, &translation, &book_slug, chapter)?;
+    let dest = source_path(&app, &translation, &book_slug, &filename)?;
     if let Some(parent) = dest.parent() {
         tokio::fs::create_dir_all(parent)
             .await

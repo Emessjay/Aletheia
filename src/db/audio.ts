@@ -1,47 +1,50 @@
 // Frontend wrapper for the Rust audio commands.
-// Files live at <app_data>/audio/<translation>/<book>/<NNN>.mp3; Rust treats
-// the filesystem as the source of truth and these helpers just relay.
+// Source MP3s live at <app_data>/audio/<translation>/<book>/<filename>. Each
+// chapter resolves to a (filename, startSec, endSec) triple via the audio
+// manifest; multiple "virtual" chapters may share one source file.
 
-import { invoke } from "@tauri-apps/api/core";
-import { convertFileSrc } from "@tauri-apps/api/core";
+import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { AudioTranslation } from "@/domain/audio";
 
-export interface ChapterPath {
+export interface SourcePath {
   path: string;
   exists: boolean;
 }
 
-export async function audioChapterPath(
+export async function audioSourcePath(
   translation: AudioTranslation,
   bookSlug: string,
-  chapter: number,
-): Promise<ChapterPath> {
-  return invoke<ChapterPath>("audio_chapter_path", {
+  filename: string,
+): Promise<SourcePath> {
+  return invoke<SourcePath>("audio_source_path", {
     translation,
     bookSlug,
-    chapter,
+    filename,
   });
 }
 
-export async function audioBookDownloaded(
+export async function audioBookSourcesPresent(
   translation: AudioTranslation,
   bookSlug: string,
-): Promise<number[]> {
-  return invoke<number[]>("audio_book_downloaded", { translation, bookSlug });
-}
-
-export async function audioDownloadChapter(
-  translation: AudioTranslation,
-  bookSlug: string,
-  chapter: number,
-  url: string,
-): Promise<string> {
-  return invoke<string>("audio_download_chapter", {
+): Promise<string[]> {
+  return invoke<string[]>("audio_book_sources_present", {
     translation,
     bookSlug,
-    chapter,
+  });
+}
+
+export async function audioDownloadSource(
+  translation: AudioTranslation,
+  bookSlug: string,
+  url: string,
+  filename: string,
+): Promise<string> {
+  return invoke<string>("audio_download_source", {
+    translation,
+    bookSlug,
     url,
+    filename,
   });
 }
 
@@ -55,64 +58,64 @@ export function audioAssetUrl(absolutePath: string): string {
 // ── React Query hooks ───────────────────────────────────────────────────────
 
 const audioKey = {
-  downloaded: (translation: AudioTranslation, bookSlug: string) =>
-    ["audio", "downloaded", translation, bookSlug] as const,
-  chapter: (
+  sourcesPresent: (translation: AudioTranslation, bookSlug: string) =>
+    ["audio", "sourcesPresent", translation, bookSlug] as const,
+  sourcePath: (
     translation: AudioTranslation,
     bookSlug: string,
-    chapter: number,
-  ) => ["audio", "chapter", translation, bookSlug, chapter] as const,
+    filename: string,
+  ) => ["audio", "sourcePath", translation, bookSlug, filename] as const,
 };
 
-export function useAudioBookDownloaded(
+export function useAudioBookSourcesPresent(
   translation: AudioTranslation | null,
   bookSlug: string | null,
 ) {
   return useQuery({
-    queryKey: audioKey.downloaded(translation ?? "en_bsb", bookSlug ?? ""),
-    queryFn: () => audioBookDownloaded(translation!, bookSlug!),
+    queryKey: audioKey.sourcesPresent(translation ?? "en_bsb", bookSlug ?? ""),
+    queryFn: () => audioBookSourcesPresent(translation!, bookSlug!),
     enabled: !!translation && !!bookSlug,
     staleTime: 30_000,
   });
 }
 
-export function useAudioChapterPath(
+export function useAudioSourcePath(
   translation: AudioTranslation | null,
   bookSlug: string | null,
-  chapter: number | null,
+  filename: string | null,
 ) {
   return useQuery({
-    queryKey: audioKey.chapter(
+    queryKey: audioKey.sourcePath(
       translation ?? "en_bsb",
       bookSlug ?? "",
-      chapter ?? 0,
+      filename ?? "",
     ),
-    queryFn: () => audioChapterPath(translation!, bookSlug!, chapter!),
-    enabled: !!translation && !!bookSlug && !!chapter,
+    queryFn: () => audioSourcePath(translation!, bookSlug!, filename!),
+    enabled: !!translation && !!bookSlug && !!filename,
   });
 }
 
-export function useDownloadChapter() {
+export function useDownloadSource() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (args: {
       translation: AudioTranslation;
       bookSlug: string;
-      chapter: number;
       url: string;
+      filename: string;
     }) =>
-      audioDownloadChapter(
+      audioDownloadSource(
         args.translation,
         args.bookSlug,
-        args.chapter,
         args.url,
+        args.filename,
       ),
-    onSuccess: (_path, { translation, bookSlug, chapter }) => {
+    onSuccess: (_path, { translation, bookSlug, filename }) => {
       qc.invalidateQueries({
-        queryKey: audioKey.downloaded(translation, bookSlug),
+        queryKey: audioKey.sourcesPresent(translation, bookSlug),
       });
       qc.invalidateQueries({
-        queryKey: audioKey.chapter(translation, bookSlug, chapter),
+        queryKey: audioKey.sourcePath(translation, bookSlug, filename),
       });
     },
   });

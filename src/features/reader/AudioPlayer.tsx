@@ -1,20 +1,27 @@
 // Fixed-bottom audio player. Plays the currently-open chapter via an on-demand
-// download model: the first time a user requests a chapter we fetch the MP3 to
-// the app data dir, then play it from the local file via the asset protocol.
-// Subsequent visits to the same chapter play instantly with no network.
+// download model: the first time a user requests a chapter we fetch the
+// source MP3 to the app data dir, then play it from the local file via the
+// asset protocol. Subsequent visits to chapters in the same source MP3 play
+// instantly with no network — for multi-chapter LibriVox recordings, all
+// virtual chapters in one file share a single download.
+//
+// Virtual chapters (KJV NT + Apocrypha): the source MP3 covers multiple
+// chapters back-to-back, with timing data from tools/audio/align_kjv.py.
+// Playback uses currentTime to seek to startSec and watches timeupdate to
+// auto-advance at endSec.
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   AUDIO_SOURCES,
-  chapterAudioUrl,
+  chapterAudio,
   bookHasAudio,
   type AudioTranslation,
 } from "@/domain/audio";
 import {
   audioAssetUrl,
-  useAudioChapterPath,
-  useDownloadChapter,
+  useAudioSourcePath,
+  useDownloadSource,
 } from "@/db/audio";
 import { TRANSLATION_LABELS } from "@/domain/translations";
 
@@ -46,13 +53,10 @@ export function AudioPlayer({
     return available[0]!;
   });
   const [playing, setPlaying] = useState(false);
-  const [position, setPosition] = useState(0);
-  const [duration, setDuration] = useState(0);
+  const [absoluteTime, setAbsoluteTime] = useState(0);
+  const [absoluteDuration, setAbsoluteDuration] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-  // Keep the chosen translation in sync with the available list — if the user
-  // toggles tabs and the current selection is no longer visible, fall back to
-  // the first available.
   useEffect(() => {
     if (!available.includes(translation)) {
       setTranslation(available[0]!);
@@ -64,49 +68,96 @@ export function AudioPlayer({
   }, [translation]);
 
   const hasAudio = bookHasAudio(translation, bookSlug);
-  const upstreamUrl = useMemo(
-    () => (hasAudio ? chapterAudioUrl(translation, bookSlug, chapter) : null),
+  const ca = useMemo(
+    () => (hasAudio ? chapterAudio(translation, bookSlug, chapter) : null),
     [translation, bookSlug, chapter, hasAudio],
   );
 
-  const localPath = useAudioChapterPath(
-    hasAudio ? translation : null,
-    hasAudio ? bookSlug : null,
-    hasAudio ? chapter : null,
+  const sourcePath = useAudioSourcePath(
+    ca ? translation : null,
+    ca ? bookSlug : null,
+    ca?.sourceFilename ?? null,
   );
-  const download = useDownloadChapter();
+  const download = useDownloadSource();
 
-  const isDownloaded = localPath.data?.exists ?? false;
+  const isDownloaded = sourcePath.data?.exists ?? false;
   const isDownloading = download.isPending;
 
-  // Reset playback state on chapter/translation change. The audio element's
-  // src changes via React reactivity, but we have to drop our own state so
-  // the scrub bar doesn't show a stale time.
+  // Drop transient state on chapter or translation change. The audio src
+  // also changes via React reactivity below; clearing here keeps the scrub
+  // bar from briefly showing a stale time during the swap.
   useEffect(() => {
     setPlaying(false);
-    setPosition(0);
-    setDuration(0);
     setError(null);
   }, [translation, bookSlug, chapter]);
 
-  const srcUrl = isDownloaded && localPath.data
-    ? audioAssetUrl(localPath.data.path)
+  const srcUrl = isDownloaded && sourcePath.data
+    ? audioAssetUrl(sourcePath.data.path)
     : null;
+
+  // Whenever the resolved srcUrl changes (different source file became
+  // available, or chapter moved to a different file), reset playback. When
+  // chapter changes WITHIN the same source file, we don't change srcUrl —
+  // we just seek via the effect below.
+  useEffect(() => {
+    const a = audioRef.current;
+    if (!a) return;
+    if (!srcUrl) return;
+    // Force the element to re-evaluate src. Setting load() bumps duration
+    // back to 0 until metadata reloads; the seek effect below waits for
+    // loadedmetadata before issuing currentTime.
+    a.load();
+  }, [srcUrl]);
+
+  // Seek to the chapter start whenever the chapter, source file, or
+  // playback state changes such that we need to jump to startSec. We seek
+  // unconditionally on chapter change — even if the same file is loaded —
+  // because the user may have scrubbed past the next chapter's start.
+  useEffect(() => {
+    const a = audioRef.current;
+    if (!a || !ca || !srcUrl) return;
+    const target = ca.startSec;
+    const apply = () => {
+      // Only seek if we're materially off — avoids fighting the user's own
+      // scrubbing once they've taken over.
+      if (Math.abs(a.currentTime - target) > 0.5) {
+        a.currentTime = target;
+      }
+    };
+    if (a.readyState >= 1 /* HAVE_METADATA */) {
+      apply();
+    } else {
+      const once = () => {
+        apply();
+        a.removeEventListener("loadedmetadata", once);
+      };
+      a.addEventListener("loadedmetadata", once);
+      return () => a.removeEventListener("loadedmetadata", once);
+    }
+  }, [ca, srcUrl, bookSlug, chapter]);
 
   const onPlayPause = async () => {
     setError(null);
     const a = audioRef.current;
     if (!a) return;
     if (!isDownloaded) {
-      if (!upstreamUrl) {
+      if (!ca) {
         setError("No audio available for this chapter.");
         return;
       }
       try {
-        await download.mutateAsync({ translation, bookSlug, chapter, url: upstreamUrl });
-        // Wait one tick for the element to pick up the new src, then play.
+        await download.mutateAsync({
+          translation,
+          bookSlug,
+          url: ca.sourceUrl,
+          filename: ca.sourceFilename,
+        });
         requestAnimationFrame(() => {
-          audioRef.current?.play().catch((e) => setError(String(e)));
+          const a2 = audioRef.current;
+          if (!a2) return;
+          // After the src binds, loadedmetadata will fire and the seek
+          // effect above will jump to startSec. We just kick play.
+          a2.play().catch((e) => setError(String(e)));
         });
       } catch (e) {
         setError(`Download failed: ${e instanceof Error ? e.message : String(e)}`);
@@ -120,16 +171,38 @@ export function AudioPlayer({
     }
   };
 
+  // Clamp the displayed position/duration to the current chapter's range so
+  // the scrub bar reflects the chapter, not the whole multi-chapter file.
+  const chapterStart = ca?.startSec ?? 0;
+  const chapterEnd =
+    ca?.endSec ??
+    (absoluteDuration > 0 ? absoluteDuration : chapterStart + 1);
+  const chapterDuration = Math.max(0, chapterEnd - chapterStart);
+  const position = Math.max(0, Math.min(absoluteTime - chapterStart, chapterDuration));
+
   const onSeek = (value: number) => {
     const a = audioRef.current;
-    if (!a || !isFinite(duration) || duration <= 0) return;
-    a.currentTime = value;
-    setPosition(value);
+    if (!a) return;
+    a.currentTime = chapterStart + value;
+    setAbsoluteTime(chapterStart + value);
+  };
+
+  const onTimeUpdate = (e: React.SyntheticEvent<HTMLAudioElement>) => {
+    const t = e.currentTarget.currentTime;
+    setAbsoluteTime(t);
+    if (ca?.endSec !== null && ca?.endSec !== undefined && t >= ca.endSec) {
+      // Reached the chapter boundary inside a multi-chapter file. Pause and
+      // advance to the next chapter (which may live in the same file — the
+      // seek effect will jump to the new startSec automatically).
+      e.currentTarget.pause();
+      if (nextChapter !== null) {
+        navigate(`/reader/${workSlug}/${bookSlug}/${nextChapter}`);
+      }
+    }
   };
 
   const onEnded = () => {
     setPlaying(false);
-    setPosition(0);
     if (nextChapter !== null) {
       navigate(`/reader/${workSlug}/${bookSlug}/${nextChapter}`);
     }
@@ -160,7 +233,13 @@ export function AudioPlayer({
         onClick={onPlayPause}
         disabled={!hasAudio || isDownloading}
         aria-label={
-          isDownloading ? "Downloading" : playing ? "Pause" : isDownloaded ? "Play" : "Download and play"
+          isDownloading
+            ? "Downloading"
+            : playing
+              ? "Pause"
+              : isDownloaded
+                ? "Play"
+                : "Download and play"
         }
         style={{
           appearance: "none",
@@ -187,7 +266,15 @@ export function AudioPlayer({
                 : "▶"}
       </button>
 
-      <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 10 }}>
+      <div
+        style={{
+          flex: 1,
+          minWidth: 0,
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+        }}
+      >
         <span
           style={{
             color: "var(--color-fg-subtle)",
@@ -202,11 +289,11 @@ export function AudioPlayer({
         <input
           type="range"
           min={0}
-          max={Math.max(duration, 0.0001)}
+          max={Math.max(chapterDuration, 0.0001)}
           step={0.1}
-          value={Math.min(position, duration || position)}
+          value={Math.min(position, chapterDuration || position)}
           onChange={(e) => onSeek(Number(e.target.value))}
-          disabled={!isDownloaded || duration === 0}
+          disabled={!isDownloaded || chapterDuration === 0}
           aria-label="Playback position"
           style={{ flex: 1, accentColor: "var(--color-accent)" }}
         />
@@ -219,7 +306,7 @@ export function AudioPlayer({
             flex: "0 0 auto",
           }}
         >
-          {formatTime(duration)}
+          {formatTime(chapterDuration)}
         </span>
       </div>
 
@@ -269,9 +356,9 @@ export function AudioPlayer({
         onPlay={() => setPlaying(true)}
         onPause={() => setPlaying(false)}
         onEnded={onEnded}
-        onTimeUpdate={(e) => setPosition(e.currentTarget.currentTime)}
-        onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
-        onDurationChange={(e) => setDuration(e.currentTarget.duration)}
+        onTimeUpdate={onTimeUpdate}
+        onLoadedMetadata={(e) => setAbsoluteDuration(e.currentTarget.duration)}
+        onDurationChange={(e) => setAbsoluteDuration(e.currentTarget.duration)}
         onError={() => setError("Playback error.")}
       />
     </div>

@@ -1,24 +1,29 @@
 // Audio narration manifest.
 //
-// For each (translation, book_slug) we resolve a chapter MP3 URL via a
-// deterministic generator (BSB, WEB) or a hand-curated archive.org catalog
-// (KJV per-book LibriVox solo readings). All sources are CC0 / Public Domain.
+// For each (translation, book_slug, chapter) we resolve a `ChapterAudio`:
+// a source-MP3 URL plus the start/end seconds of that chapter within the
+// file. Most chapters map 1:1 to a per-chapter MP3 (startSec=0, endSec=null);
+// the multi-chapter LibriVox KJV recordings instead share one source MP3
+// across several chapters, with boundaries computed offline by aeneas (see
+// tools/audio/align_kjv.py) and shipped in kjv-timing.json.
 //
-// Coverage matrix (all readers public domain):
-//   BSB (en_bsb): OT + NT, Bob Souer (openbible.com)
+// Coverage matrix (all recordings public domain):
+//   BSB (en_bsb): OT + NT, Bob Souer (openbible.com), one MP3 per chapter
 //   WEB (en_web): OT + NT + Deuterocanon, Michael Paul Johnson (ebible.org)
-//   KJV (en_kjv): best-effort, per-book LibriVox volunteer readings (archive.org)
+//   KJV (en_kjv): partial OT, full NT (NT via aeneas-aligned virtual chapters),
+//                 partial Apocrypha (LibriVox)
 
 import type { CorpusLanguage } from "@/db/types";
+import kjvTimingJson from "../../data/audio/kjv-timing.json";
 
 export type AudioTranslation = "en_bsb" | "en_kjv" | "en_web";
 
 export interface AudioSourceInfo {
   translation: AudioTranslation;
-  label: string; // shown in player UI
+  label: string;
   narrator: string;
   license: string;
-  sourceUrl: string; // landing page for credit screen
+  sourceUrl: string;
 }
 
 export const AUDIO_SOURCES: Record<AudioTranslation, AudioSourceInfo> = {
@@ -45,17 +50,44 @@ export const AUDIO_SOURCES: Record<AudioTranslation, AudioSourceInfo> = {
   },
 };
 
-/** True if `lang` can be used for audio playback (subset of CorpusLanguage). */
+export interface ChapterAudio {
+  /** The MP3 URL to download. May span multiple chapters. */
+  sourceUrl: string;
+  /** Basename derived from `sourceUrl` — used as the on-disk filename. */
+  sourceFilename: string;
+  /** Where this chapter starts within the source MP3, in seconds. */
+  startSec: number;
+  /** Where this chapter ends. `null` means "end of file" — the player should
+   *  not enforce an end boundary. */
+  endSec: number | null;
+}
+
 export function isAudioTranslation(lang: CorpusLanguage): lang is AudioTranslation {
   return lang === "en_bsb" || lang === "en_kjv" || lang === "en_web";
 }
 
+function basename(url: string): string {
+  const path = url.split("?")[0]!.split("#")[0]!;
+  const last = path.split("/").pop() ?? "";
+  // The filename feeds a Rust validator that rejects path-traversal sequences,
+  // so URL-decode it now and reject anything pathological here too.
+  try {
+    return decodeURIComponent(last);
+  } catch {
+    return last;
+  }
+}
+
+function fullChapter(url: string): ChapterAudio {
+  return {
+    sourceUrl: url,
+    sourceFilename: basename(url),
+    startSec: 0,
+    endSec: null,
+  };
+}
+
 // ── BSB (openbible.com / Bob Souer) ─────────────────────────────────────────
-//
-// URL: https://openbible.com/audio/souer/BSB_{NN}_{Code}_{CCC}.mp3
-// NN  = zero-padded book number (01..66)
-// Code = 3-letter code (Gen, Exo, Lev, ..., Rev) — case-sensitive
-// CCC = zero-padded 3-digit chapter
 
 interface BsbBook {
   num: number;
@@ -132,29 +164,26 @@ const BSB_BOOKS: Record<string, BsbBook> = {
   rev: { num: 66, code: "Rev", chapters: 22 },
 };
 
-function bsbUrl(slug: string, chapter: number): string | null {
+function bsbChapter(slug: string, chapter: number): ChapterAudio | null {
   const b = BSB_BOOKS[slug];
   if (!b || chapter < 1 || chapter > b.chapters) return null;
   const nn = String(b.num).padStart(2, "0");
   const ccc = String(chapter).padStart(3, "0");
-  return `https://openbible.com/audio/souer/BSB_${nn}_${b.code}_${ccc}.mp3`;
+  return fullChapter(
+    `https://openbible.com/audio/souer/BSB_${nn}_${b.code}_${ccc}.mp3`,
+  );
 }
 
 // ── WEB British (ebible.org / Michael Paul Johnson) ─────────────────────────
-//
-// URL: https://ebible.org/eng-webbe/mp3/eng-webbe_{NNN}_{CODE}_{CC}.mp3
-// Psalms uses CCC (3-digit) since it has 150 chapters.
-// Psalm 151 is a one-off file:  eng-webbe_056_Psalm151.mp3
 
 interface WebBook {
-  num: string; // 3-digit string from ebible filename, e.g. "002"
-  code: string; // 3-letter uppercase code, e.g. "GEN"
+  num: string;
+  code: string;
   chapters: number;
-  chapterPad?: 2 | 3; // default 2; 3 for Psalms
+  chapterPad?: 2 | 3;
 }
 
 const WEB_BOOKS: Record<string, WebBook> = {
-  // OT (Protestant)
   gen: { num: "002", code: "GEN", chapters: 50 },
   exod: { num: "003", code: "EXO", chapters: 40 },
   lev: { num: "004", code: "LEV", chapters: 27 },
@@ -181,8 +210,6 @@ const WEB_BOOKS: Record<string, WebBook> = {
   jer: { num: "025", code: "JER", chapters: 52 },
   lam: { num: "026", code: "LAM", chapters: 5 },
   ezek: { num: "027", code: "EZK", chapters: 48 },
-  // Our `dan` slug carries 14 chapters (Greek additions merged), matching
-  // ebible's DAG file rather than the 12-chapter DAN file.
   dan: { num: "066", code: "DAG", chapters: 14 },
   hos: { num: "029", code: "HOS", chapters: 14 },
   joel: { num: "030", code: "JOL", chapters: 3 },
@@ -196,7 +223,6 @@ const WEB_BOOKS: Record<string, WebBook> = {
   hag: { num: "038", code: "HAG", chapters: 2 },
   zech: { num: "039", code: "ZEC", chapters: 14 },
   mal: { num: "040", code: "MAL", chapters: 4 },
-  // NT
   matt: { num: "070", code: "MAT", chapters: 28 },
   mark: { num: "071", code: "MRK", chapters: 16 },
   luke: { num: "072", code: "LUK", chapters: 24 },
@@ -224,7 +250,6 @@ const WEB_BOOKS: Record<string, WebBook> = {
   "3john": { num: "094", code: "3JN", chapters: 1 },
   jude: { num: "095", code: "JUD", chapters: 1 },
   rev: { num: "096", code: "REV", chapters: 22 },
-  // Deuterocanon
   tob: { num: "041", code: "TOB", chapters: 14 },
   jdt: { num: "042", code: "JDT", chapters: 16 },
   wis: { num: "045", code: "WIS", chapters: 19 },
@@ -239,33 +264,31 @@ const WEB_BOOKS: Record<string, WebBook> = {
   "4mac": { num: "059", code: "4MA", chapters: 18 },
 };
 
-function webUrl(slug: string, chapter: number): string | null {
-  // Psalm 151 is a one-file outlier.
+function webChapter(slug: string, chapter: number): ChapterAudio | null {
   if (slug === "ps151") {
     return chapter === 1
-      ? "https://ebible.org/eng-webbe/mp3/eng-webbe_056_Psalm151.mp3"
+      ? fullChapter(
+          "https://ebible.org/eng-webbe/mp3/eng-webbe_056_Psalm151.mp3",
+        )
       : null;
   }
   const b = WEB_BOOKS[slug];
   if (!b || chapter < 1 || chapter > b.chapters) return null;
   const cc = String(chapter).padStart(b.chapterPad ?? 2, "0");
-  return `https://ebible.org/eng-webbe/mp3/eng-webbe_${b.num}_${b.code}_${cc}.mp3`;
+  return fullChapter(
+    `https://ebible.org/eng-webbe/mp3/eng-webbe_${b.num}_${b.code}_${cc}.mp3`,
+  );
 }
 
 // ── KJV (LibriVox per-book solo readings) ───────────────────────────────────
 //
-// Each book lives in its own archive.org item with its own filename template.
-// Catalog is hand-curated from archive.org's LibriVox collection — books
-// without a single-reader, one-chapter-per-file solo project are omitted and
-// will report as "no audio" in the player.
-//
-// URL: https://archive.org/download/{id}/{filename(ch)}
-//
-// `filename(ch)` is a function so we can encode each item's local convention:
-// some use 64kb suffix, some don't; some zero-pad to 2 digits, some don't.
+// Two flavors:
+//   - One MP3 per chapter (KJV_FULL_BOOKS):  direct mapping.
+//   - One MP3 spanning multiple chapters (KJV_VIRTUAL via kjv-timing.json):
+//     chapter boundaries computed offline by tools/audio/align_kjv.py.
 
 interface KjvBook {
-  id: string; // archive.org item identifier
+  id: string;
   chapters: number;
   filename: (ch: number) => string;
 }
@@ -274,16 +297,8 @@ function pad2(n: number): string {
   return String(n).padStart(2, "0");
 }
 
-// Only books whose archive.org item has one MP3 file per chapter make it
-// into the catalog. Many LibriVox per-book KJV recordings group several
-// chapters per file (e.g. Job is 22 files over 42 chapters), and those are
-// unusable for chapter-level playback — they're omitted here, so the player
-// will report "no audio for this book" rather than mis-aligning playback.
-// Filenames have been verified against the archive.org metadata API; the
-// padding and stem conventions vary item-by-item (some zero-pad, some don't,
-// some encode the project's book name into the filename).
-const KJV_BOOKS: Record<string, KjvBook> = {
-  // OT — verified one-file-per-chapter
+const KJV_FULL_BOOKS: Record<string, KjvBook> = {
+  // OT
   josh: {
     id: "bible_kjv_joshua_jc_librivox",
     chapters: 24,
@@ -329,8 +344,12 @@ const KJV_BOOKS: Record<string, KjvBook> = {
     chapters: 5,
     filename: (c) => `lamentations_${c}_kjv.mp3`,
   },
-  // NT — most LibriVox KJV NT solos pack multiple chapters per file; only
-  // these have one-per-chapter.
+  // NT — books with a one-per-chapter solo recording.
+  matt: {
+    id: "matthew_kjv_mp_librivox",
+    chapters: 28,
+    filename: (c) => `matthew_${pad2(c)}_kjv.mp3`,
+  },
   gal: {
     id: "galatians_kjv_1412_librivox",
     chapters: 6,
@@ -352,9 +371,6 @@ const KJV_BOOKS: Record<string, KjvBook> = {
     filename: (c) =>
       `bible_kjvnt_27_revelation_${pad2(c)}_kingjamesversion(kjv).mp3`,
   },
-  // 1, 2, & 3 John share an archive item that numbers files sequentially
-  // 1..7: 1Jn chapters 1-5 = files 1-5, 2Jn chapter 1 = file 6, 3Jn chapter
-  // 1 = file 7. Encode the offset directly.
   "1john": {
     id: "bible_epistlesjohn_rt_librivox",
     chapters: 5,
@@ -370,9 +386,7 @@ const KJV_BOOKS: Record<string, KjvBook> = {
     chapters: 1,
     filename: () => `epistlesofjohn_7_kjv.mp3`,
   },
-  // KJV Apocrypha — only Tobit and Prayer of Manasseh have clean per-chapter
-  // single-reader recordings. 1/2 Maccabees, Judith, Wisdom etc. exist on
-  // LibriVox but pack multiple chapters per file.
+  // Apocrypha — one-per-chapter only
   tob: {
     id: "tobit_kjv_1512_librivox",
     chapters: 14,
@@ -385,33 +399,70 @@ const KJV_BOOKS: Record<string, KjvBook> = {
   },
 };
 
-function kjvUrl(slug: string, chapter: number): string | null {
-  const b = KJV_BOOKS[slug];
-  if (!b || chapter < 1 || chapter > b.chapters) return null;
-  return `https://archive.org/download/${b.id}/${b.filename(chapter)}`;
+// Virtual chapters: source URLs span multiple chapters. Timing data is
+// produced by tools/audio/align_kjv.py and shipped as JSON. Each entry is
+// keyed "<book>:<chapter>" → { source_url, start_sec, end_sec }.
+interface KjvTimingEntry {
+  source_url: string;
+  start_sec: number;
+  end_sec: number;
+}
+const KJV_VIRTUAL: Record<string, KjvTimingEntry> = kjvTimingJson as Record<
+  string,
+  KjvTimingEntry
+>;
+
+function kjvChapter(slug: string, chapter: number): ChapterAudio | null {
+  const full = KJV_FULL_BOOKS[slug];
+  if (full && chapter >= 1 && chapter <= full.chapters) {
+    return fullChapter(
+      `https://archive.org/download/${full.id}/${full.filename(chapter)}`,
+    );
+  }
+  const virtual = KJV_VIRTUAL[`${slug}:${chapter}`];
+  if (virtual) {
+    return {
+      sourceUrl: virtual.source_url,
+      sourceFilename: basename(virtual.source_url),
+      startSec: virtual.start_sec,
+      endSec: virtual.end_sec,
+    };
+  }
+  return null;
+}
+
+function kjvBookChapters(slug: string): number {
+  const full = KJV_FULL_BOOKS[slug];
+  if (full) return full.chapters;
+  // Otherwise check virtual: count distinct chapters in the timing table.
+  let max = 0;
+  const prefix = `${slug}:`;
+  for (const k of Object.keys(KJV_VIRTUAL)) {
+    if (k.startsWith(prefix)) {
+      const n = Number(k.slice(prefix.length));
+      if (n > max) max = n;
+    }
+  }
+  return max;
 }
 
 // ── Public API ──────────────────────────────────────────────────────────────
 
-/** Resolve the upstream MP3 URL for one chapter. Returns null if no audio
- *  source covers this (translation, book, chapter). */
-export function chapterAudioUrl(
+export function chapterAudio(
   translation: AudioTranslation,
   bookSlug: string,
   chapter: number,
-): string | null {
+): ChapterAudio | null {
   switch (translation) {
     case "en_bsb":
-      return bsbUrl(bookSlug, chapter);
+      return bsbChapter(bookSlug, chapter);
     case "en_web":
-      return webUrl(bookSlug, chapter);
+      return webChapter(bookSlug, chapter);
     case "en_kjv":
-      return kjvUrl(bookSlug, chapter);
+      return kjvChapter(bookSlug, chapter);
   }
 }
 
-/** Total chapter count covered by audio for (translation, book) — or 0 if the
- *  source has no recording for that book. */
 export function bookAudioChapters(
   translation: AudioTranslation,
   bookSlug: string,
@@ -423,11 +474,10 @@ export function bookAudioChapters(
       if (bookSlug === "ps151") return 1;
       return WEB_BOOKS[bookSlug]?.chapters ?? 0;
     case "en_kjv":
-      return KJV_BOOKS[bookSlug]?.chapters ?? 0;
+      return kjvBookChapters(bookSlug);
   }
 }
 
-/** True when at least one audio chapter is available for (translation, book). */
 export function bookHasAudio(
   translation: AudioTranslation,
   bookSlug: string,

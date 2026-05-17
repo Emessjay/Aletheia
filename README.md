@@ -162,10 +162,16 @@ app data dir under `audio/<translation>/<book>/<NNN>.mp3`:
 |---|---|---|---|
 | openbible.com BSB audio | Bob Souer | OT + NT | Public Domain (CC0 1.0) |
 | ebible.org WEB British audio | Michael Paul Johnson | OT + NT + Deuterocanon | Public Domain |
-| archive.org LibriVox KJV solos | various volunteers | partial (Josh, Judg, 1–2 Sam, 1–2 Kgs, 1 Chr, Prov, Lam, Gal, Phil, Phlm, 1–3 John, Rev, Tob, Pr Man) | Public Domain |
+| archive.org LibriVox KJV solos | various volunteers | partial OT (Josh, Judg, 1–2 Sam, 1–2 Kgs, 1 Chr, Prov, Lam) + most of NT and Apocrypha via virtual chapters | Public Domain |
 
-The KJV catalog is intentionally limited to LibriVox items that have one MP3
-file per chapter — multi-chapter recordings would mis-align playback.
+KJV NT books, Judith, Wisdom, 1–2 Maccabees and similar LibriVox recordings
+pack multiple chapters into a single MP3. We compute chapter-boundary
+timestamps offline with [aeneas](https://github.com/readbeyond/aeneas)
+([tools/audio/align_kjv.py](tools/audio/align_kjv.py)) and ship the timings
+as [data/audio/kjv-timing.json](data/audio/kjv-timing.json) — the player then
+downloads the multi-chapter source once per book and seeks into the right
+segment per chapter. Books like KJV James and Jude have no LibriVox solo
+recording and stay silent.
 
 Bundled fonts:
 
