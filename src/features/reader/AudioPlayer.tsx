@@ -56,6 +56,12 @@ export function AudioPlayer({
   const [absoluteTime, setAbsoluteTime] = useState(0);
   const [absoluteDuration, setAbsoluteDuration] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  // Flips on when the user clicks download-and-play. An effect below waits
+  // for the audio element to be ready (src bound, metadata loaded) before
+  // invoking play() — calling play() directly inside the click handler races
+  // the query refetch and a.load(), leaving the element in a half-played
+  // state where onPlay fired but actual playback never started.
+  const [pendingPlay, setPendingPlay] = useState(false);
 
   useEffect(() => {
     if (!available.includes(translation)) {
@@ -85,10 +91,13 @@ export function AudioPlayer({
 
   // Drop transient state on chapter or translation change. The audio src
   // also changes via React reactivity below; clearing here keeps the scrub
-  // bar from briefly showing a stale time during the swap.
+  // bar from briefly showing a stale time during the swap. pendingPlay also
+  // clears so an in-flight download from a previous chapter doesn't auto-
+  // play the new one once it lands.
   useEffect(() => {
     setPlaying(false);
     setError(null);
+    setPendingPlay(false);
   }, [translation, bookSlug, chapter]);
 
   const srcUrl = isDownloaded && sourcePath.data
@@ -146,20 +155,17 @@ export function AudioPlayer({
         return;
       }
       try {
+        setPendingPlay(true);
         await download.mutateAsync({
           translation,
           bookSlug,
           url: ca.sourceUrl,
           filename: ca.sourceFilename,
         });
-        requestAnimationFrame(() => {
-          const a2 = audioRef.current;
-          if (!a2) return;
-          // After the src binds, loadedmetadata will fire and the seek
-          // effect above will jump to startSec. We just kick play.
-          a2.play().catch((e) => setError(String(e)));
-        });
+        // Playback is kicked off by the pendingPlay effect below once the
+        // sourcePath query refetches and the <audio> element is ready.
       } catch (e) {
+        setPendingPlay(false);
         setError(`Download failed: ${e instanceof Error ? e.message : String(e)}`);
       }
       return;
@@ -170,6 +176,34 @@ export function AudioPlayer({
       a.play().catch((e) => setError(String(e)));
     }
   };
+
+  // Drive the deferred play() once everything is in place: the download has
+  // landed (isDownloaded), the src has bound (srcUrl), and the element has
+  // enough data to begin playback (canplay). Waiting on canplay rather than
+  // firing play() from a requestAnimationFrame inside the click handler is
+  // what fixes the "button stuck on pause, but silent" state — the old code
+  // could call play() before a.load() finished, leaving the element in a
+  // half-started condition where onPlay had fired but no audio came out.
+  useEffect(() => {
+    if (!pendingPlay) return;
+    if (!isDownloaded || !srcUrl) return;
+    const a = audioRef.current;
+    if (!a) return;
+    const tryPlay = () => {
+      setPendingPlay(false);
+      a.play().catch((e) => setError(String(e)));
+    };
+    if (a.readyState >= 3 /* HAVE_FUTURE_DATA */) {
+      tryPlay();
+      return;
+    }
+    const once = () => {
+      a.removeEventListener("canplay", once);
+      tryPlay();
+    };
+    a.addEventListener("canplay", once);
+    return () => a.removeEventListener("canplay", once);
+  }, [pendingPlay, isDownloaded, srcUrl]);
 
   // Clamp the displayed position/duration to the current chapter's range so
   // the scrub bar reflects the chapter, not the whole multi-chapter file.

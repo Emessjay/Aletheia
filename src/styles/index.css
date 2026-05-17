@@ -59,6 +59,8 @@
 /* All other tokens — declared in :root so Tailwind 4 cannot tree-shake them.
    They're consumed via plain CSS var() in components and the al-* helpers. */
 :root {
+  color-scheme: light;
+
   --color-bg-elevated: #efe9dc;
   --color-bg-inset: #e8e1d0;
   --color-fg-muted: #5b4f3f;
@@ -90,6 +92,8 @@
 }
 
 .dark {
+  color-scheme: dark;
+
   --color-bg: #15171a;
   --color-bg-elevated: #1c1f23;
   --color-bg-inset: #0f1114;

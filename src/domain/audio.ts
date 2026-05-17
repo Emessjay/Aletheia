@@ -8,8 +8,14 @@
 // tools/audio/align_kjv.py) and shipped in kjv-timing.json.
 //
 // Coverage matrix (all recordings public domain):
-//   BSB (en_bsb): OT + NT, Bob Souer (openbible.com), one MP3 per chapter
-//   WEB (en_web): OT + NT + Deuterocanon, Michael Paul Johnson (ebible.org)
+//   BSB (en_bsb): OT + NT, Bob Souer (openbible.com), one MP3 per chapter.
+//                 BSB has no deuterocanon, so en_bsb falls back transparently
+//                 to WEB recordings (Michael Paul Johnson, ebible.org) for
+//                 those books — same pattern as the text-side fallback in
+//                 db/queries.ts.
+//   WEB (en_web): Deuterocanon only, Michael Paul Johnson (ebible.org).
+//                 Not user-selectable on its own; reached via the en_bsb
+//                 fallback above.
 //   KJV (en_kjv): partial OT, full NT (NT via aeneas-aligned virtual chapters),
 //                 partial Apocrypha (LibriVox)
 
@@ -36,7 +42,7 @@ export const AUDIO_SOURCES: Record<AudioTranslation, AudioSourceInfo> = {
   },
   en_web: {
     translation: "en_web",
-    label: "World English Bible (British)",
+    label: "World English Bible — Deuterocanon",
     narrator: "Michael Paul Johnson",
     license: "Public Domain",
     sourceUrl: "https://ebible.org/webaudio/",
@@ -166,15 +172,23 @@ const BSB_BOOKS: Record<string, BsbBook> = {
 
 function bsbChapter(slug: string, chapter: number): ChapterAudio | null {
   const b = BSB_BOOKS[slug];
-  if (!b || chapter < 1 || chapter > b.chapters) return null;
-  const nn = String(b.num).padStart(2, "0");
-  const ccc = String(chapter).padStart(3, "0");
-  return fullChapter(
-    `https://openbible.com/audio/souer/BSB_${nn}_${b.code}_${ccc}.mp3`,
-  );
+  if (b && chapter >= 1 && chapter <= b.chapters) {
+    const nn = String(b.num).padStart(2, "0");
+    const ccc = String(chapter).padStart(3, "0");
+    return fullChapter(
+      `https://openbible.com/audio/souer/BSB_${nn}_${b.code}_${ccc}.mp3`,
+    );
+  }
+  // BSB lacks deuterocanon — defer to the WEB recording so listeners on the
+  // "English (Modern)" track keep working for apocryphal books.
+  return webChapter(slug, chapter);
 }
 
 // ── WEB British (ebible.org / Michael Paul Johnson) ─────────────────────────
+//
+// Deuterocanon only. BSB covers the protocanonical 66 directly; this map fills
+// the gap for the apocryphal books reachable via the en_bsb → en_web fallback
+// in chapterAudio / bookAudioChapters below.
 
 interface WebBook {
   num: string;
@@ -184,72 +198,6 @@ interface WebBook {
 }
 
 const WEB_BOOKS: Record<string, WebBook> = {
-  gen: { num: "002", code: "GEN", chapters: 50 },
-  exod: { num: "003", code: "EXO", chapters: 40 },
-  lev: { num: "004", code: "LEV", chapters: 27 },
-  num: { num: "005", code: "NUM", chapters: 36 },
-  deut: { num: "006", code: "DEU", chapters: 34 },
-  josh: { num: "007", code: "JOS", chapters: 24 },
-  judg: { num: "008", code: "JDG", chapters: 21 },
-  ruth: { num: "009", code: "RUT", chapters: 4 },
-  "1sam": { num: "010", code: "1SA", chapters: 31 },
-  "2sam": { num: "011", code: "2SA", chapters: 24 },
-  "1kgs": { num: "012", code: "1KI", chapters: 22 },
-  "2kgs": { num: "013", code: "2KI", chapters: 25 },
-  "1chr": { num: "014", code: "1CH", chapters: 29 },
-  "2chr": { num: "015", code: "2CH", chapters: 36 },
-  ezra: { num: "016", code: "EZR", chapters: 10 },
-  neh: { num: "017", code: "NEH", chapters: 13 },
-  esth: { num: "018", code: "EST", chapters: 10 },
-  job: { num: "019", code: "JOB", chapters: 42 },
-  ps: { num: "020", code: "PSA", chapters: 150, chapterPad: 3 },
-  prov: { num: "021", code: "PRO", chapters: 31 },
-  eccl: { num: "022", code: "ECC", chapters: 12 },
-  song: { num: "023", code: "SNG", chapters: 8 },
-  isa: { num: "024", code: "ISA", chapters: 66 },
-  jer: { num: "025", code: "JER", chapters: 52 },
-  lam: { num: "026", code: "LAM", chapters: 5 },
-  ezek: { num: "027", code: "EZK", chapters: 48 },
-  dan: { num: "066", code: "DAG", chapters: 14 },
-  hos: { num: "029", code: "HOS", chapters: 14 },
-  joel: { num: "030", code: "JOL", chapters: 3 },
-  amos: { num: "031", code: "AMO", chapters: 9 },
-  obad: { num: "032", code: "OBA", chapters: 1 },
-  jonah: { num: "033", code: "JON", chapters: 4 },
-  mic: { num: "034", code: "MIC", chapters: 7 },
-  nah: { num: "035", code: "NAM", chapters: 3 },
-  hab: { num: "036", code: "HAB", chapters: 3 },
-  zeph: { num: "037", code: "ZEP", chapters: 3 },
-  hag: { num: "038", code: "HAG", chapters: 2 },
-  zech: { num: "039", code: "ZEC", chapters: 14 },
-  mal: { num: "040", code: "MAL", chapters: 4 },
-  matt: { num: "070", code: "MAT", chapters: 28 },
-  mark: { num: "071", code: "MRK", chapters: 16 },
-  luke: { num: "072", code: "LUK", chapters: 24 },
-  john: { num: "073", code: "JHN", chapters: 21 },
-  acts: { num: "074", code: "ACT", chapters: 28 },
-  rom: { num: "075", code: "ROM", chapters: 16 },
-  "1cor": { num: "076", code: "1CO", chapters: 16 },
-  "2cor": { num: "077", code: "2CO", chapters: 13 },
-  gal: { num: "078", code: "GAL", chapters: 6 },
-  eph: { num: "079", code: "EPH", chapters: 6 },
-  phil: { num: "080", code: "PHP", chapters: 4 },
-  col: { num: "081", code: "COL", chapters: 4 },
-  "1thes": { num: "082", code: "1TH", chapters: 5 },
-  "2thes": { num: "083", code: "2TH", chapters: 3 },
-  "1tim": { num: "084", code: "1TI", chapters: 6 },
-  "2tim": { num: "085", code: "2TI", chapters: 4 },
-  titus: { num: "086", code: "TIT", chapters: 3 },
-  phlm: { num: "087", code: "PHM", chapters: 1 },
-  heb: { num: "088", code: "HEB", chapters: 13 },
-  jas: { num: "089", code: "JAS", chapters: 5 },
-  "1pet": { num: "090", code: "1PE", chapters: 5 },
-  "2pet": { num: "091", code: "2PE", chapters: 3 },
-  "1john": { num: "092", code: "1JN", chapters: 5 },
-  "2john": { num: "093", code: "2JN", chapters: 1 },
-  "3john": { num: "094", code: "3JN", chapters: 1 },
-  jude: { num: "095", code: "JUD", chapters: 1 },
-  rev: { num: "096", code: "REV", chapters: 22 },
   tob: { num: "041", code: "TOB", chapters: 14 },
   jdt: { num: "042", code: "JDT", chapters: 16 },
   wis: { num: "045", code: "WIS", chapters: 19 },
@@ -463,16 +411,23 @@ export function chapterAudio(
   }
 }
 
+function webBookChapters(bookSlug: string): number {
+  if (bookSlug === "ps151") return 1;
+  return WEB_BOOKS[bookSlug]?.chapters ?? 0;
+}
+
 export function bookAudioChapters(
   translation: AudioTranslation,
   bookSlug: string,
 ): number {
   switch (translation) {
-    case "en_bsb":
-      return BSB_BOOKS[bookSlug]?.chapters ?? 0;
+    case "en_bsb": {
+      const direct = BSB_BOOKS[bookSlug]?.chapters ?? 0;
+      // Mirror the bsbChapter fallback: deuterocanon counts come from WEB.
+      return direct > 0 ? direct : webBookChapters(bookSlug);
+    }
     case "en_web":
-      if (bookSlug === "ps151") return 1;
-      return WEB_BOOKS[bookSlug]?.chapters ?? 0;
+      return webBookChapters(bookSlug);
     case "en_kjv":
       return kjvBookChapters(bookSlug);
   }

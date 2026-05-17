@@ -27,6 +27,17 @@ fi
 
 git -C "$repo_root" worktree add "$worktree_path" -b "$branch"
 
+# Copy the bundled SQLite corpus into the worktree. The DB is gitignored
+# (~200MB) so `worktree add` doesn't bring it across, but the app and its
+# ingest scripts expect it at data/Aletheia.sqlite. `cp -c` uses APFS
+# clonefile, so this is effectively free on disk and instant.
+db_src="${repo_root}/data/Aletheia.sqlite"
+db_dst="${worktree_path}/data/Aletheia.sqlite"
+if [[ -f "$db_src" ]]; then
+    mkdir -p "$(dirname "$db_dst")"
+    cp -c "$db_src" "$db_dst" 2>/dev/null || cp "$db_src" "$db_dst"
+fi
+
 cd "$worktree_path"
 npm install
 

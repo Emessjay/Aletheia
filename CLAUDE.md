@@ -17,6 +17,16 @@ combined command they can paste from the main worktree to merge and clean up:
 
     git merge feature/<slug> && git worktree remove ../aletheia-<slug> && git branch -d feature/<slug>
 
+Alongside that, also give the user a command to launch the merged build so
+they can verify the feature end-to-end from the main worktree. Default to:
+
+    ./scripts/dev-instance.sh
+
+If the feature can only be exercised through a more specific entry point
+(e.g. a CLI script, a particular route, or an ingest step), suggest that
+command instead — the goal is for the user to actually see the change
+working, not just confirm it compiles.
+
 The primary reason is isolation between concurrent Claude instances: working in
 a shared checkout means one instance can read another's partially-written code
 mid-edit, leading to confused state and conflicting changes. A worktree gives
