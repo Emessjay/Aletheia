@@ -35,6 +35,8 @@ import { VerseToolbar } from "./VerseToolbar";
 import { HighlightPopover } from "./HighlightPopover";
 import { ChapterNav } from "./ChapterNav";
 import { ChapterPicker } from "./ChapterPicker";
+import { AudioPlayer } from "./AudioPlayer";
+import { isAudioTranslation, type AudioTranslation } from "@/domain/audio";
 import { InterlinearWord } from "./InterlinearWord";
 import { LanguageToggle } from "./LanguageToggle";
 import { InterlinearColumn } from "./InterlinearColumn";
@@ -84,6 +86,20 @@ export function ReaderRoute() {
   const activeLangs: CorpusLanguage[] = activeTabs.map((t) =>
     t.kind === "single" ? t.lang : t.primary,
   );
+  // Subset of activeLangs that maps to an audio-capable translation. Ordered
+  // to match tab order so the player's translation menu mirrors what's visible
+  // in the reader.
+  const audioLangs: AudioTranslation[] = useMemo(() => {
+    const seen = new Set<AudioTranslation>();
+    const out: AudioTranslation[] = [];
+    for (const l of activeLangs) {
+      if (isAudioTranslation(l) && !seen.has(l)) {
+        seen.add(l);
+        out.push(l);
+      }
+    }
+    return out;
+  }, [activeLangs.join(",")]);
   const [strongs, setStrongs] = useState<StrongsState | null>(null);
   const [selectedVerse, setSelectedVerse] = useState<number | null>(null);
   const [toolbarAnchor, setToolbarAnchor] = useState<
@@ -349,6 +365,20 @@ export function ReaderRoute() {
           bookSlug={book}
           current={chapterNum}
           all={chapterNumbers}
+        />
+      ) : null}
+      {work === "bible" && audioLangs.length > 0 ? (
+        <AudioPlayer
+          available={audioLangs}
+          workSlug={work}
+          bookSlug={book}
+          chapter={chapterNum}
+          nextChapter={(() => {
+            const idx = chapterNumbers.indexOf(chapterNum);
+            return idx >= 0 && idx < chapterNumbers.length - 1
+              ? chapterNumbers[idx + 1] ?? null
+              : null;
+          })()}
         />
       ) : null}
       {strongs ? (

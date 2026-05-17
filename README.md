@@ -155,6 +155,18 @@ All biblical sources bundled into `Aletheia.sqlite` are public domain. See
 | Treasury of Scripture Knowledge cross-references | Public Domain (Torrey, 1880s, by age) |
 | Jacob-Gray/summa.json | Unlicense (PD) |
 
+Audio recordings stream from the source on first play and cache to the local
+app data dir under `audio/<translation>/<book>/<NNN>.mp3`:
+
+| Source | Reader | Coverage | License |
+|---|---|---|---|
+| openbible.com BSB audio | Bob Souer | OT + NT | Public Domain (CC0 1.0) |
+| ebible.org WEB British audio | Michael Paul Johnson | OT + NT + Deuterocanon | Public Domain |
+| archive.org LibriVox KJV solos | various volunteers | partial (Josh, Judg, 1–2 Sam, 1–2 Kgs, 1 Chr, Prov, Lam, Gal, Phil, Phlm, 1–3 John, Rev, Tob, Pr Man) | Public Domain |
+
+The KJV catalog is intentionally limited to LibriVox items that have one MP3
+file per chapter — multi-chapter recordings would mis-align playback.
+
 Bundled fonts:
 
 | Font | License | Use |

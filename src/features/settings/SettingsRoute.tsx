@@ -6,6 +6,7 @@ import {
   type ThemeMode,
 } from "@/stores/useSettingsStore";
 import { TRANSLATION_LABELS } from "@/domain/translations";
+import { AUDIO_SOURCES, type AudioTranslation } from "@/domain/audio";
 import type { CorpusLanguage } from "@/db/types";
 
 const TRANSLATION_ORDER: CorpusLanguage[] = ["en_bsb", "en_kjv", "gk", "he"];
@@ -123,6 +124,63 @@ export function SettingsRoute() {
         <Shortcut keys={["g", "l"]} label="Go to libraries" />
         <Shortcut keys={["g", "s"]} label="Go to settings" />
         <Shortcut keys={["Esc"]} label="Close popovers and palette" />
+      </Section>
+
+      <Section title="Audio narration">
+        <p
+          style={{
+            color: "var(--color-fg-muted)",
+            fontSize: 13,
+            margin: 0,
+            maxWidth: 540,
+          }}
+        >
+          Chapters download on demand and play from the local file thereafter.
+          All recordings are public-domain dedications by their narrators.
+        </p>
+        {(["en_bsb", "en_web", "en_kjv"] as AudioTranslation[]).map((t) => {
+          const src = AUDIO_SOURCES[t];
+          return (
+            <div
+              key={t}
+              style={{
+                display: "flex",
+                alignItems: "baseline",
+                gap: 14,
+                padding: "8px 0",
+                borderBottom: "1px solid var(--color-rule)",
+                fontSize: 13,
+              }}
+            >
+              <span
+                style={{
+                  flex: "0 0 200px",
+                  color: "var(--color-fg)",
+                }}
+              >
+                {src.label}
+              </span>
+              <span style={{ flex: 1, color: "var(--color-fg-muted)" }}>
+                Read by {src.narrator}
+                <span
+                  style={{ color: "var(--color-fg-subtle)" }}
+                > · {src.license}</span>
+                <br />
+                <a
+                  href={src.sourceUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{
+                    color: "var(--color-accent)",
+                    fontSize: 12,
+                  }}
+                >
+                  {src.sourceUrl}
+                </a>
+              </span>
+            </div>
+          );
+        })}
       </Section>
     </article>
   );

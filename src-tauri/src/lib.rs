@@ -1,3 +1,5 @@
+mod audio;
+
 use std::fs;
 use std::path::PathBuf;
 
@@ -90,7 +92,12 @@ pub fn run() {
                 .add_migrations("sqlite:aletheia_user.db", migrations)
                 .build(),
         )
-        .invoke_handler(tauri::generate_handler![corpus_db_path])
+        .invoke_handler(tauri::generate_handler![
+            corpus_db_path,
+            audio::audio_chapter_path,
+            audio::audio_book_downloaded,
+            audio::audio_download_chapter,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
