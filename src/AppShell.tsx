@@ -109,7 +109,7 @@ export function AppShell() {
                 Read
               </TopBarLink>
               <TopBarLink to="/libraries" active={loc.pathname.startsWith("/libraries")}>
-                Libraries
+                Notes
               </TopBarLink>
               <TopBarLink to="/settings" active={loc.pathname.startsWith("/settings")}>
                 Settings
