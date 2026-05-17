@@ -1,7 +1,11 @@
 import { useEffect } from "react";
 import { useSettingsStore, resolveTheme } from "@/stores/useSettingsStore";
 import { COLOR_TOKENS } from "@/theme/tokens";
-import { useThemeStore, type Scheme } from "@/theme/useThemeStore";
+import {
+  flushPendingDiskWrite,
+  useThemeStore,
+  type Scheme,
+} from "@/theme/useThemeStore";
 
 /**
  * Applies the active theme's overrides as inline CSS custom properties on
@@ -18,6 +22,23 @@ import { useThemeStore, type Scheme } from "@/theme/useThemeStore";
 export function ThemeApplier({ children }: { children: React.ReactNode }) {
   const mode = useSettingsStore((s) => s.theme);
   const theme = useThemeStore((s) => s.themes[s.activeThemeId]);
+  const hydrateFromDisk = useThemeStore((s) => s.hydrateFromDisk);
+
+  // Pull the on-disk preferences file in once at startup. The synchronous
+  // localStorage cache has already populated state, so this is purely an
+  // upgrade pass — any disk-side change since the last write wins.
+  useEffect(() => {
+    void hydrateFromDisk();
+  }, [hydrateFromDisk]);
+
+  // Flush any pending debounced disk write when the app is about to close,
+  // so the next launch's hydrate sees the user's latest edits rather than a
+  // stale snapshot from before the last batch of changes.
+  useEffect(() => {
+    const handler = () => flushPendingDiskWrite();
+    window.addEventListener("pagehide", handler);
+    return () => window.removeEventListener("pagehide", handler);
+  }, []);
 
   useEffect(() => {
     if (!theme) return undefined;
