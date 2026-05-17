@@ -91,6 +91,86 @@ def clean_body(text: str) -> str:
     return text.strip()
 
 
+def _patch_ztext_for_overlong_verses(reader) -> None:
+    """Monkey-patch pysword's ZTextModule to recover verses longer than 64 KiB.
+
+    The `ztext` / `zcom` SWORD index stores each verse's byte length as a u16,
+    so any single-verse entry of >= 65,536 bytes wraps around in the on-disk
+    length field. Calvin's Genesis 1:1 commentary entry, for example, is
+    ~118 KB and pysword reads the wrapped length (52,670 B), truncating the
+    body mid-sentence at "They intersperse their writings wi…".
+
+    The buffer also carries each entry's *start* offset as a u32, which does
+    NOT wrap. So the true length of a verse can be recovered by looking at
+    the next verse's start within the same compressed buffer — and that's
+    what this patch does. The original `verse_len` is used only as a safety
+    upper bound (`true_len % 65536` should equal the stored u16) so a stale
+    or corrupt index never produces a runaway read.
+    """
+    import struct
+
+    bibles = [reader] if hasattr(reader, "_text_for_index") else []
+    if not bibles:
+        return
+
+    bible = bibles[0]
+    if type(bible).__name__ not in {"ZTextModule", "ZTextModule4"}:
+        return
+
+    record_format = bible._verse_record_format
+    record_size = bible._verse_record_size
+
+    # Precompute, per testament, the array of (buf_num, verse_start) for every
+    # verse-record so we can find "next verse with same buf" in O(1).
+    record_table: dict[str, list[tuple[int, int]]] = {}
+    for testament_name, testament in bible._testaments.items():
+        verse_to_buf = testament.v2b_name
+        verse_to_buf.seek(0)
+        raw = verse_to_buf.read(testament.v2b_size)
+        records: list[tuple[int, int]] = []
+        for off in range(0, len(raw), record_size):
+            rec = raw[off : off + record_size]
+            if len(rec) < record_size:
+                break
+            buf_num, verse_start, _verse_len = struct.unpack(record_format, rec)
+            records.append((buf_num, verse_start))
+        record_table[testament_name] = records
+
+    original = bible._text_for_index.__func__
+
+    def patched(self, testament, index):  # type: ignore[no-untyped-def]
+        if (record_size * (index + 1)) > self._testaments[testament].v2b_size:
+            return ""
+        verse_to_buf = self._testaments[testament].v2b_name
+        verse_to_buf.seek(record_size * index)
+        buf_num, verse_start, stored_len = struct.unpack(
+            record_format, verse_to_buf.read(record_size)
+        )
+        records = record_table[testament]
+        # Find the smallest start offset in the same buffer that is strictly
+        # greater than ours; that's where the next entry begins. Anything
+        # beyond it is the next verse and must not be returned.
+        next_start = None
+        for nb, ns in records:
+            if nb == buf_num and ns > verse_start:
+                if next_start is None or ns < next_start:
+                    next_start = ns
+        decompressed = self._decompressed_text(testament, buf_num)
+        if next_start is None:
+            end = verse_start + stored_len
+        else:
+            end = next_start
+            # Stored length must be congruent to true length modulo 2^16 if
+            # the index is well-formed; if not, fall back to the stored value
+            # rather than potentially reading garbage from a future verse.
+            true_len = next_start - verse_start
+            if true_len % 65536 != stored_len % 65536:
+                end = verse_start + stored_len
+        return self._decode_bytes(decompressed[verse_start:end])
+
+    bible.__class__._text_for_index = patched
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--module-dir", required=True, help="Unpacked SWORD module directory.")
@@ -125,6 +205,7 @@ def main() -> int:
         return 2
 
     reader = sm.get_bible_from_module(args.module_name)
+    _patch_ztext_for_overlong_verses(reader)
 
     versification = conf.get("versification", "kjv").lower()
     canon = canons.get(versification) or canons["kjv"]
