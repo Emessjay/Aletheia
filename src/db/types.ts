@@ -155,6 +155,7 @@ export interface BookmarkRow {
   book_slug: string | null;
   chapter: number | null;
   verse: number | null;
+  translation: string | null;
   label: string | null;
   created_at: number;
   updated_at: number;

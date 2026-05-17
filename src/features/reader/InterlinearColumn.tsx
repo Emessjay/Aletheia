@@ -6,6 +6,8 @@ import {
   type PrimaryLang,
   type SecondaryLang,
 } from "@/domain/tabs";
+import { sideOf, type SideKey } from "@/domain/sides";
+import type { VerseSelection } from "./ReaderRoute";
 import { InterlinearWord } from "./InterlinearWord";
 import { toRoman } from "./roman";
 
@@ -19,10 +21,9 @@ interface Props {
   maxWidth: string;
   highlights: HighlightRow[];
   notes: NoteRow[];
-  selectedVerse: number | null;
-  onSelectVerse: (n: number | null) => void;
+  selection: VerseSelection | null;
+  onSelectVerse: (n: number | null, side: SideKey | null) => void;
   onOpenStrongs: (id: string, rect: DOMRect) => void;
-  isPrimary: boolean;
 }
 
 /**
@@ -41,11 +42,11 @@ export function InterlinearColumn({
   maxWidth,
   highlights,
   notes,
-  selectedVerse,
+  selection,
   onSelectVerse,
   onOpenStrongs,
-  isPrimary,
 }: Props) {
+  const colSide = sideOf(primary);
   const label = interlinearLabel(primary, secondary);
 
   if (isPending) {
@@ -93,18 +94,19 @@ export function InterlinearColumn({
       >
         {chapter.verses.map((v) => {
           const words = chapter.wordsByVerse[v.id] ?? [];
-          // Universal (translation === null) verse-level highlights apply;
-          // partial highlights on the secondary translation do not (the
-          // surface words are primary-language).
+          // Verse-level highlights apply (universal + this side's). Partial
+          // highlights never render here — the surface tokens are primary-
+          // language, so secondary-language character offsets wouldn't align.
           const verseHls = highlights.filter(
             (h) =>
               h.verse === v.number &&
-              h.translation === null &&
-              h.start_token == null,
+              h.start_token == null &&
+              (h.translation === null || h.translation === colSide),
           );
           const hl = verseHls[0];
           const hasNote = notes.some((n) => n.verse === v.number);
-          const isSelected = isPrimary && selectedVerse === v.number;
+          const isSelected =
+            selection?.number === v.number && selection?.side === colSide;
           const wrapperClass = [
             "al-verse-inline",
             "al-il-verse",
@@ -121,12 +123,10 @@ export function InterlinearColumn({
                 className={wrapperClass}
                 data-verse-text={v.number}
                 lang={tokenLang}
-                onClick={
-                  isPrimary
-                    ? () => onSelectVerse(isSelected ? null : v.number)
-                    : undefined
+                onClick={() =>
+                  onSelectVerse(isSelected ? null : v.number, colSide)
                 }
-                style={isPrimary ? { cursor: "pointer" } : undefined}
+                style={{ cursor: "pointer" }}
               >
                 <sup
                   id={`v${v.number}`}

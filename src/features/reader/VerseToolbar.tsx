@@ -10,14 +10,17 @@ import {
   useLibraries,
   useUpdateNote,
 } from "@/db/userHooks";
+import { SIDE_LABELS, type SideKey } from "@/domain/sides";
 
 interface Props {
   ref_: VerseRef;
+  /** The side the user clicked in. Bookmarks created here scope to this side. */
+  side: SideKey | null;
   notes: NoteRow[];
   onDone: () => void;
 }
 
-export function VerseToolbar({ ref_, notes, onDone }: Props) {
+export function VerseToolbar({ ref_, side, notes, onDone }: Props) {
   const [noteOpen, setNoteOpen] = useState(notes.length > 0);
   const [bookmarkOpen, setBookmarkOpen] = useState(false);
   const [xrefOpen, setXrefOpen] = useState(false);
@@ -62,7 +65,11 @@ export function VerseToolbar({ ref_, notes, onDone }: Props) {
 
       {bookmarkOpen ? (
         <div style={{ flexBasis: "100%", paddingTop: 8 }}>
-          <BookmarkPicker ref_={ref_} onClose={() => setBookmarkOpen(false)} />
+          <BookmarkPicker
+            ref_={ref_}
+            side={side}
+            onClose={() => setBookmarkOpen(false)}
+          />
         </div>
       ) : null}
 
@@ -261,9 +268,11 @@ function NoteEditor({
 
 function BookmarkPicker({
   ref_,
+  side,
   onClose,
 }: {
   ref_: VerseRef;
+  side: SideKey | null;
   onClose: () => void;
 }) {
   const libs = useLibraries();
@@ -275,6 +284,10 @@ function BookmarkPicker({
     return <span style={{ color: "var(--color-fg-muted)" }}>Loading…</span>;
   }
 
+  // Bookmarks store the side so the same verse can live in a library under
+  // multiple sides (e.g. Hebrew + Modern English) as distinct entries.
+  const sideLabel = side ? SIDE_LABELS[side] : null;
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       <div
@@ -285,7 +298,7 @@ function BookmarkPicker({
           color: "var(--color-fg-muted)",
         }}
       >
-        Add to library
+        Add to library{sideLabel ? ` · ${sideLabel}` : ""}
       </div>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
         {(libs.data ?? []).map((l) => (
@@ -293,7 +306,11 @@ function BookmarkPicker({
             key={l.id}
             type="button"
             onClick={() => {
-              createBm.mutate({ libraryId: l.id, ref: ref_ });
+              createBm.mutate({
+                libraryId: l.id,
+                ref: ref_,
+                translation: side,
+              });
               onClose();
             }}
             style={{
@@ -336,7 +353,7 @@ function BookmarkPicker({
             const name = newName.trim();
             if (!name) return;
             const lib = await createLib.mutateAsync(name);
-            createBm.mutate({ libraryId: lib.id, ref: ref_ });
+            createBm.mutate({ libraryId: lib.id, ref: ref_, translation: side });
             setNewName("");
             onClose();
           }}

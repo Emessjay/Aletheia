@@ -184,12 +184,14 @@ export function useCreateBookmark() {
     mutationFn: ({
       libraryId,
       ref,
+      translation,
       label,
     }: {
       libraryId: string;
       ref: VerseRef;
+      translation?: string | null;
       label?: string | null;
-    }) => createBookmark(libraryId, ref, label ?? null),
+    }) => createBookmark(libraryId, ref, translation ?? null, label ?? null),
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ["user", "bookmarks", vars.libraryId] });
     },
