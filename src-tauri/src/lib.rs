@@ -95,6 +95,7 @@ pub fn run() {
     ));
 
     builder
+        .plugin(tauri_plugin_fs::init())
         .plugin(
             tauri_plugin_sql::Builder::default()
                 .add_migrations("sqlite:aletheia_user.db", migrations)

@@ -131,6 +131,37 @@ first launch (iOS Resources/ is read-only — SQLite can't open WAL there).
   variant readings). Hebrew gets full per-word Strong's tagging; Greek shows
   plain prose for now. Improve via the ingest pipeline if needed.
 
+## Customizing colors
+
+Every color in the app is a CSS custom property declared in
+[src/styles/index.css](src/styles/index.css) — semantic tokens like
+`--color-bg`, `--color-fg-muted`, `--color-accent`, the six highlight pairs,
+and a couple of modal scrims. Components reference these by name, never by
+hex, so two views that share `--color-fg-muted` will continue to share it
+after any tweak.
+
+To edit colors interactively, open the **Design** tab in the app: pick a
+theme (or duplicate a built-in to make an editable one), choose Light or
+Dark, click a swatch, and pick a color. Customised tokens are marked with
+a dot; **Reset** restores the stylesheet default. **Export** writes the
+active theme to a `.aletheia-theme.json` file; **Import** accepts that
+file (or a whole `preferences.json` payload).
+
+Bundled reference themes live in
+[src/theme/builtInThemes.ts](src/theme/builtInThemes.ts); add another to
+that file and it shows up in the Design tab on next launch. The token
+registry in [src/theme/tokens.ts](src/theme/tokens.ts) is the
+single source of truth — a unit test enforces that every registered token
+is declared in both the `:root` and `.dark` blocks of `index.css`.
+
+User-authored themes are persisted to a `preferences.json` file under
+the platform's app config directory (on macOS:
+`~/Library/Application Support/org.jackporter.aletheia/preferences.json`).
+The file is user-readable and hand-editable; it survives app reinstalls
+and is easy to back up or version-control. `localStorage` is kept as a
+synchronous cache so the first paint after a cold start is correct
+without waiting on disk.
+
 ## Tests
 
 ```sh

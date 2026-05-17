@@ -3,7 +3,7 @@ import GRDB
 
 /// Schema version. Bump when adding/removing tables; the app's SQLite consumer doesn't migrate
 /// (the file is shipped read-only) — instead, regenerate the bundle and ship a new build.
-public let schemaVersion: Int = 2
+public let schemaVersion: Int = 3
 
 public enum Schema {
     public static func create(_ db: Database) throws {
@@ -44,6 +44,7 @@ public enum Schema {
                 number      INTEGER NOT NULL,
                 text        TEXT NOT NULL,            -- raw text with optional inline markup
                 text_plain  TEXT NOT NULL,            -- markup-stripped form for FTS
+                lead        TEXT,                     -- USFM line marker before this verse: 'p','m','nb','pi','q1','q2','q3','b'; NULL = continues prior verse inline
                 UNIQUE(chapter_id, number)
             );
             """)

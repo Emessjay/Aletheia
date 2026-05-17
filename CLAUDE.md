@@ -45,6 +45,47 @@ SQLite under `~/Library/Application Support/`. Without this, the
 `tauri_plugin_single_instance` lock in [src-tauri/src/lib.rs](src-tauri/src/lib.rs)
 will refuse to launch a second window.
 
+When launched from a linked worktree (detected by `.git` being a file rather
+than a directory), `dev-instance.sh` also exports `VITE_ALETHEIA_WORKTREE` with
+the worktree slug — the cwd basename minus the `aletheia-` prefix. `AppShell`
+reads this and renders it in the top-right so you can tell parallel dev
+windows apart at a glance. The main checkout leaves it unset and shows
+nothing. If you rename a worktree directory or change the `aletheia-<slug>`
+convention in [scripts/new-worktree.sh](scripts/new-worktree.sh), update the
+prefix-stripping logic in [scripts/dev-instance.sh](scripts/dev-instance.sh)
+to match.
+
+### Running tests inside a worktree
+
+Because the Bash tool's working directory does not reliably persist between
+calls, **always target the worktree explicitly** when running tests, builds, or
+the dev instance — never assume a previous `cd` is still in effect.
+
+Use a single `cd … && …` invocation so the directory change and the command
+are bound together in the same shell call. Worktrees live next to the main
+checkout, so from the main Aletheia directory the path is `../aletheia-<slug>`.
+
+To visually exercise the feature, use `./scripts/dev-instance.sh` from inside
+the worktree — that's the one and only correct way to launch a parallel dev
+build (it allocates a unique Vite port, a unique Tauri bundle identifier, and
+a unique user-data SQLite under `~/Library/Application Support/`). Never use
+`npm run tauri dev` directly:
+
+    cd ../aletheia-<slug> && ./scripts/dev-instance.sh
+
+For the unit suite and other build steps:
+
+    cd ../aletheia-<slug> && npm test
+    cd ../aletheia-<slug> && npm run build
+    cd ../aletheia-<slug> && npx tsc -b
+    cd ../aletheia-<slug>/src-tauri && cargo check
+
+Hand the user the same form — assume they're already in the main Aletheia
+directory rather than spelling out absolute paths.
+
+Never split the `cd` and the command across two Bash tool calls — the second
+call will silently run from the main worktree and pick up the wrong sources.
+
 ### Merge conflicts
 
 If a merge from `main` into your feature branch produces a conflict, do **not**

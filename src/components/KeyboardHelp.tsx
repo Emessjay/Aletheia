@@ -26,7 +26,7 @@ export function KeyboardHelp({ open, onClose }: Props) {
       style={{
         position: "fixed",
         inset: 0,
-        background: "rgb(0 0 0 / 0.18)",
+        background: "var(--color-scrim-soft)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",

@@ -84,6 +84,12 @@
   --color-hl-purple-rule: #a48aac;
   --color-hl-orange-rule: #c08858;
 
+  /* Modal scrims — full color expressions so they remain editable from the
+     Design tab via an RGBA picker. `scrim` is the heavier drawer/dialog wash;
+     `scrim-soft` is for less obtrusive overlays (command palette, kbd help). */
+  --color-scrim:      rgb(0 0 0 / 0.25);
+  --color-scrim-soft: rgb(0 0 0 / 0.18);
+
   --radius-sm: 2px;
   --radius-pop: 3px;
   --measure: 34em;
@@ -119,6 +125,9 @@
   --color-hl-pink-rule:   #844a4a;
   --color-hl-purple-rule: #6a4a74;
   --color-hl-orange-rule: #84602a;
+
+  --color-scrim:      rgb(0 0 0 / 0.5);
+  --color-scrim-soft: rgb(0 0 0 / 0.4);
 
   --shadow-pop: 0 1px 3px rgb(0 0 0 / 0.4);
 }
@@ -228,6 +237,71 @@ kbd {
   display: inline;
   line-height: 0;
   font-size: 0;
+}
+
+/* ── Paragraph & poetry breaks (single-tab reader only) ──────────────────
+   When only one translation is open, Column inserts an `.al-paragraph-lead`
+   element before each verse whose USFM source marked a paragraph or poetic
+   line boundary. The element is a zero-height block that forces a line break
+   in the inline verse flow; its top margin renders the visual gap, and the
+   first inline child of the following verse picks up a margin-left to create
+   the first-line indent. Hidden from screen readers since it's purely visual.
+
+   Multi-tab/parallel views use a CSS grid for cross-column alignment and
+   never render these elements — paragraph spacing in that mode would break
+   verse-row alignment. */
+.al-paragraph-lead {
+  display: block;
+  width: 100%;
+  height: 0;
+  line-height: 0;
+  font-size: 0;
+}
+
+/* Prose paragraph leads: blank line before, first-line indent on the
+   following verse. */
+.al-paragraph-lead--p,
+.al-paragraph-lead--m,
+.al-paragraph-lead--nb,
+.al-paragraph-lead--pi,
+.al-paragraph-lead--pi1,
+.al-paragraph-lead--pi2 {
+  margin-top: 0.85em;
+}
+
+.al-paragraph-lead--p + .al-verse-spacer + .al-verse-inline > .al-verse-num-inline,
+.al-paragraph-lead--m + .al-verse-spacer + .al-verse-inline > .al-verse-num-inline,
+.al-paragraph-lead--nb + .al-verse-spacer + .al-verse-inline > .al-verse-num-inline,
+.al-paragraph-lead--pi + .al-verse-spacer + .al-verse-inline > .al-verse-num-inline,
+.al-paragraph-lead--pi1 + .al-verse-spacer + .al-verse-inline > .al-verse-num-inline,
+.al-paragraph-lead--pi2 + .al-verse-spacer + .al-verse-inline > .al-verse-num-inline {
+  margin-left: 1.5em;
+}
+
+/* Poetic line leads: line break with hanging indent matching the level.
+   `q1`/`q2`/`q3` produce progressively deeper indents, so Psalms and
+   prophetic poetry read line-per-verse-line rather than as a wall of prose. */
+.al-paragraph-lead--q1,
+.al-paragraph-lead--q2,
+.al-paragraph-lead--q3,
+.al-paragraph-lead--q4 {
+  margin-top: 0.15em;
+}
+
+.al-paragraph-lead--q1 + .al-verse-spacer + .al-verse-inline > .al-verse-num-inline {
+  margin-left: 1em;
+}
+.al-paragraph-lead--q2 + .al-verse-spacer + .al-verse-inline > .al-verse-num-inline {
+  margin-left: 2.5em;
+}
+.al-paragraph-lead--q3 + .al-verse-spacer + .al-verse-inline > .al-verse-num-inline,
+.al-paragraph-lead--q4 + .al-verse-spacer + .al-verse-inline > .al-verse-num-inline {
+  margin-left: 4em;
+}
+
+/* Stanza break: extra blank line, no indent change. */
+.al-paragraph-lead--b {
+  margin-top: 1.4em;
 }
 
 .al-verse-inline {

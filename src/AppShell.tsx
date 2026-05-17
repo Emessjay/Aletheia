@@ -17,6 +17,11 @@ const WIN_CAPTION_GUTTER = 140;
 /** Below this width, hide the persistent sidebar and offer a drawer instead. */
 const SIDEBAR_BREAKPOINT = 760;
 
+// scripts/dev-instance.sh exports VITE_ALETHEIA_WORKTREE when launched from a
+// linked git worktree, so we can label the window for dev-instance bookkeeping.
+// Empty string in the main checkout (and in production builds).
+const WORKTREE_LABEL = import.meta.env.VITE_ALETHEIA_WORKTREE as string | undefined;
+
 export function AppShell() {
   const loc = useLocation();
   const showSidebarRoute = loc.pathname.startsWith("/reader");
@@ -110,7 +115,7 @@ export function AppShell() {
                 Commentaries
               </TopBarLink>
               <TopBarLink to="/libraries" active={loc.pathname.startsWith("/libraries")}>
-                Libraries
+                Notes
               </TopBarLink>
               <TopBarLink to="/settings" active={loc.pathname.startsWith("/settings")}>
                 Settings
@@ -122,6 +127,22 @@ export function AppShell() {
           ) : null}
         </nav>
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          {WORKTREE_LABEL ? (
+            <span
+              title={`Running from git worktree: ${WORKTREE_LABEL}`}
+              style={{
+                fontFamily: "var(--font-mono)",
+                fontSize: 11,
+                color: "var(--color-fg-subtle)",
+                padding: "1px 6px",
+                border: "1px solid var(--color-rule)",
+                borderRadius: 2,
+                userSelect: "none",
+              }}
+            >
+              {WORKTREE_LABEL}
+            </span>
+          ) : null}
           <button
             type="button"
             aria-label="Open command palette"
@@ -171,7 +192,7 @@ export function AppShell() {
               style={{
                 position: "absolute",
                 inset: 0,
-                background: "rgb(0 0 0 / 0.25)",
+                background: "var(--color-scrim)",
                 zIndex: 50,
               }}
             />
