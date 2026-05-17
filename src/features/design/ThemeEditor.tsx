@@ -76,13 +76,29 @@ export function ThemeEditor() {
     try {
       const text = await file.text();
       const parsed = JSON.parse(text);
-      // Accept either a bare Theme or the full PreferencesV1 payload.
+      // Accept either a bare Theme or the full PreferencesV1 payload. Track
+      // the imported ids so we can activate one when the user is done — without
+      // that, the colors land in state but the editor still shows whatever
+      // theme was active beforehand, which makes import look broken.
+      const imported: string[] = [];
+      let preferredActive: string | null = null;
       if (parsed && typeof parsed === "object" && "$schema" in parsed) {
         const themes = (parsed as { themes?: Record<string, unknown> }).themes ?? {};
-        for (const raw of Object.values(themes)) upsertTheme(raw as Theme);
+        const declaredActive = (parsed as { activeTheme?: unknown }).activeTheme;
+        for (const [origId, raw] of Object.entries(themes)) {
+          const finalId = upsertTheme(raw as Theme);
+          if (!finalId) continue;
+          imported.push(finalId);
+          if (typeof declaredActive === "string" && declaredActive === origId) {
+            preferredActive = finalId;
+          }
+        }
       } else {
-        upsertTheme(parsed as Theme);
+        const finalId = upsertTheme(parsed as Theme);
+        if (finalId) imported.push(finalId);
       }
+      const toActivate = preferredActive ?? imported[0];
+      if (toActivate) setActiveTheme(toActivate);
     } catch (err) {
       console.error("theme import failed", err);
       alert("Could not import theme — invalid JSON or schema.");

@@ -32,8 +32,11 @@ interface ThemeState {
   deleteTheme: (id: string) => void;
   renameTheme: (id: string, name: string) => void;
 
-  /** Replace a theme's contents wholesale (used by import). */
-  upsertTheme: (theme: Theme) => void;
+  /** Replace a theme's contents wholesale (used by import). Returns the
+   *  final id the theme was stored under (which may differ from the input's
+   *  id when an existing entry forced a uniquification), or null when the
+   *  input was malformed. */
+  upsertTheme: (theme: Theme) => string | null;
 }
 
 function safeReadStorage(): PreferencesV1 | null {
@@ -247,7 +250,7 @@ export const useThemeStore = create<ThemeState>((set, get) => {
 
     upsertTheme: (theme) => {
       const sanitized = sanitizeTheme(theme);
-      if (!sanitized) return;
+      if (!sanitized) return null;
       // Imports never overwrite the canonical built-in default; collide on id by
       // suffixing until unique, otherwise the user has no way to restore it.
       const { themes, activeThemeId } = get();
@@ -260,6 +263,7 @@ export const useThemeStore = create<ThemeState>((set, get) => {
       const nextThemes = { ...themes, [targetId]: entry };
       writeStorage({ themes: nextThemes, activeThemeId });
       set({ themes: nextThemes });
+      return targetId;
     },
   };
 });
