@@ -128,7 +128,38 @@ public struct Pipeline {
             // it does NOT match any of the Bible-side `en_*` tags, so a `--languages en_bsb`
             // filter correctly skips these (and a bare `--languages en` runs only them).
             Stage(name: "Commentary — Matthew Henry", languages: ["en"], bookScoped: false,
-                  run: { try ingestMatthewHenry(writer: writer) })
+                  run: { try ingestMatthewHenry(writer: writer) }),
+            Stage(name: "Commentary — Calvin", languages: ["en"], bookScoped: false,
+                  run: { try ingestSwordCommentary(
+                      writer: writer,
+                      jsonName: "calvin.json",
+                      workSlug: "calvin",
+                      workTitle: "Calvin's Commentaries",
+                      author: "John Calvin") }),
+            Stage(name: "Commentary — JFB", languages: ["en"], bookScoped: false,
+                  run: { try ingestSwordCommentary(
+                      writer: writer,
+                      jsonName: "jfb.json",
+                      workSlug: "jfb",
+                      workTitle: "Commentary Critical and Explanatory on the Whole Bible",
+                      author: "Jamieson, Fausset & Brown") }),
+            Stage(name: "Commentary — Wesley's Notes", languages: ["en"], bookScoped: false,
+                  run: { try ingestSwordCommentary(
+                      writer: writer,
+                      jsonName: "wesley.json",
+                      workSlug: "wesley",
+                      // The CrossWire module bundles both Wesley's NT notes
+                      // (1755) and his less-famous OT notes (1765), so the
+                      // umbrella "Notes on the Bible" title is accurate.
+                      workTitle: "John Wesley's Notes on the Bible",
+                      author: "John Wesley") }),
+            Stage(name: "Commentary — Clarke", languages: ["en"], bookScoped: false,
+                  run: { try ingestSwordCommentary(
+                      writer: writer,
+                      jsonName: "clarke.json",
+                      workSlug: "clarke",
+                      workTitle: "Adam Clarke's Commentary on the Bible",
+                      author: "Adam Clarke") })
         ]
     }
 
@@ -377,6 +408,62 @@ public struct Pipeline {
             }
         }
         logger.info("    \(chapters.count) chapters, \(totalComments) comment blocks across \(byBook.count) books")
+    }
+
+    private func ingestSwordCommentary(writer: CorpusWriter,
+                                        jsonName: String,
+                                        workSlug: String,
+                                        workTitle: String,
+                                        author: String) throws {
+        let url = sourceRoot.appendingPathComponent("commentaries/\(jsonName)")
+        guard FileManager.default.fileExists(atPath: url.path) else {
+            throw IngestError.sourceMissing(url.path)
+        }
+        let parser = SwordCommentaryParser()
+        let chapters = try parser.parse(fileURL: url)
+        guard !chapters.isEmpty else {
+            throw IngestError.sourceMissing("\(url.path): no entries parsed")
+        }
+
+        let workID = try writer.insertWork(
+            slug: workSlug, title: workTitle, author: author, kind: "commentary")
+
+        let byBook = Dictionary(grouping: chapters, by: { $0.bookSlug })
+        let orderedSlugs = byBook.keys.sorted {
+            BookCatalog.orderIndex(of: $0) < BookCatalog.orderIndex(of: $1)
+        }
+        var ordering = 0
+        var totalComments = 0
+
+        for bookSlug in orderedSlugs {
+            let bookPath = "\(workSlug).\(bookSlug)"
+            let bookID = try writer.insertSection(
+                workID: workID, parentID: nil, ordinalPath: bookPath,
+                kind: "book", label: bookSlug, language: "en", body: "", ordering: ordering)
+            ordering += 1
+
+            let chs = byBook[bookSlug]!.sorted { $0.chapter < $1.chapter }
+            for ch in chs {
+                let chapterPath = "\(bookPath).\(ch.chapter)"
+                let chapterID = try writer.insertSection(
+                    workID: workID, parentID: bookID, ordinalPath: chapterPath,
+                    kind: "chapter", label: String(ch.chapter), language: "en",
+                    body: "", ordering: ordering)
+                ordering += 1
+
+                for (i, c) in ch.comments.enumerated() {
+                    let seq = String(format: "%03d", i + 1)
+                    _ = try writer.insertSection(
+                        workID: workID, parentID: chapterID,
+                        ordinalPath: "\(chapterPath).\(seq)",
+                        kind: "comment", label: c.label, language: "en",
+                        body: c.body, ordering: ordering)
+                    ordering += 1
+                    totalComments += 1
+                }
+            }
+        }
+        logger.info("    \(totalComments) verse comments across \(byBook.count) books")
     }
 
     private func ingestCrossRefs(writer: CorpusWriter) throws {

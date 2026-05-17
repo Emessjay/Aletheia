@@ -25,6 +25,11 @@ src-tauri/gen
 .swiftpm/
 Package.resolved
 
+# Python venv used by tools/sword-extract
+.venv/
+__pycache__/
+*.pyc
+
 # Editors
 .vscode
 .idea

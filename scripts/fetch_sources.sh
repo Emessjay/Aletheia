@@ -208,9 +208,45 @@ if [[ ! -d "${MH_DIR}/.git" ]]; then
     git clone --depth=1 https://github.com/lyteword/mhenry-complete.git "${MH_DIR}"
 fi
 
-# SWORD modules — Calvin, JFB, Wesley, Clarke — are deferred to a follow-up
-# pass. Each ships as a binary zip from crosswire.org and needs `mod2imp`
-# (Homebrew `sword` package) or `pysword` (pip) to convert to a flat text
-# format before ingest. See COMMENTARIES.md for the planned tooling.
+# SWORD-format commentaries — Calvin, JFB, Wesley, Clarke. All declared
+# "Public Domain" in their .conf files. We download each zip from
+# crosswire.org and convert the binary module to a flat JSON file with
+# tools/sword-extract/extract.py (uses pysword in a local venv).
+SWORD_TMP="${SRC_DIR}/.sword-staging"
+SWORD_VENV="${ROOT_DIR}/tools/sword-extract/.venv"
+
+extract_sword_module() {
+    local module="$1"  # e.g. JFB
+    local out_basename="$2"  # e.g. jfb.json
+    local json_out="${COMM_DIR}/${out_basename}"
+    if [[ -f "${json_out}" ]]; then
+        return 0
+    fi
+    note "Fetching SWORD module ${module}…"
+    mkdir -p "${SWORD_TMP}/${module}"
+    local zip_path="${SWORD_TMP}/${module}.zip"
+    if [[ ! -f "${zip_path}" ]]; then
+        curl -sSL "https://crosswire.org/ftpmirror/pub/sword/packages/rawzip/${module}.zip" \
+            -o "${zip_path}"
+    fi
+    unzip -qo "${zip_path}" -d "${SWORD_TMP}/${module}"
+    note "Extracting ${module} → ${out_basename}…"
+    "${SWORD_VENV}/bin/python" "${ROOT_DIR}/tools/sword-extract/extract.py" \
+        --module-dir "${SWORD_TMP}/${module}" \
+        --module-name "${module}" \
+        --out "${json_out}"
+}
+
+# Bootstrap the extraction venv on demand.
+if [[ ! -x "${SWORD_VENV}/bin/python" ]]; then
+    note "Setting up sword-extract venv…"
+    python3 -m venv "${SWORD_VENV}"
+    "${SWORD_VENV}/bin/pip" install --quiet -r "${ROOT_DIR}/tools/sword-extract/requirements.txt"
+fi
+
+extract_sword_module CalvinCommentaries calvin.json
+extract_sword_module JFB jfb.json
+extract_sword_module Wesley wesley.json
+extract_sword_module Clarke clarke.json
 
 note "Done. Next: \`cd tools/ingest && swift run aletheia-ingest -s ../../data/sources -o ../../data/Aletheia.sqlite\`"

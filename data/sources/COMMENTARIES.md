@@ -22,16 +22,29 @@ texts but are tagged `License=Public Domain` and distributed under explicit
 
 ## Status
 
-| Commentary       | Ingest | UI visible | Notes                                       |
-| ---------------- | :----: | :--------: | ------------------------------------------- |
-| Matthew Henry    | ✓      | ✓          | 66 books, 1189 chapters, 3366 comment blocks |
-| Calvin           | ✗      | ✗          | SWORD module pending mod2imp wiring         |
-| JFB              | ✗      | ✗          | SWORD module pending mod2imp wiring         |
-| Wesley's Notes   | ✗      | ✗          | SWORD module pending mod2imp wiring         |
-| Adam Clarke      | ✗      | ✗          | SWORD module pending mod2imp wiring         |
+| Commentary       | Ingest | UI visible | Verse comments | Books |
+| ---------------- | :----: | :--------: | :------------: | :---: |
+| Matthew Henry    | ✓      | ✓          | 3366 pericopes | 66    |
+| Calvin           | ✓      | ✓          | 13,823          | 48    |
+| JFB              | ✓      | ✓          | 24,813          | 66    |
+| Wesley's Notes   | ✓      | ✓          | 18,124          | 64    |
+| Adam Clarke      | ✓      | ✓          | 21,052          | 66    |
 
-After Matthew Henry, the bundled corpus grew from 203 MB to 265 MB. The four
-SWORD modules together will likely add another ~150 MB.
+Bundled corpus grew from 203 MB → 447 MB after adding all five commentaries
+(244 MB net commentary footprint).
+
+## Tooling
+
+SWORD modules ship as binary index/data pairs. The build pipeline shells out
+to `tools/sword-extract/extract.py` (pysword in a project-local venv) to
+convert each module to a verse-keyed JSON file the Swift ingester reads.
+pysword refuses commentary modules by ModDrv, so the script spoofs the
+driver name (`zcom4` → `ztext4`, etc.) before handing off — the on-disk
+formats are byte-identical between Bible and Commentary modules.
+
+The intermediate JSON files live under `data/sources/commentaries/` and are
+gitignored. The SWORD .zip downloads under `.sword-staging/` are also
+gitignored. Only the source vetting note (this file) is checked in.
 
 ## Dropped from MVP
 
