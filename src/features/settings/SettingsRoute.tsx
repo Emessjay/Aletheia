@@ -8,7 +8,7 @@ import {
 import { TRANSLATION_LABELS } from "@/domain/translations";
 import type { CorpusLanguage } from "@/db/types";
 
-const TRANSLATION_ORDER: CorpusLanguage[] = ["en_bsb", "en_kjv", "en_web", "gk", "he"];
+const TRANSLATION_ORDER: CorpusLanguage[] = ["en_bsb", "en_kjv", "gk", "he"];
 
 const THEME_OPTIONS: ThemeMode[] = ["light", "dark", "system"];
 
