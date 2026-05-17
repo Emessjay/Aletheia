@@ -272,6 +272,16 @@ public struct MatthewHenryParser {
         // Strip markdown bold/italic markers but leave the inner text.
         t = t.replacingOccurrences(of: #"\*\*([^*]+)\*\*"#, with: "$1", options: .regularExpression)
         t = t.replacingOccurrences(of: #"\*([^*]+)\*"#, with: "$1", options: .regularExpression)
+        // Decode markdown backslash escapes. The lyteword source escapes
+        // characters that markdown would otherwise interpret — e.g. "I\." so
+        // a leading roman numeral doesn't start an ordered list, "1\." for
+        // the same reason. We're rendering as plain text now, so unescape any
+        // ASCII-punctuation backslash sequence (CommonMark §2.4) back to its
+        // literal character.
+        t = t.replacingOccurrences(
+            of: #"\\([!-/:-@\[-`{-~])"#,
+            with: "$1",
+            options: .regularExpression)
         // Strip soft trailing spaces (markdown line-break trailers).
         t = t.replacingOccurrences(of: #" +\n"#, with: "\n", options: .regularExpression)
         return t.trimmingCharacters(in: .whitespacesAndNewlines)

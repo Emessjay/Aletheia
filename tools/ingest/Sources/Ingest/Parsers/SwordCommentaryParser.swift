@@ -63,16 +63,36 @@ public struct SwordCommentaryParser {
             // Prefer the OSIS id (stable, canonical) over the English name.
             guard let book = BookCatalog.byOSIS(e.osis) ?? BookCatalog.byOSIS(e.book) else { continue }
 
-            // Front-matter detection: only chapter 1, verse 1, large body
-            // that doesn't open with a verse-number anchor like "1. ".
+            // Front-matter detection: only chapter 1, verse 1, large body,
+            // doesn't open with a verse-number anchor, AND opens with one of
+            // the prefatory markers we know (CCEL banner, "Preface to..." /
+            // "Introduction to..." / "THE AUTHOR'S EPISTLE DEDICATORY" / an
+            // all-caps title-page header). Without that last guard, Calvin's
+            // longer first-verse commentaries (Matt 1:1, Ezek 1:1, Dan 1:1,
+            // Hag 1:1) would still be misclassified as book intros — they
+            // open straight into exegesis, not preface prose.
             let looksLikeFrontMatter =
                 e.chapter == 1 &&
                 e.verse == 1 &&
                 trimmed.count > Self.frontMatterThreshold &&
-                !startsWithVerseAnchor(trimmed)
+                !startsWithVerseAnchor(trimmed) &&
+                hasFrontMatterMarkers(trimmed)
 
             if looksLikeFrontMatter {
-                bookIntros[book.slug] = stripCCELBoilerplate(trimmed)
+                let cleaned = stripCCELBoilerplate(trimmed)
+                let split = splitChapterFromBookIntro(cleaned, verse: e.verse)
+                bookIntros[book.slug] = split.intro
+                if let verseBody = split.verseCommentary {
+                    // Reinstate the verse-1 commentary that was bundled into
+                    // the SWORD module's front-matter entry, so it lands on
+                    // the chapter view instead of the book-intro page.
+                    let key = Key(slug: book.slug, chapter: e.chapter)
+                    comments[key, default: []].append(Comment(
+                        label: "Verse \(e.verse)",
+                        verseStart: e.verse,
+                        verseEnd: e.verse,
+                        body: stripLeadingVerseNumber(verseBody, verse: e.verse)))
+                }
                 continue
             }
 
@@ -132,6 +152,142 @@ public struct SwordCommentaryParser {
     /// (Calvin's own header, preserved by the SWORD flattening). Curly + straight
     /// apostrophe variants both checked.
     /// Idempotent: no marker present → no change.
+    /// Does the body open with one of the prefatory headers we recognize?
+    /// Tested against the first ~400 chars (after trimming). Anything that
+    /// passes is treated as a candidate book intro; anything that fails is
+    /// treated as ordinary verse-1 exegesis even when it's substantial.
+    private func hasFrontMatterMarkers(_ body: String) -> Bool {
+        let head = String(body.prefix(400)).trimmingCharacters(in: .whitespaces)
+        let patterns = [
+            #"^Preface\s+to\b"#,
+            #"^Introduction\s+to\b"#,
+            #"^PREFACE\b"#,
+            #"^INTRODUCTION\b"#,
+            #"^Translator['\u{2019}]s\s+Preface"#,
+            #"^THE\s+AUTHOR['\u{2019}]S\s+EPISTLE"#,
+            #"^TRANSLATED\s+FROM\b"#,
+            #"^COMMENTARIES?\s+(?:ON|UPON)\b"#,
+            #"^CHRISTIAN\s+CLASSICS\b"#,
+            // Generic all-caps title-page run: 20+ uppercase letters before
+            // the first lowercase one. Catches things like "COMMENTARIES ON
+            // THE FIRST BOOK OF MOSES BY JOHN CALVIN TRANSLATED FROM…".
+            #"^[A-Z][A-Z\s,'\u{2018}\u{2019}.&]{19,}"#,
+        ]
+        for p in patterns {
+            if head.range(of: p, options: .regularExpression) != nil {
+                return true
+            }
+        }
+        return false
+    }
+
+    /// Calvin's Gen 1:1 SWORD entry actually packages three things in one
+    /// blob: (1) the dedicatory epistle + author's argument (real book
+    /// intro), (2) a "Chapter 1" header followed by every verse's English
+    /// + Latin lemma for the whole chapter, and (3) Calvin's actual
+    /// commentary on verse 1. The old code treated the whole thing as a
+    /// book intro, leaving Verse 1 of Genesis with no commentary visible
+    /// and the chapter-text lemmas crammed into the book-intro page.
+    ///
+    /// Split it: anything before a "Chapter N" line belongs in the book
+    /// intro; the actual verse-N commentary is the first long paragraph
+    /// inside the chapter section that starts with "N. " — the short
+    /// lemma paragraphs that precede it (typically < 300 chars) are the
+    /// English/Latin verse-text echoes, which we drop because the Bible
+    /// reader column already carries that material.
+    ///
+    /// Returns `(intro, verseCommentary?)`. If no "Chapter N" header is
+    /// found, the whole body stays in `intro` and `verseCommentary` is
+    /// nil — same behavior as before this change.
+    private func splitChapterFromBookIntro(
+        _ body: String,
+        verse: Int
+    ) -> (intro: String, verseCommentary: String?) {
+        // Find a "Chapter N" header followed by a paragraph break. The header
+        // is sometimes buried at the end of a longer "byline" paragraph
+        // ("…The Old Testament THE FIRST BOOK OF MOSES, CALLED GENESIS.
+        // Commentary by Robert Jamieson CHAPTER 1\n\nGe 1:1, 2…") rather than
+        // being on its own line, so we split at the previous paragraph
+        // boundary, sending the entire byline paragraph downstream with the
+        // chapter content rather than letting it leak into the book intro.
+        guard let chapHeaderRange = body.range(
+            of: #"(?i)\bChapter\s+\d+\.?\s*\n\n"#,
+            options: .regularExpression
+        ) else {
+            return (body, nil)
+        }
+        let splitPoint: String.Index = {
+            if let prevBreak = body.range(
+                of: "\n\n",
+                options: .backwards,
+                range: body.startIndex..<chapHeaderRange.lowerBound
+            ) {
+                return prevBreak.upperBound
+            }
+            return chapHeaderRange.lowerBound
+        }()
+        let before = String(body[..<splitPoint])
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let after = String(body[chapHeaderRange.upperBound...])
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // Step through paragraphs after the Chapter header. Two shapes we
+        // need to handle:
+        //
+        //   Calvin: the chapter block opens with a long lemma list — every
+        //   verse's English + Latin text echoed as short paragraphs ("1. In
+        //   the beginning…", "1. In principio…", "2. And the earth…", …) —
+        //   and Calvin's actual exegesis starts later with a long paragraph
+        //   beginning with the target verse number. Skip past the lemma list.
+        //
+        //   JFB / Clarke: no lemma list; the chapter block dives straight
+        //   into commentary, but the commentary itself is broken into short
+        //   phrase-by-phrase paragraphs ("1. In the beginning--a period of
+        //   remote and unknown antiquity…", "God--the name of the Supreme
+        //   Being…"). There's no single long verse-N paragraph to find.
+        //
+        // Strategy: prefer the long-paragraph anchor; if none exists, fall
+        // back to "everything after the chapter header" — which keeps the
+        // JFB-style content as verse-1 commentary intact.
+        let paragraphs = after.components(separatedBy: "\n\n")
+        let verseHead = "\(verse)."
+        let commentaryMinLen = 500
+        var commentaryStartIdx: Int? = nil
+        for (i, p) in paragraphs.enumerated() {
+            let trimmed = p.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmed.hasPrefix(verseHead) && trimmed.count >= commentaryMinLen {
+                commentaryStartIdx = i
+                break
+            }
+        }
+        let startIdx = commentaryStartIdx ?? skipLemmaList(paragraphs, verse: verse)
+        let commentary = paragraphs[startIdx...]
+            .joined(separator: "\n\n")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return (
+            before.isEmpty ? body : before,
+            commentary.isEmpty ? nil : commentary
+        )
+    }
+
+    /// Best-effort "where does the verse-1 commentary start" when there is
+    /// no single long paragraph to anchor on. Walks paragraphs forward from
+    /// the chapter header; a paragraph that is short (<200 chars) AND opens
+    /// with `N.\s+` for ANY N looks like a lemma echo — skip it. The first
+    /// paragraph that doesn't fit that shape begins the actual commentary.
+    /// Falls back to 0 (entire chapter block) when nothing matches.
+    private func skipLemmaList(_ paragraphs: [String], verse: Int) -> Int {
+        let lemmaPattern = #"^\d+\.\s+\S"#
+        for (i, p) in paragraphs.enumerated() {
+            let trimmed = p.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmed.count > 200 { return i }
+            if trimmed.range(of: lemmaPattern, options: .regularExpression) == nil {
+                return i
+            }
+        }
+        return 0
+    }
+
     private func stripCCELBoilerplate(_ body: String) -> String {
         var s = body
         if let r = s.range(of: "http://www.ccel.org") {

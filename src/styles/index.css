@@ -332,6 +332,27 @@ kbd {
   border-radius: 2px;
 }
 
+/* Commentary tab — KJV verses with a comment in the active work are tagged
+   with this class. The dotted underline echoes how Greek/Hebrew tokens are
+   marked as Strong's-clickable, signalling "this verse has more to see." */
+.al-commentary-verse {
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-decoration-color: var(--color-rule-strong);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+.al-commentary-verse:hover {
+  text-decoration-color: var(--color-accent);
+}
+.al-commentary-verse.is-active {
+  text-decoration-style: solid;
+  text-decoration-color: var(--color-accent);
+  background: var(--color-bg-inset);
+  border-radius: 2px;
+}
+
 .al-verse-noted .al-verse-num-inline::before {
   /* A tiny accent dot before noted verses, in lieu of a gutter tick which the
      hanging-margin layout no longer has room for. */
