@@ -139,8 +139,9 @@ tagged-but-encumbered alternative.
 
 ### Sources to avoid or replace
 
-- **First1KGreek** — CC BY-SA 4.0. Viral. Currently used for Greek patristics;
-  do not extend to biblical content.
+- **First1KGreek / OpenGreekAndLatin** — CC BY-SA 4.0. Viral; never bundle. Greek
+  patristic originals are out of scope: ship English-only translations from the
+  PD Schaff ANF/NPNF editions in `data/sources/patristics/`.
 - **Corpus Thomisticum** — "iura omnia asservantur." Not redistributable. The
   README's "non-commercial w/ attribution" line understates the restriction.
 - **CCAT / CATSS LXX** — user-declaration requirement; treat as non-PD.

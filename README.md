@@ -213,9 +213,10 @@ Bundled fonts:
 | GFS Didot | OFL | Polytonic Greek |
 | iA Writer Mono S | OFL | UI affordances (kbd, Strong's IDs) |
 
-Patristic sources (CCEL ThML, OpenGreekAndLatin First1KGreek, Corpus
-Thomisticum) are under review — see [CLAUDE.md](CLAUDE.md). They are not
-biblical content and their licensing is being resolved separately.
+Patristic content ships as English-only translations from the PD Schaff
+ANF/NPNF editions (CCEL ThML). Non-English patristic originals (e.g.
+OpenGreekAndLatin First1KGreek, CC BY-SA) are out of scope — see
+[CLAUDE.md](CLAUDE.md).
 
 Sources explicitly avoided: SBLGNT, Tyndale House GNT, NA28, BHS,
 Rahlfs-Hanhart, Göttingen LXX, CCAT/CATSS LXX, and any CC BY-NC / CC BY-SA /
