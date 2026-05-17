@@ -8,7 +8,7 @@ const TESTAMENT_LABELS: Record<Testament, string> = {
   new: "New Testament",
 };
 
-const TESTAMENT_ORDER: Testament[] = ["old", "deutero", "new"];
+const TESTAMENT_ORDER: Testament[] = ["old", "new", "deutero"];
 
 export function Sidebar() {
   const { book: activeBook = "" } = useParams();

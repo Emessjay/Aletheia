@@ -80,24 +80,18 @@ export function glossFor(
 /**
  * Pick the under-word text for an interlinear column.
  *
- * BSB pair: reverse-interlinear mode — show the actual verse-specific English
- * equivalent for this Hebrew/Greek word, sourced from STEPBible TAHOT/TAGNT
- * column 3 (BSB-derived per-word translation, stored on `word.english`). When
- * no alignment exists (e.g. LXX tokens, untagged words) we return the empty
- * string so the caller can render an em-dash — we do NOT fall back to the
- * dictionary gloss.
+ * Both BSB and KJV pairs render STEPBible's per-word English translation
+ * (BSB-derived from TAHOT/TAGNT col 3, stored on word.english). The KJV pair
+ * previously fell back to a kjv_usage-derived dictionary gloss when no
+ * alignment existed; that fallback was removed when the KJV pair reached
+ * parity with BSB. The pair label still distinguishes the two for the
+ * parallel-column view; under-word text is the same.
  *
- * KJV pair: dictionary-gloss mode (today). STEPBible doesn't publish a tagged
- * KJV, and no other PD/CC-BY tagged-KJV source has materialised, so we still
- * surface `glossFor`'s kjv_usage-derived gloss. If a tagged KJV is sourced
- * later, this branch can switch to a real KJV `english` field on word rows.
+ * Returns '' for words STEPBible left blank (LXX surface tokens, untagged
+ * function words). Callers render an em-dash in that case — no dictionary
+ * fallback.
  */
-export function equivalentFor(
-  english: string | null,
-  strongsRow: StrongsRow | undefined,
-  secondary: SecondaryLang,
-): string {
-  if (secondary === "en_kjv") return glossFor(strongsRow, secondary);
+export function equivalentFor(english: string | null): string {
   if (english == null) return "";
   // STEPBible splits Hebrew morpheme compounds (prefix + root) with a slash on
   // both surface and translation sides, e.g. הַ/שָּׁמַיִם → "the/ heavens".

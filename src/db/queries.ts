@@ -228,19 +228,50 @@ export interface ChapterPayload {
 export async function listBooksByLanguage(
   language: CorpusLanguage,
 ): Promise<BookRow[]> {
+  const fallback = FALLBACK_LANGUAGE[language];
+  if (!fallback) {
+    return corpusSelect<BookRow>(
+      `SELECT * FROM book WHERE language = $1 ORDER BY order_index`,
+      [language],
+    );
+  }
+  // Union: take every book the requested language has, plus any books from the
+  // fallback language whose slugs the primary doesn't cover (e.g. BSB + WEB
+  // apocrypha so "English (Modern)" exposes the deuterocanon in the sidebar).
   return corpusSelect<BookRow>(
-    `SELECT * FROM book WHERE language = $1 ORDER BY order_index`,
-    [language],
+    `SELECT * FROM book
+      WHERE language = $1
+      UNION ALL
+     SELECT * FROM book
+      WHERE language = $2
+        AND slug NOT IN (SELECT slug FROM book WHERE language = $1)
+      ORDER BY order_index`,
+    [language, fallback],
   );
 }
+
+/// "English (Modern)" is virtual: BSB for protocanonical, WEB for deuterocanon.
+/// BSB has no apocrypha, so any request for en_bsb that returns nothing falls
+/// back transparently to en_web. The fallback target is exposed here so callers
+/// (e.g. listBooksByLanguage) can apply the same rule.
+const FALLBACK_LANGUAGE: Partial<Record<CorpusLanguage, CorpusLanguage>> = {
+  en_bsb: "en_web",
+};
 
 export async function findBook(
   language: CorpusLanguage,
   slug: string,
 ): Promise<BookRow | null> {
-  return corpusSelectOne<BookRow>(
+  const direct = await corpusSelectOne<BookRow>(
     `SELECT * FROM book WHERE language = $1 AND slug = $2`,
     [language, slug],
+  );
+  if (direct) return direct;
+  const fallback = FALLBACK_LANGUAGE[language];
+  if (!fallback) return null;
+  return corpusSelectOne<BookRow>(
+    `SELECT * FROM book WHERE language = $1 AND slug = $2`,
+    [fallback, slug],
   );
 }
 

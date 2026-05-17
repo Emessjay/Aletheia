@@ -1,8 +1,8 @@
-import { useRef } from "react";
+import { useRef, type ReactNode } from "react";
 
 interface Props {
   surface: string;
-  gloss: string;
+  gloss: ReactNode;
   strongs: string | null;
   lang: "he" | "grc";
   onOpenStrongs: (strongsId: string, rect: DOMRect) => void;
@@ -45,7 +45,7 @@ export function InterlinearWord({
       >
         {clean(surface)}
       </span>
-      <span className="al-il-gloss">{gloss || " "}</span>
+      <span className="al-il-gloss">{gloss ?? " "}</span>
     </span>
   );
 }

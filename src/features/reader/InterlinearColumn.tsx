@@ -1,7 +1,4 @@
-import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
 import type { ChapterPayload } from "@/db/queries";
-import { getStrongsByIds } from "@/db/queries";
 import type { HighlightRow, NoteRow } from "@/db/types";
 import {
   equivalentFor,
@@ -51,25 +48,6 @@ export function InterlinearColumn({
 }: Props) {
   const label = interlinearLabel(primary, secondary);
 
-  // Collect unique Strong's ids in this chapter. wordsByVerse is empty for
-  // non-tagged langs; primary is always he|gk so this is safe.
-  const strongsIds = useMemo(() => {
-    if (!chapter) return [] as string[];
-    const set = new Set<string>();
-    for (const verseWords of Object.values(chapter.wordsByVerse)) {
-      for (const w of verseWords) {
-        if (w.strongs) set.add(w.strongs);
-      }
-    }
-    return Array.from(set).sort();
-  }, [chapter]);
-
-  const strongsQuery = useQuery({
-    queryKey: ["corpus", "strongsByIds", strongsIds.join(",")],
-    queryFn: () => getStrongsByIds(strongsIds),
-    enabled: strongsIds.length > 0,
-  });
-
   if (isPending) {
     return (
       <section style={{ maxWidth, minWidth: 0 }}>
@@ -97,7 +75,6 @@ export function InterlinearColumn({
     );
   }
 
-  const strongs = strongsQuery.data;
   const tokenLang: "he" | "grc" = primary === "he" ? "he" : "grc";
   const rtl = primary === "he";
 
@@ -161,18 +138,16 @@ export function InterlinearColumn({
                 <span data-verse-body={v.number} className="al-il-body">
                   {words.length > 0
                     ? words.map((w, i) => {
-                        const row = w.strongs ? strongs?.get(w.strongs) : undefined;
-                        const equivalent = equivalentFor(w.english, row, secondary);
-                        // BSB pair = reverse interlinear, empty = no aligned
-                        // word (em-dash, no fallback). KJV pair still uses the
-                        // dictionary gloss — empty there means the gloss row
-                        // was missing, render blank.
-                        const showDash = secondary === "en_bsb" && equivalent === "";
+                        // Both BSB and KJV pairs render STEPBible's per-word
+                        // English (BSB-derived from TAHOT/TAGNT col 3). No
+                        // dictionary-gloss fallback — show '—' when no
+                        // aligned word exists, same for both pairs.
+                        const equivalent = equivalentFor(w.english);
                         return (
                           <InterlinearWord
                             key={`${w.id}-${i}`}
                             surface={w.surface}
-                            gloss={showDash ? "—" : equivalent}
+                            gloss={equivalent === "" ? "—" : equivalent}
                             strongs={w.strongs}
                             lang={tokenLang}
                             onOpenStrongs={onOpenStrongs}

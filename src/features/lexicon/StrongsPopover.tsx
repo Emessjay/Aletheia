@@ -7,7 +7,11 @@ interface Props {
   onClose: () => void;
 }
 
-const REF_RE = /\b([GH])(\d{1,5})\b/g;
+// Strong's references in entry text come in two forms:
+//   • Greek definitions use explicit prefixes: "from G1 and G922"
+//   • Hebrew definitions use bare numbers: "from 7760; compare 8064"
+// The optional prefix is captured; bare matches inherit the entry's language.
+const REF_RE = /\b(?:([GH])(\d{1,5})|(\d{2,5}))\b/g;
 
 function RefLink({
   id,
@@ -40,6 +44,7 @@ function RefLink({
 
 function renderWithRefs(
   text: string,
+  defaultPrefix: "G" | "H",
   onNav: (id: string) => void,
 ): ReactNode[] {
   const parts: ReactNode[] = [];
@@ -50,7 +55,9 @@ function renderWithRefs(
     if (match.index > lastIndex) {
       parts.push(text.slice(lastIndex, match.index));
     }
-    const id = match[1] + match[2];
+    const prefix = (match[1] as "G" | "H" | undefined) ?? defaultPrefix;
+    const num = match[2] ?? match[3];
+    const id = prefix + num;
     parts.push(<RefLink key={key++} id={id} onClick={onNav} />);
     lastIndex = match.index + match[0].length;
   }
@@ -172,7 +179,7 @@ export function StrongsPopover({ strongsId, anchorRect, onClose }: Props) {
             whiteSpace: "pre-wrap",
           }}
         >
-          {renderWithRefs(q.data.definition, navigateTo)}
+          {renderWithRefs(q.data.definition, isHebrew ? "H" : "G", navigateTo)}
         </p>
       ) : null}
 

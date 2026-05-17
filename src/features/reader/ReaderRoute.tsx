@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useState } from "react";
-import { useQueries, useQuery } from "@tanstack/react-query";
+import { useQueries } from "@tanstack/react-query";
 import { useLocation, useParams, Navigate } from "react-router-dom";
-import { getChapter, getStrongsByIds, type ChapterPayload } from "@/db/queries";
+import { getChapter, type ChapterPayload } from "@/db/queries";
 import {
   useChapterAnnotations,
   useCreateHighlight,
@@ -12,7 +12,6 @@ import type {
   HighlightColor,
   HighlightRow,
   NoteRow,
-  StrongsRow,
   VerseRef,
   VerseRow,
   WordRow,
@@ -633,27 +632,6 @@ function TabColumnCells({
       ? TRANSLATION_LABELS[tab.lang]
       : interlinearLabel(tab.primary, tab.secondary);
 
-  // Strong's lookup for an interlinear tab — one query per chapter, shared
-  // across all of this tab's verse cells. Hook is always called (even for
-  // single tabs, with enabled=false) to keep hook order stable.
-  const isInterlinear = tab.kind === "interlinear";
-  const strongsIds = useMemo(() => {
-    if (!isInterlinear || !chapter) return [] as string[];
-    const set = new Set<string>();
-    for (const ws of Object.values(chapter.wordsByVerse)) {
-      for (const w of ws) {
-        if (w.strongs) set.add(w.strongs);
-      }
-    }
-    return Array.from(set).sort();
-  }, [isInterlinear, chapter]);
-  const strongsQuery = useQuery({
-    queryKey: ["corpus", "strongsByIds", strongsIds.join(",")],
-    queryFn: () => getStrongsByIds(strongsIds),
-    enabled: isInterlinear && strongsIds.length > 0,
-  });
-  const strongs = strongsQuery.data;
-
   const headerCell = (
     <div
       key="h"
@@ -720,7 +698,6 @@ function TabColumnCells({
                 tab={tab}
                 verse={verse}
                 words={chapter.wordsByVerse[verse.id] ?? []}
-                strongs={strongs}
                 isPrimary={isPrimary}
                 isSelected={isSelected}
                 highlights={highlights}
@@ -791,7 +768,6 @@ function InterlinearVerseCell({
   tab,
   verse,
   words,
-  strongs,
   isPrimary,
   isSelected,
   highlights,
@@ -802,7 +778,6 @@ function InterlinearVerseCell({
   tab: InterlinearTab;
   verse: VerseRow;
   words: WordRow[];
-  strongs: Map<string, StrongsRow> | undefined;
   isPrimary: boolean;
   isSelected: boolean;
   highlights: HighlightRow[];
@@ -859,15 +834,12 @@ function InterlinearVerseCell({
         <span data-verse-body={verse.number} className="al-il-body">
           {words.length > 0
             ? words.map((w, i) => {
-                const row = w.strongs ? strongs?.get(w.strongs) : undefined;
-                const equivalent = equivalentFor(w.english, row, tab.secondary);
-                const showDash =
-                  tab.secondary === "en_bsb" && equivalent === "";
+                const equivalent = equivalentFor(w.english);
                 return (
                   <InterlinearWord
                     key={`${w.id}-${i}`}
                     surface={w.surface}
-                    gloss={showDash ? "—" : equivalent}
+                    gloss={equivalent === "" ? "—" : equivalent}
                     strongs={w.strongs}
                     lang={tokenLang}
                     onOpenStrongs={onOpenStrongs}

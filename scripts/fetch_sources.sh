@@ -50,6 +50,21 @@ if [[ -z "$(ls -A "${GRCBRENT_DIR}" 2>/dev/null)" ]]; then
 fi
 
 # -----------------------------------------------------------------------------
+# World English Bible w/ Apocrypha (eBible.org eng-webbe USFM) — public domain
+# (Rainbow Missions PD dedication). Used as the modern-English side for the
+# deuterocanon; ships proto + deutero in one flat directory and the USFM parser
+# routes by \id code.
+# -----------------------------------------------------------------------------
+WEB_DIR="${SRC_DIR}/web"
+mkdir -p "${WEB_DIR}"
+if [[ -z "$(ls -A "${WEB_DIR}" 2>/dev/null)" ]]; then
+    note "Downloading WEB (with Apocrypha) USFM…"
+    curl -sSL "https://eBible.org/Scriptures/eng-webbe_usfm.zip" -o /tmp/web.zip
+    unzip -qoj /tmp/web.zip -d "${WEB_DIR}"
+    rm /tmp/web.zip
+fi
+
+# -----------------------------------------------------------------------------
 # KJV English + KJV 1611 Apocrypha (eBible.org USFM) — public domain by age
 # -----------------------------------------------------------------------------
 note "Downloading KJV (with Apocrypha) USFM…"

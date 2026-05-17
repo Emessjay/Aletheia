@@ -338,6 +338,13 @@ kbd {
   white-space: nowrap;
 }
 
+/* Cross-referenced lemmas inside a gloss inherit gloss size — otherwise the
+   global :lang(he) 18px rule blows them up next to the English text. */
+.al-il-gloss :lang(he) {
+  font-size: inherit;
+  line-height: inherit;
+}
+
 /* Highlights — desaturated tint + 1px bottom rule in the same hue */
 .al-hl {
   padding: 0 1px;
