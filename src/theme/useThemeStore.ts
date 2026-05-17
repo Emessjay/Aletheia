@@ -1,5 +1,10 @@
 import { create } from "zustand";
 import { BUILT_IN_THEMES } from "./builtInThemes";
+import {
+  makeDebouncedWriter,
+  readPreferencesFromDisk,
+  writePreferencesToDisk,
+} from "./preferences";
 import { COLOR_TOKEN_KEYS, type ColorTokenKey } from "./tokens";
 import {
   defaultTheme,
@@ -10,6 +15,17 @@ import {
 } from "./types";
 
 const STORAGE_KEY = "aletheia.themes";
+
+// Disk writes are debounced so dragging a color picker doesn't fire one per
+// frame. localStorage stays synchronous — it's the fast-path cache.
+const writeDiskDebounced = makeDebouncedWriter(200);
+
+/** Force any pending debounced disk write to fire immediately. Wired to
+ *  `pagehide` in ThemeApplier so the user's last edits don't sit in memory
+ *  when the app is closing. */
+export function flushPendingDiskWrite(): void {
+  writeDiskDebounced.flush();
+}
 
 export type Scheme = "light" | "dark";
 
@@ -34,6 +50,10 @@ interface ThemeState {
 
   /** Replace a theme's contents wholesale (used by import). */
   upsertTheme: (theme: Theme) => void;
+
+  /** Read the on-disk preferences file (if present) and merge it into state.
+   *  Idempotent — safe to call multiple times. */
+  hydrateFromDisk: () => Promise<void>;
 }
 
 function safeReadStorage(): PreferencesV1 | null {
@@ -56,21 +76,30 @@ function safeReadStorage(): PreferencesV1 | null {
   return null;
 }
 
-function writeStorage(state: { themes: Record<string, Theme>; activeThemeId: string }) {
-  if (typeof window === "undefined") return;
-  // Persist only user-authored themes — built-ins are seeded from code on load,
-  // so storing them would (a) bloat storage and (b) freeze stale values that
-  // future versions of the app couldn't update.
+function buildPayload(state: {
+  themes: Record<string, Theme>;
+  activeThemeId: string;
+}): PreferencesV1 {
+  // Persist only user-authored themes — built-ins are seeded from code on
+  // load, so storing them would (a) bloat the file and (b) freeze stale
+  // values that future versions of the app couldn't update.
   const userThemes: Record<string, Theme> = {};
   for (const [id, t] of Object.entries(state.themes)) {
     if (!t.builtIn) userThemes[id] = t;
   }
-  const payload: PreferencesV1 = {
+  return {
     $schema: 1,
     activeTheme: state.activeThemeId,
     themes: userThemes,
   };
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+}
+
+function persist(state: { themes: Record<string, Theme>; activeThemeId: string }) {
+  const payload = buildPayload(state);
+  if (typeof window !== "undefined") {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+  }
+  writeDiskDebounced(payload);
 }
 
 function sanitizeOverrides(
@@ -165,7 +194,7 @@ export const useThemeStore = create<ThemeState>((set, get) => {
       const { themes } = get();
       if (!themes[id]) return;
       const next = { ...get(), activeThemeId: id };
-      writeStorage(next);
+      persist(next);
       set({ activeThemeId: id });
     },
 
@@ -178,7 +207,7 @@ export const useThemeStore = create<ThemeState>((set, get) => {
         [scheme]: { ...t[scheme], [key]: value },
       };
       const nextThemes = { ...themes, [activeThemeId]: updated };
-      writeStorage({ themes: nextThemes, activeThemeId });
+      persist({ themes: nextThemes, activeThemeId });
       set({ themes: nextThemes });
     },
 
@@ -190,7 +219,7 @@ export const useThemeStore = create<ThemeState>((set, get) => {
       delete nextScheme[key];
       const updated: Theme = { ...t, [scheme]: nextScheme };
       const nextThemes = { ...themes, [activeThemeId]: updated };
-      writeStorage({ themes: nextThemes, activeThemeId });
+      persist({ themes: nextThemes, activeThemeId });
       set({ themes: nextThemes });
     },
 
@@ -200,7 +229,7 @@ export const useThemeStore = create<ThemeState>((set, get) => {
       if (!t || t.builtIn) return;
       const updated: Theme = { ...t, light: {}, dark: {} };
       const nextThemes = { ...themes, [activeThemeId]: updated };
-      writeStorage({ themes: nextThemes, activeThemeId });
+      persist({ themes: nextThemes, activeThemeId });
       set({ themes: nextThemes });
     },
 
@@ -216,7 +245,7 @@ export const useThemeStore = create<ThemeState>((set, get) => {
         dark: { ...src.dark },
       };
       const nextThemes = { ...themes, [id]: copy };
-      writeStorage({ themes: nextThemes, activeThemeId: id });
+      persist({ themes: nextThemes, activeThemeId: id });
       set({ themes: nextThemes, activeThemeId: id });
       return id;
     },
@@ -229,7 +258,7 @@ export const useThemeStore = create<ThemeState>((set, get) => {
       delete next[id];
       const nextActive =
         activeThemeId === id ? DEFAULT_THEME_ID : activeThemeId;
-      writeStorage({ themes: next, activeThemeId: nextActive });
+      persist({ themes: next, activeThemeId: nextActive });
       set({ themes: next, activeThemeId: nextActive });
     },
 
@@ -241,7 +270,7 @@ export const useThemeStore = create<ThemeState>((set, get) => {
       if (!trimmed) return;
       const updated: Theme = { ...t, name: trimmed };
       const nextThemes = { ...themes, [id]: updated };
-      writeStorage({ themes: nextThemes, activeThemeId });
+      persist({ themes: nextThemes, activeThemeId });
       set({ themes: nextThemes });
     },
 
@@ -258,8 +287,49 @@ export const useThemeStore = create<ThemeState>((set, get) => {
       // Imports come in as user-owned regardless of any builtIn flag in the file.
       const entry: Theme = { ...sanitized, id: targetId, builtIn: false };
       const nextThemes = { ...themes, [targetId]: entry };
-      writeStorage({ themes: nextThemes, activeThemeId });
+      persist({ themes: nextThemes, activeThemeId });
       set({ themes: nextThemes });
+    },
+
+    hydrateFromDisk: async () => {
+      const fromDisk = await readPreferencesFromDisk();
+      if (fromDisk) {
+        // Disk is authoritative. Re-seed built-ins from code so a stale on-disk
+        // copy can't pin them, then layer the user-authored themes on top.
+        const themes: Record<string, Theme> = { [DEFAULT_THEME_ID]: defaultTheme() };
+        const builtInIds = new Set<string>([DEFAULT_THEME_ID]);
+        for (const t of BUILT_IN_THEMES) {
+          themes[t.id] = t;
+          builtInIds.add(t.id);
+        }
+        for (const [id, raw] of Object.entries(fromDisk.themes ?? {})) {
+          const t = sanitizeTheme(raw);
+          if (!t || builtInIds.has(t.id)) continue;
+          themes[id] = t;
+        }
+        const activeThemeId =
+          fromDisk.activeTheme && themes[fromDisk.activeTheme]
+            ? fromDisk.activeTheme
+            : DEFAULT_THEME_ID;
+        // Mirror into localStorage so the next cold start can paint instantly
+        // without waiting on disk.
+        if (typeof window !== "undefined") {
+          window.localStorage.setItem(
+            STORAGE_KEY,
+            JSON.stringify(buildPayload({ themes, activeThemeId })),
+          );
+        }
+        set({ themes, activeThemeId });
+        return;
+      }
+      // No file on disk. If the current in-memory state has user themes
+      // (recovered from localStorage by loadInitial), push them out so the
+      // file becomes the durable record going forward.
+      const state = get();
+      const hasUserThemes = Object.values(state.themes).some((t) => !t.builtIn);
+      if (hasUserThemes) {
+        await writePreferencesToDisk(buildPayload(state));
+      }
     },
   };
 });

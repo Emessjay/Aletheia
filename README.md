@@ -154,9 +154,13 @@ registry in [src/theme/tokens.ts](src/theme/tokens.ts) is the
 single source of truth — a unit test enforces that every registered token
 is declared in both the `:root` and `.dark` blocks of `index.css`.
 
-User-authored themes currently persist to `localStorage`; a follow-up
-will move them to a `preferences.json` file under the platform's app data
-directory so they survive reinstalls and are easy to sync.
+User-authored themes are persisted to a `preferences.json` file under
+the platform's app config directory (on macOS:
+`~/Library/Application Support/org.jackporter.aletheia/preferences.json`).
+The file is user-readable and hand-editable; it survives app reinstalls
+and is easy to back up or version-control. `localStorage` is kept as a
+synchronous cache so the first paint after a cold start is correct
+without waiting on disk.
 
 ## Tests
 
