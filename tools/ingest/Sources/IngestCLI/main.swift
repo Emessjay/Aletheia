@@ -20,20 +20,14 @@ struct AletheiaIngest: ParsableCommand {
             is re-ingested over it.
 
             --books takes a comma-separated list of book slugs (e.g. gen,exod,ps).
-            Only Bible/STEPBible stages are book-scoped; lexicons, cross-references,
-            and patristics stages are skipped when --books is set.
+            Only Bible/STEPBible stages are book-scoped; lexicons and
+            cross-references are skipped when --books is set.
 
             --languages takes a comma-separated list of language tags. The known
             tags are:
-              en_bsb, en_kjv, en_brenton            (English Bibles)
+              en_bsb, en_kjv, en_brenton, en_web    (English Bibles)
               he                                    (Hebrew MT + BDB lexicon)
               gk                                    (Greek LXX/NT + Strong's lexicon)
-              en, la, gr                            (Patristics: English, Latin, Greek)
-
-            Note: patristic section inserts are not deduped, so re-running a
-            language filter that targets a patristic stage (en/la/gr) will append
-            duplicate sections. Either start from a clean output for those, or
-            limit re-runs to Bible/lexicon language tags.
             """
     )
 

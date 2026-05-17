@@ -243,7 +243,6 @@ function PaletteMock() {
     { label: "John 3:16", hint: "Reference" },
     { label: "Love your neighbor", hint: "Verse search", match: "Love" },
     { label: "ἀγάπη (G26)", hint: "Lexicon" },
-    { label: "Summa I.Q2.A3", hint: "Patristics" },
   ];
   return (
     <div
@@ -307,10 +306,6 @@ function SidebarMock() {
     {
       heading: "Gospels",
       items: [{ name: "Matthew" }, { name: "Mark" }, { name: "Luke" }, { name: "John" }],
-    },
-    {
-      heading: "Patristics",
-      items: [{ name: "Summa Theologica" }, { name: "Dialogue with Trypho" }, { name: "On the Incarnation" }],
     },
   ];
   return (

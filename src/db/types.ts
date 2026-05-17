@@ -72,55 +72,11 @@ export interface XrefRow {
   weight: number;
 }
 
-export type WorkKind = "summa" | "dialogue" | "treatise";
-
-export interface WorkRow {
-  id: number;
-  slug: string;
-  title: string;
-  author: string;
-  kind: WorkKind;
-}
-
-export type SectionKind =
-  | "part"
-  | "question"
-  | "article"
-  | "objection"
-  | "reply"
-  | "respondeo"
-  | "sedcontra"
-  | "chapter"
-  | "section";
-
-export interface SectionRow {
-  id: number;
-  work_id: number;
-  parent_id: number | null;
-  ordinal_path: string;
-  kind: SectionKind;
-  label: string | null;
-  language: "en" | "gr" | "la";
-  body: string;
-  ordering: number;
-}
-
-export interface CitationRow {
-  id: number;
-  section_id: number;
-  book_slug: string;
-  chapter: number;
-  verse_start: number;
-  verse_end: number;
-  span_start: number;
-  span_end: number;
-}
-
 // Stable, value-type pointer into the corpus that survives DB rebuilds.
 // Mirrors VerseRef from the old SwiftUI app.
 export interface VerseRef {
-  workSlug: string; // "bible" | "summa" | "trypho" | "incarnation"
-  bookSlug: string; // "gen" | "john" | "1mac"  (patristic: ordinal path)
+  workSlug: string; // "bible"
+  bookSlug: string; // "gen" | "john" | "1mac"
   chapter: number;
   verse: number;
 }

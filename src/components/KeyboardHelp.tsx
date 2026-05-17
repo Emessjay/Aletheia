@@ -9,7 +9,6 @@ const ROWS: Array<{ keys: string[]; label: string }> = [
   { keys: ["["], label: "Previous chapter" },
   { keys: ["]"], label: "Next chapter" },
   { keys: ["g", "r"], label: "Go to reader" },
-  { keys: ["g", "p"], label: "Go to patristics" },
   { keys: ["g", "l"], label: "Go to libraries" },
   { keys: ["g", "s"], label: "Go to settings" },
   { keys: ["Esc"], label: "Close popover / palette / help" },

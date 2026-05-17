@@ -2,17 +2,11 @@ import { useQuery } from "@tanstack/react-query";
 import type { CorpusLanguage } from "./types";
 import {
   getChapter,
-  getSection,
   getStrongs,
   listBooksByLanguage,
-  listChildSections,
-  listCitations,
-  listSections,
-  listWorks,
   listXrefsForVerse,
   searchVerses,
   type ChapterPayload,
-  type PatristicLanguage,
   type SearchHit,
   type XrefHit,
 } from "./queries";
@@ -38,59 +32,6 @@ export function useSearch(
     // Search is read-only over the immutable corpus, but the query string
     // changes often — modest staleness is fine.
     staleTime: 5 * 60 * 1000,
-  });
-}
-
-// ── Patristic works ─────────────────────────────────────────────────────────
-
-export function useWorks() {
-  return useQuery({
-    queryKey: ["corpus", "works"],
-    queryFn: listWorks,
-  });
-}
-
-export function useWorkSections(
-  workSlug: string,
-  language: PatristicLanguage = "en",
-) {
-  return useQuery({
-    queryKey: ["corpus", "work-sections", workSlug, language],
-    queryFn: () => listSections(workSlug, language),
-    enabled: !!workSlug,
-  });
-}
-
-export function useSection(
-  workSlug: string,
-  ordinalPath: string,
-  language: PatristicLanguage = "en",
-) {
-  return useQuery({
-    queryKey: ["corpus", "section", workSlug, ordinalPath, language],
-    queryFn: () => getSection(workSlug, ordinalPath, language),
-    enabled: !!workSlug && !!ordinalPath,
-  });
-}
-
-export function useChildSections(
-  workSlug: string,
-  parentPath: string,
-  language: PatristicLanguage = "en",
-) {
-  return useQuery({
-    queryKey: ["corpus", "section-children", workSlug, parentPath, language],
-    queryFn: () => listChildSections(workSlug, parentPath, language),
-    enabled: !!workSlug && !!parentPath,
-  });
-}
-
-export function useSectionCitations(sectionId: number | null) {
-  return useQuery({
-    queryKey: ["corpus", "citations", sectionId],
-    queryFn: () =>
-      sectionId === null ? Promise.resolve([]) : listCitations(sectionId),
-    enabled: sectionId !== null,
   });
 }
 
