@@ -155,6 +155,24 @@ All biblical sources bundled into `Aletheia.sqlite` are public domain. See
 | Treasury of Scripture Knowledge cross-references | Public Domain (Torrey, 1880s, by age) |
 | Jacob-Gray/summa.json | Unlicense (PD) |
 
+Audio recordings stream from the source on first play and cache to the local
+app data dir under `audio/<translation>/<book>/<NNN>.mp3`:
+
+| Source | Reader | Coverage | License |
+|---|---|---|---|
+| openbible.com BSB audio | Bob Souer | OT + NT | Public Domain (CC0 1.0) |
+| ebible.org WEB British audio | Michael Paul Johnson | OT + NT + Deuterocanon | Public Domain |
+| archive.org LibriVox KJV solos | various volunteers | partial OT (Josh, Judg, 1–2 Sam, 1–2 Kgs, 1 Chr, Prov, Lam) + most of NT and Apocrypha via virtual chapters | Public Domain |
+
+KJV NT books, Judith, Wisdom, 1–2 Maccabees and similar LibriVox recordings
+pack multiple chapters into a single MP3. We compute chapter-boundary
+timestamps offline with [aeneas](https://github.com/readbeyond/aeneas)
+([tools/audio/align_kjv.py](tools/audio/align_kjv.py)) and ship the timings
+as [data/audio/kjv-timing.json](data/audio/kjv-timing.json) — the player then
+downloads the multi-chapter source once per book and seeks into the right
+segment per chapter. Books like KJV James and Jude have no LibriVox solo
+recording and stay silent.
+
 Bundled fonts:
 
 | Font | License | Use |
