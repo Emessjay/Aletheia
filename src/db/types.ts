@@ -36,6 +36,15 @@ export interface VerseRow {
   number: number;
   text: string;
   text_plain: string;
+  /**
+   * USFM line marker that introduced this verse in the source, when present.
+   * `'p'`/`'m'`/`'nb'`/`'pi*'` are prose paragraphs; `'q1'`/`'q2'`/`'q3'` are
+   * poetic indent levels; `'b'` is a stanza break. `null` means the verse
+   * continues the previous verse's paragraph inline (or the source has no
+   * paragraph markup, as with BSB). Only used by the single-language reader
+   * layout — parallel/multi-column views ignore it for grid alignment.
+   */
+  lead: string | null;
 }
 
 export type WordBaseText = "NA28" | "BYZ" | "TR" | "LXX" | null;

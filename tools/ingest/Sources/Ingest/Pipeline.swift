@@ -102,6 +102,11 @@ public struct Pipeline {
                   run: { try ingestKJVApocrypha(writer: writer) }),
             Stage(name: "WEB (Eng + Apocrypha)", languages: ["en_web"], bookScoped: true,
                   run: { try ingestWEB(writer: writer) }),
+            // BSB source is plain TSV with no paragraph markup. Borrow WEB's
+            // \p / \q line breaks (also PD, modern English) so BSB reads with
+            // the same paragraph rhythm. Must run after both BSB and WEB.
+            Stage(name: "BSB paragraph parity from WEB", languages: ["en_bsb", "en_web"], bookScoped: true,
+                  run: { try copyLeadsFromWEBtoBSB(writer: writer) }),
             Stage(name: "STEPBible KJV+Strongs", languages: ["en_kjv"], bookScoped: true,
                   run: { try ingestSTEP(writer: writer, table: .tkjvs, language: "en_kjv") }),
             Stage(name: "STEPBible Hebrew (MT)", languages: ["he"], bookScoped: true,
@@ -135,7 +140,8 @@ public struct Pipeline {
         let rows = try parser.parse(fileURL: url)
         let filtered = bookFilter.isEmpty ? rows : rows.filter { bookFilter.contains($0.bookSlug) }
         logger.info("    parsed \(rows.count) BSB verses\(bookFilter.isEmpty ? "" : " (\(filtered.count) after book filter)")")
-        try writeBibleRows(filtered.map { ($0.bookSlug, $0.chapter, $0.verse, $0.text) },
+        // BSB source is plain TSV with no paragraph markup; lead is always nil.
+        try writeBibleRows(filtered.map { ($0.bookSlug, $0.chapter, $0.verse, $0.text, nil) },
                            language: "en_bsb", writer: writer)
     }
 
@@ -177,7 +183,7 @@ public struct Pipeline {
     private func splitPsalm151(_ rows: [USFMParser.Row]) -> [USFMParser.Row] {
         rows.map { row in
             (row.bookSlug == "ps" && row.chapter == 151)
-                ? USFMParser.Row(bookSlug: "ps151", chapter: 1, verse: row.verse, text: row.text)
+                ? USFMParser.Row(bookSlug: "ps151", chapter: 1, verse: row.verse, text: row.text, lead: row.lead)
                 : row
         }
     }
@@ -195,7 +201,7 @@ public struct Pipeline {
         return rows.map { row in
             guard row.bookSlug == "ezra", row.chapter >= 11 else { return row }
             return USFMParser.Row(bookSlug: "neh", chapter: row.chapter - 10,
-                                  verse: row.verse, text: row.text)
+                                  verse: row.verse, text: row.text, lead: row.lead)
         }
     }
 
@@ -222,7 +228,7 @@ public struct Pipeline {
                 let result = try parser.parse(fileURL: file)
                 let transformed = transform.map { $0(result.rows) } ?? result.rows
                 let filtered = bookFilter.isEmpty ? transformed : transformed.filter { bookFilter.contains($0.bookSlug) }
-                try writeBibleRows(filtered.map { ($0.bookSlug, $0.chapter, $0.verse, $0.text) },
+                try writeBibleRows(filtered.map { ($0.bookSlug, $0.chapter, $0.verse, $0.text, $0.lead) },
                                    language: language, writer: writer)
                 parsedBooks += 1
             } catch IngestError.malformed {
@@ -281,6 +287,36 @@ public struct Pipeline {
         try tagger.run()
     }
 
+    /// BSB ships as plain TSV without paragraph markers, so its verses always
+    /// land with `lead = NULL`. WEB is also PD modern-English and has rich
+    /// USFM paragraph/poetry markup — copy its lead onto BSB by matching
+    /// (book slug, chapter number, verse number). Only overwrites BSB rows
+    /// whose lead is already NULL, so any future authoritative BSB source
+    /// (post this stage) would not be clobbered.
+    private func copyLeadsFromWEBtoBSB(writer: CorpusWriter) throws {
+        try writer.queue.write { db in
+            try db.execute(sql: """
+                UPDATE verse
+                SET lead = m.web_lead
+                FROM (
+                    SELECT bsb_v.id AS bsb_id, web_v.lead AS web_lead
+                    FROM verse bsb_v
+                    JOIN chapter bsb_c ON bsb_v.chapter_id = bsb_c.id
+                    JOIN book bsb_b ON bsb_c.book_id = bsb_b.id
+                    JOIN book web_b ON web_b.language = 'en_web' AND web_b.slug = bsb_b.slug
+                    JOIN chapter web_c ON web_c.book_id = web_b.id AND web_c.number = bsb_c.number
+                    JOIN verse web_v ON web_v.chapter_id = web_c.id AND web_v.number = bsb_v.number
+                    WHERE bsb_b.language = 'en_bsb'
+                      AND web_v.lead IS NOT NULL
+                      AND bsb_v.lead IS NULL
+                ) AS m
+                WHERE verse.id = m.bsb_id;
+                """)
+            let changed = db.changesCount
+            self.logger.info("    copied \(changed) lead markers from WEB to BSB")
+        }
+    }
+
     private func tableDirName(_ t: STEPBibleParser.Table) -> String {
         switch t {
         case .tahot: return "TAHOT"
@@ -322,7 +358,7 @@ public struct Pipeline {
 
     // MARK: - Helpers
 
-    private func writeBibleRows(_ rows: [(bookSlug: String, chapter: Int, verse: Int, text: String)],
+    private func writeBibleRows(_ rows: [(bookSlug: String, chapter: Int, verse: Int, text: String, lead: String?)],
                                  language: String, writer: CorpusWriter) throws {
         var bookIDs: [String: Int64] = [:]
         var chapterIDs: [String: Int64] = [:]
@@ -341,7 +377,7 @@ public struct Pipeline {
             let cid: Int64
             if let cached = chapterIDs[chapKey] { cid = cached }
             else { cid = try writer.upsertChapter(bookID: bid, number: row.chapter); chapterIDs[chapKey] = cid }
-            _ = try writer.insertVerse(chapterID: cid, number: row.verse, text: row.text)
+            _ = try writer.insertVerse(chapterID: cid, number: row.verse, text: row.text, lead: row.lead)
         }
     }
 
