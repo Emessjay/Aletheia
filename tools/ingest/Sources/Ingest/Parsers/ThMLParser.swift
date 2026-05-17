@@ -231,38 +231,59 @@ private func slugify(_ s: String) -> String {
 /// Titles that mark editorial / front-matter divs we don't want to surface
 /// as their own "works" (they're either volume apparatus or an editor's
 /// introduction to a real work that follows).
-/// Anchored at the start of the trimmed title (with optional leading "The ").
-/// Trailing punctuation is allowed since CCEL sometimes emits `Title Page.` /
-/// `Preface:` etc. — that's why these patterns deliberately don't pin `$`.
+/// Patterns matched against the start of the (trimmed) title. Trailing
+/// punctuation isn't pinned with `$` because CCEL routinely emits
+/// `Title Page.` / `Preface:`. The apostrophe class `['’]` covers both
+/// straight + curly forms — Swift's raw-string syntax doesn't expand
+/// `\u{2019}` escapes, so the curly apostrophe is included literally.
 private let editorialTitlePatterns: [String] = [
-    #"^Title Page\b"#,
-    #"^Preface\b"#,
+    #"^(?:Second|Series|Half|Original|Additional|Front)?\s*Title Pages?\b"#,
+    #":\s*Index of (?:Subjects|Names|Passages|Scripture|Pages)"#,
+    #"^Preface\b(?!s)"#,           // "Preface" / "Preface." but not "Prefaces"
     #"^Contents\b"#,
-    #"^Editor['\u{2019}]s Preface"#,
-    #"^Translator['\u{2019}]s Preface"#,
-    #"^Introductory Notice"#,
-    #"^Introductory Essay"#,
-    #"^Prolegomena"#,
-    #"^Chief Events"#,
-    #"^Bibliograph"#,
+    #"^Table of Contents\b"#,
+    #"^Editor(?:ial|['’]s)\s+Preface\b"#,
+    #"^Editor['’]s\s+Note\b"#,
+    #"^Editorial Note\b"#,
+    #"^Editorial Notice\b"#,
+    #"^Translator['’]s\s+Preface\b"#,
+    #"^Translator['’]s\s+Introduction\b"#,
+    #"^Translator['’]s\s+Note\b"#,
+    #"^Introductory Notice\b"#,
+    #"^Introductory Essay\b"#,
+    #"^Prolegomena\b"#,
+    #"^Chief Events\b"#,
+    #"^Bibliograph"#,                 // Bibliography / Bibliographical Note
     #"^Index(?:es|ices)?\b"#,
+    #"^Index of\b"#,
+    #"^Subject Index"#,
+    #"^Subject Indexes"#,
+    #"^General Index"#,
+    #"^General Introduction\b"#,
     #"^Greek Words"#,
     #"^Hebrew Words"#,
     #"^German Words"#,
     #"^French Words"#,
     #"^Latin Words"#,
-    #"^Index of\b"#,
     #"^Pages of the Print Edition"#,
     #"^Front Matter"#,
     #"^Errata"#,
     #"^Addenda"#,
-    #"^Publishers?['\u{2019}']?\s"#,
+    #"^Publishers?['’]?\s"#,
     #"^Brief Notice"#,
     #"^Dedication of\b"#,
     #"^Dedication to\b"#,
     #"^Genealogical Tables?\b"#,
+    #"^Chronological Tables?\b"#,
+    #"^Comparative Tables?\b"#,
     #"^Map\b"#,
     #"^Maps\b"#,
+    #"^Credits\b"#,
+    #"^Acknowledg(?:e?)ments?\b"#,
+    #"^Appended Note\b"#,
+    #"^Dates of Treatises\b"#,
+    #"^Note on the\b"#,
+    #"^Notes on the\b"#,
 ]
 
 private func isEditorialTitle(_ title: String) -> Bool {
