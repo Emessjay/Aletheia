@@ -64,6 +64,16 @@ private final class ThMLDelegate: NSObject, XMLParserDelegate {
     private var divIdStack: [Bool] = []
     private var inContainer: Bool { containerID == nil || containerStackDepth > 0 }
 
+    /// CCEL marks footnotes as `<note place="end">…</note>` embedded inline
+    /// in the prose. Their body text would otherwise stream through
+    /// foundCharacters straight into the section body, e.g.
+    /// "end of his sentence.Ps. cxlv. 3 And man, ..." — the footnote
+    /// reference fused with the surrounding sentence. We track note depth
+    /// and silence character capture (and `</p>` paragraph breaks) while
+    /// inside one, so the body reads as the source prose alone.
+    private var noteDepth: Int = 0
+    private var inNote: Bool { noteDepth > 0 }
+
     init(workSlug: String, containerID: String? = nil) {
         self.workSlug = workSlug
         self.containerID = containerID
@@ -78,12 +88,13 @@ private final class ThMLDelegate: NSObject, XMLParserDelegate {
 
     func parser(_ parser: XMLParser, didStartElement element: String, namespaceURI: String?, qualifiedName: String?, attributes: [String : String] = [:]) {
         let lower = element.lowercased()
-        if textBuffer.contains(where: { !$0.isWhitespace }), var section = currentSection {
+        if !inNote, textBuffer.contains(where: { !$0.isWhitespace }), var section = currentSection {
             section.body += textBuffer
             currentSection = section
         }
         textBuffer.removeAll(keepingCapacity: true)
 
+        if lower == "note" { noteDepth += 1 }
         if lower == "title" { inTitle = true }
         if lower == "author" { inAuthor = true }
 
@@ -126,8 +137,10 @@ private final class ThMLDelegate: NSObject, XMLParserDelegate {
             )
         }
 
-        if lower == "scripref", let passage = attributes["passage"] {
-            // Embed an inline token the app can post-process into a tappable link
+        if !inNote, lower == "scripref", let passage = attributes["passage"] {
+            // Embed an inline token the app can post-process into a tappable link.
+            // ScripRefs nested inside <note> are footnote-only and skipped along
+            // with the rest of the note body.
             if var s = currentSection {
                 s.body += "{ref:\(passage)}"
                 currentSection = s
@@ -151,11 +164,13 @@ private final class ThMLDelegate: NSObject, XMLParserDelegate {
         if lower == "title" { inTitle = false }
         if lower == "author" { inAuthor = false }
 
-        if var section = currentSection {
+        if !inNote, var section = currentSection {
             section.body += text
             currentSection = section
         }
         textBuffer.removeAll(keepingCapacity: true)
+
+        if lower == "note" { noteDepth = max(0, noteDepth - 1) }
 
         if lower.hasPrefix("div") {
             if let wasMatch = divIdStack.popLast(), wasMatch {
@@ -164,7 +179,7 @@ private final class ThMLDelegate: NSObject, XMLParserDelegate {
                 commitCurrentSection()
             }
         }
-        if lower == "p" {
+        if !inNote, lower == "p" {
             if var section = currentSection {
                 section.body += "\n\n"
                 currentSection = section
