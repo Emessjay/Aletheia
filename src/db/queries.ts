@@ -83,12 +83,18 @@ export async function listCommentaryChapters(
 
 /** All comment-kind sections for a (commentary, book, chapter), plus the
  *  chapter intro (kind='chapter') itself if it has a body. Returned in
- *  document order. */
+ *  document order.
+ *
+ *  Note: tauri-plugin-sql binds JS numbers as f64, so passing `1` lands in
+ *  SQLite as `1.0` and `'gen.' || 1.0` evaluates to `'gen.1.0'` — never
+ *  matching the `'calvin.gen.1.001'` ordinal_path. Stringify on the JS side
+ *  so the parameter arrives as TEXT and concatenates cleanly. */
 export async function listChapterCommentary(
   workSlug: string,
   bookSlug: string,
   chapter: number,
 ): Promise<SectionRow[]> {
+  const chapterStr = String(chapter);
   return corpusSelect<SectionRow>(
     `SELECT s.* FROM section s
        JOIN work w ON w.id = s.work_id
@@ -98,7 +104,7 @@ export async function listChapterCommentary(
           OR s.ordinal_path LIKE $1 || '.' || $2 || '.' || $3 || '.%'
         )
       ORDER BY s.ordering`,
-    [workSlug, bookSlug, chapter],
+    [workSlug, bookSlug, chapterStr],
   );
 }
 
