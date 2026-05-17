@@ -1,9 +1,13 @@
 import type { CSSProperties } from "react";
 import type { HighlightColor } from "@/db/types";
+import { ThemeEditor } from "./ThemeEditor";
 
 export function DesignRoute() {
   return (
     <div style={{ maxWidth: "44em", margin: "0 auto", padding: "2.5rem 2rem 6rem" }}>
+      <SectionHeading>Theme editor</SectionHeading>
+      <ThemeEditor />
+
       <SectionHeading>Palette</SectionHeading>
       <PaletteGrid />
 

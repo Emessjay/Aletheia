@@ -165,7 +165,7 @@ export function AppShell() {
               style={{
                 position: "absolute",
                 inset: 0,
-                background: "rgb(0 0 0 / 0.25)",
+                background: "var(--color-scrim)",
                 zIndex: 50,
               }}
             />
