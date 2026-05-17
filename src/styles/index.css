@@ -84,6 +84,12 @@
   --color-hl-purple-rule: #a48aac;
   --color-hl-orange-rule: #c08858;
 
+  /* Modal scrims — full color expressions so they remain editable from the
+     Design tab via an RGBA picker. `scrim` is the heavier drawer/dialog wash;
+     `scrim-soft` is for less obtrusive overlays (command palette, kbd help). */
+  --color-scrim:      rgb(0 0 0 / 0.25);
+  --color-scrim-soft: rgb(0 0 0 / 0.18);
+
   --radius-sm: 2px;
   --radius-pop: 3px;
   --measure: 34em;
@@ -119,6 +125,9 @@
   --color-hl-pink-rule:   #844a4a;
   --color-hl-purple-rule: #6a4a74;
   --color-hl-orange-rule: #84602a;
+
+  --color-scrim:      rgb(0 0 0 / 0.5);
+  --color-scrim-soft: rgb(0 0 0 / 0.4);
 
   --shadow-pop: 0 1px 3px rgb(0 0 0 / 0.4);
 }
