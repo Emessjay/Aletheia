@@ -24,6 +24,22 @@ public struct ThMLParser {
         public let sections: [Section]
     }
 
+    /// A single discovered work inside a volume: its title (used for display
+    /// + slug), the CCEL `id` of its top-level container, and an optional
+    /// per-work author when the volume embeds one.
+    public struct WorkEntry {
+        public let slug: String        // slugified from title, e.g. "the-confessions"
+        public let title: String       // "The Confessions"
+        public let containerID: String // CCEL div id, e.g. "vi"
+        public let author: String?     // nil → fall back to volume-level author
+    }
+
+    public struct VolumeManifest {
+        public let title: String       // volume title from the ThML <title>
+        public let author: String      // volume author (often the editor or single-author label)
+        public let works: [WorkEntry]
+    }
+
     /// Parse a ThML file. CCEL frequently bundles multiple works in one XML file (e.g.
     /// `anf01.xml` covers an entire ANF volume). Pass ``containerID`` to scope parsing to
     /// the div whose `id` attribute matches — sections are only emitted while we're inside
@@ -41,6 +57,124 @@ public struct ThMLParser {
         }
         return ParseResult(title: delegate.title, author: delegate.author, sections: delegate.sections)
     }
+
+    /// Enumerate the non-editorial top-level works in a ThML volume.
+    /// Each NPNF/ANF volume bundles multiple discrete works (Augustine's
+    /// Confessions and Letters live in NPNF1-01; Athanasius's Incarnation,
+    /// Discourses, Life of Antony etc. live in NPNF2-04). Discovery walks
+    /// the volume's `<div1>` entries, filters out editorial wrappers
+    /// (Title Page, Preface, Contents, Indexes, Prolegomena, Translator's
+    /// Preface, Chief Events…), and returns one ``WorkEntry`` per real
+    /// work for the Pipeline to ingest individually.
+    public func discoverWorks(fileURL: URL) throws -> VolumeManifest {
+        guard let parser = XMLParser(contentsOf: fileURL) else {
+            throw IngestError.sourceMissing("Could not open \(fileURL.path)")
+        }
+        let delegate = ThMLDiscoveryDelegate()
+        parser.delegate = delegate
+        parser.shouldProcessNamespaces = false
+        parser.shouldResolveExternalEntities = false
+        if !parser.parse() {
+            throw IngestError.malformed("ThML discovery parse failed: \(parser.parserError?.localizedDescription ?? "unknown")")
+        }
+        // Editorial-title filter applied after we have the full list so we
+        // can disambiguate across volumes consistently.
+        var seenSlugs = Set<String>()
+        var works: [WorkEntry] = []
+        for cand in delegate.candidates {
+            if isEditorialTitle(cand.title) { continue }
+            var slug = slugify(cand.title)
+            if slug.isEmpty { slug = cand.id.lowercased() }
+            var unique = slug
+            var n = 2
+            while seenSlugs.contains(unique) {
+                unique = "\(slug)-\(n)"
+                n += 1
+            }
+            seenSlugs.insert(unique)
+            works.append(WorkEntry(
+                slug: unique,
+                title: cand.title,
+                containerID: cand.id,
+                author: nil
+            ))
+        }
+        return VolumeManifest(
+            title: delegate.volumeTitle,
+            author: delegate.volumeAuthor,
+            works: works
+        )
+    }
+}
+
+/// Slugify a work title for use as a URL-friendly identifier. Lowercases,
+/// strips diacritics, collapses runs of non-alphanumeric characters into a
+/// single dash, and trims leading/trailing dashes.
+private func slugify(_ s: String) -> String {
+    let folded = s
+        .folding(options: .diacriticInsensitive, locale: .current)
+        .lowercased()
+    var out = ""
+    var lastWasDash = true
+    for ch in folded {
+        if ch.isLetter || ch.isNumber {
+            out.append(ch)
+            lastWasDash = false
+        } else if !lastWasDash {
+            out.append("-")
+            lastWasDash = true
+        }
+    }
+    while out.hasSuffix("-") { out.removeLast() }
+    return out
+}
+
+/// Titles that mark editorial / front-matter divs we don't want to surface
+/// as their own "works" (they're either volume apparatus or an editor's
+/// introduction to a real work that follows).
+/// Anchored at the start of the trimmed title (with optional leading "The ").
+/// Trailing punctuation is allowed since CCEL sometimes emits `Title Page.` /
+/// `Preface:` etc. — that's why these patterns deliberately don't pin `$`.
+private let editorialTitlePatterns: [String] = [
+    #"^Title Page\b"#,
+    #"^Preface\b"#,
+    #"^Contents\b"#,
+    #"^Editor['\u{2019}]s Preface"#,
+    #"^Translator['\u{2019}]s Preface"#,
+    #"^Introductory Notice"#,
+    #"^Introductory Essay"#,
+    #"^Prolegomena"#,
+    #"^Chief Events"#,
+    #"^Bibliograph"#,
+    #"^Index(?:es|ices)?\b"#,
+    #"^Greek Words"#,
+    #"^Hebrew Words"#,
+    #"^German Words"#,
+    #"^French Words"#,
+    #"^Latin Words"#,
+    #"^Index of\b"#,
+    #"^Pages of the Print Edition"#,
+    #"^Front Matter"#,
+    #"^Errata"#,
+    #"^Addenda"#,
+    #"^Publishers?['\u{2019}']?\s"#,
+    #"^Brief Notice"#,
+    #"^Dedication of\b"#,
+    #"^Dedication to\b"#,
+    #"^Genealogical Tables?\b"#,
+    #"^Map\b"#,
+    #"^Maps\b"#,
+]
+
+private func isEditorialTitle(_ title: String) -> Bool {
+    let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+    if trimmed.isEmpty { return true }
+    for p in editorialTitlePatterns {
+        if trimmed.range(of: p, options: [.regularExpression, .caseInsensitive]) != nil {
+            return true
+        }
+    }
+    return false
 }
 
 private final class ThMLDelegate: NSObject, XMLParserDelegate {
@@ -103,7 +237,24 @@ private final class ThMLDelegate: NSObject, XMLParserDelegate {
         // container match, so the corresponding `</div>` decrements the counter exactly once.
         if lower.hasPrefix("div") {
             let isMatch = containerID != nil && attributes["id"] == containerID
-            if isMatch { containerStackDepth += 1 }
+            if isMatch {
+                containerStackDepth += 1
+                // Short works (single homilies, single letters) tuck their
+                // prose directly under div1 with no structural div2/3
+                // children. Start a default work-body section as soon as
+                // we enter the container so that direct <p> children
+                // accumulate somewhere. If a structural sub-div appears
+                // later it'll commit this section and start its own.
+                if currentSection == nil, let cid = attributes["id"] {
+                    sectionCounter += 1
+                    let label = attributes["title"] ?? attributes["shorttitle"]
+                    currentSection = SectionInProgress(
+                        ordinalPath: "\(workSlug).\(cid)",
+                        kind: "section",
+                        label: (label?.isEmpty == false) ? label : nil
+                    )
+                }
+            }
             divIdStack.append(isMatch)
         }
 
@@ -129,7 +280,12 @@ private final class ThMLDelegate: NSObject, XMLParserDelegate {
             "book", "discourse", "letter", "treatise", "part", "homily"
         ]
         let recognizedType = typeAttr.map { structuralTypes.contains($0) } ?? false
-        let labelText = attributes["shorttitle"] ?? attributes["title"] ?? ""
+        // CCEL frequently emits `shorttitle=""` (empty) on real chapter/book
+        // divs whose long title is supplied via `title="…"`. Treat an empty
+        // shorttitle as absent so the title fallback wins.
+        let nonEmptyShortTitle = (attributes["shorttitle"]?.isEmpty == false)
+            ? attributes["shorttitle"] : nil
+        let labelText = nonEmptyShortTitle ?? attributes["title"] ?? ""
         let structuralPrefixes = [
             "Chapter ", "Book ", "Discourse ", "Letter ", "Treatise ",
             "Section ", "Part ", "Article ", "Homily "
@@ -396,5 +552,90 @@ extension ThMLParser {
     fileprivate static func normalizeWhitespace(_ s: String) -> String {
         s.replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
          .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+}
+
+/// Lightweight first-pass parser that walks a ThML file and records every
+/// `<div1>` element's id + title. The Pipeline filters editorial entries and
+/// turns the remainder into separate work-ingest passes. We deliberately do
+/// not capture body text here — a second `parse` call (with the discovered
+/// containerID) does that — because the whole-volume body is too large to
+/// hold in memory all at once for some of the bigger NPNF volumes.
+private final class ThMLDiscoveryDelegate: NSObject, XMLParserDelegate {
+    struct Candidate {
+        let id: String
+        let title: String
+    }
+
+    var candidates: [Candidate] = []
+    var volumeTitle: String = ""
+    /// Joined display string of all DC.Creator authors (sub="Author") in
+    /// the volume header. CCEL uses one creator entry per author per
+    /// scheme; we keep only the "short-form" scheme and join with " & ".
+    var volumeAuthor: String {
+        var seen = Set<String>()
+        let unique = authorsShortForm.filter { seen.insert($0).inserted }
+        return unique.joined(separator: " & ")
+    }
+
+    private var authorsShortForm: [String] = []
+    private var inVolumeTitle = false
+    private var inDCCreatorAuthorShortForm = false
+    private var textBuffer = ""
+    private var titleDepth = 0
+
+    func parser(_ parser: XMLParser, didStartElement element: String, namespaceURI: String?, qualifiedName: String?, attributes: [String : String] = [:]) {
+        let lower = element.lowercased()
+        // Reset whatever's buffered when we descend into a new element so
+        // mixed-text quirks of ThML don't bleed prior text into ours.
+        textBuffer.removeAll(keepingCapacity: true)
+
+        if lower == "title", titleDepth == 0, volumeTitle.isEmpty {
+            inVolumeTitle = true
+        }
+        if lower == "title" { titleDepth += 1 }
+
+        if lower == "dc.creator",
+           attributes["sub"]?.lowercased() == "author",
+           attributes["scheme"]?.lowercased() == "short-form" {
+            inDCCreatorAuthorShortForm = true
+        }
+
+        if lower == "div1" {
+            let id = attributes["id"] ?? ""
+            let titleAttr = attributes["title"]
+            let shortAttr = attributes["shorttitle"]
+            // Prefer the longer "title" attribute; fall back to shorttitle
+            // only when title is missing or empty. CCEL emits empty
+            // shorttitles for nearly every real work, which would otherwise
+            // win over the descriptive title.
+            let title = (titleAttr?.isEmpty == false ? titleAttr : shortAttr) ?? ""
+            guard !id.isEmpty else { return }
+            candidates.append(Candidate(id: id, title: title))
+        }
+    }
+
+    func parser(_ parser: XMLParser, foundCharacters string: String) {
+        if inVolumeTitle || inDCCreatorAuthorShortForm {
+            textBuffer += string
+        }
+    }
+
+    func parser(_ parser: XMLParser, didEndElement element: String, namespaceURI: String?, qualifiedName: String?) {
+        let lower = element.lowercased()
+        if lower == "title" {
+            if inVolumeTitle {
+                volumeTitle = textBuffer.trimmingCharacters(in: .whitespacesAndNewlines)
+                inVolumeTitle = false
+                textBuffer.removeAll(keepingCapacity: true)
+            }
+            titleDepth = max(0, titleDepth - 1)
+        }
+        if lower == "dc.creator", inDCCreatorAuthorShortForm {
+            let name = textBuffer.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !name.isEmpty { authorsShortForm.append(name) }
+            inDCCreatorAuthorShortForm = false
+            textBuffer.removeAll(keepingCapacity: true)
+        }
     }
 }

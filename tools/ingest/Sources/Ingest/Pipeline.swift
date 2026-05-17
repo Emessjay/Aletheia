@@ -15,12 +15,10 @@ import Logging
 ///       openscriptures/HebrewLexicon.xml         # BDB + Strong's H
 ///       openscriptures/StrongsGreek.xml          # Strong's G + Thayer's fragments
 ///       openbibleinfo/cross_references.txt       # OpenBible.info cross-ref TSV
-///       patristics/summa.json                    # Jacob-Gray/summa.json (English)
-///       patristics/summa-latin/                  # Geremia/AquinasOperaOmnia clone
-///       patristics/anf01.xml                     # CCEL ThML — ANF Vol 1 (incl. Trypho)
-///       patristics/npnf101.xml                   # CCEL ThML — Augustine Vol 1 (Confessions)
-///       patristics/npnf103.xml                   # CCEL ThML — Augustine Vol 3 (Doctrinal/Moral, incl. Enchiridion)
-///       patristics/npnf204.xml                   # CCEL ThML — Athanasius (Incarnation, Against the Arians)
+///       patristics/summa.json                    # Jacob-Gray/summa.json (English Summa)
+///       patristics/anf01.xml … anf09.xml         # CCEL ThML — Ante-Nicene Fathers (Roberts & Donaldson)
+///       patristics/npnf101.xml … npnf114.xml     # CCEL ThML — NPNF Series 1 (Augustine + Chrysostom)
+///       patristics/npnf201.xml … npnf214.xml     # CCEL ThML — NPNF Series 2 (post-Nicene Greek + Latin fathers)
 public struct Pipeline {
     public let sourceRoot: URL
     public let outputPath: String
@@ -150,71 +148,17 @@ public struct Pipeline {
             // produce broken xrefs. Marked non-book-scoped so --books skips it.
             Stage(name: "Cross-references", group: "bible", languages: ["en_bsb"], bookScoped: false,
                   run: { try ingestCrossRefs(writer: writer) }),
-            // Patristics — Summa (its own group; the Latin side is bulky enough
-            // to justify being able to skip it on a fast iteration loop).
+            // Summa Theologica (English). The Latin side was previously
+            // sourced from Geremia/AquinasOperaOmnia — a 250 MB git clone
+            // covering the whole Aquinas opera — which has been dropped in
+            // favor of carrying the English alone. Translation can come back
+            // later from a slimmer source if there's demand.
             Stage(name: "Summa Theologica (Eng)", group: "summa", languages: ["en"], bookScoped: false,
                   run: { try ingestSumma(writer: writer) }),
-            Stage(name: "Summa Theologica (Lat)", group: "summa", languages: ["la"], bookScoped: false,
-                  run: { try ingestSummaLatin(writer: writer) }),
-            // Ante-Nicene Fathers (ANF) — pre-325 fathers, Roberts & Donaldson PD edition.
-            // anf01.xml bundles the whole ANF Vol 1; scope to Justin Martyr's
-            // Dialogue with Trypho (div2 id="viii.iv").
-            Stage(name: "ANF — Dialogue with Trypho", group: "anf", languages: ["en"], bookScoped: false,
-                  run: { try ingestThML(
-                      writer: writer,
-                      file: "patristics/anf01.xml",
-                      workSlug: "trypho",
-                      workTitle: "Dialogue with Trypho",
-                      author: "Justin Martyr",
-                      kind: "dialogue",
-                      language: "en",
-                      containerID: "viii.iv") }),
-            // Nicene & Post-Nicene Fathers (NPNF) — Schaff's PD edition.
-            // npnf204.xml bundles the whole Athanasius volume; scope to the two
-            // div2 containers we want — On the Incarnation (vii.ii) and the
-            // Four Discourses Against the Arians (xxi.ii).
-            Stage(name: "NPNF — On the Incarnation", group: "npnf", languages: ["en"], bookScoped: false,
-                  run: { try ingestThML(
-                      writer: writer,
-                      file: "patristics/npnf204.xml",
-                      workSlug: "incarnation",
-                      workTitle: "On the Incarnation of the Word",
-                      author: "Athanasius of Alexandria",
-                      kind: "treatise",
-                      language: "en",
-                      containerID: "vii.ii") }),
-            Stage(name: "NPNF — Discourses Against the Arians", group: "npnf", languages: ["en"], bookScoped: false,
-                  run: { try ingestThML(
-                      writer: writer,
-                      file: "patristics/npnf204.xml",
-                      workSlug: "discourses-against-arians",
-                      workTitle: "Four Discourses Against the Arians",
-                      author: "Athanasius of Alexandria",
-                      kind: "treatise",
-                      language: "en",
-                      containerID: "xxi.ii") }),
-            // Augustine's Confessions: container div1 id="vi" in npnf101.xml.
-            Stage(name: "NPNF — Confessions", group: "npnf", languages: ["en"], bookScoped: false,
-                  run: { try ingestThML(
-                      writer: writer,
-                      file: "patristics/npnf101.xml",
-                      workSlug: "confessions",
-                      workTitle: "The Confessions",
-                      author: "Augustine of Hippo",
-                      kind: "treatise",
-                      language: "en",
-                      containerID: "vi") }),
-            // Augustine's Enchiridion: container div2 id="iv.ii" in npnf103.xml.
-            Stage(name: "NPNF — Enchiridion", group: "npnf", languages: ["en"], bookScoped: false,
-                  run: { try ingestThML(
-                      writer: writer,
-                      file: "patristics/npnf103.xml",
-                      workSlug: "enchiridion",
-                      workTitle: "The Enchiridion",
-                      author: "Augustine of Hippo",
-                      kind: "treatise",
-                      language: "en",
-                      containerID: "iv.ii") }),
+            // Ante-Nicene Fathers (10 volumes, Roberts & Donaldson 1885 PD).
+            // Each volume's stage runs the ThML discovery pass and emits
+            // one `work` per non-editorial div1 inside that volume.
+        ] + anfNpnfStages(writer: writer) + [
             // Commentaries — each writes one `work` row plus per-book/chapter/comment
             // `section` rows. Language tag "en" is shared by all current commentaries;
             // it does NOT match any of the Bible-side `en_*` tags, so a `--languages en_bsb`
@@ -253,6 +197,38 @@ public struct Pipeline {
                       workTitle: "Adam Clarke's Commentary on the Bible",
                       author: "Adam Clarke") })
         ]
+    }
+
+    /// One ingest stage per ANF/NPNF volume on disk. Each stage parses the
+    /// volume's ThML once, enumerates non-editorial top-level divs as
+    /// individual works (Confessions, Letters, On the Incarnation, …) and
+    /// writes one `work` row + section tree per discovery. ANF Vol 10 is
+    /// the bibliographic stub volume (67 KB, no actual text) so it's
+    /// skipped at the manifest level.
+    private func anfNpnfStages(writer: CorpusWriter) -> [Stage] {
+        var stages: [Stage] = []
+        let anf = (1...9).map { String(format: "anf%02d", $0) }
+        let npnf1 = (1...14).map { String(format: "npnf1%02d", $0) }
+        let npnf2 = (1...14).map { String(format: "npnf2%02d", $0) }
+        for slug in anf {
+            stages.append(Stage(
+                name: "ANF — \(slug)",
+                group: "anf",
+                languages: ["en"],
+                bookScoped: false,
+                run: { try self.ingestThMLVolume(writer: writer, file: "patristics/\(slug).xml", volumeSlug: slug) }
+            ))
+        }
+        for slug in (npnf1 + npnf2) {
+            stages.append(Stage(
+                name: "NPNF — \(slug)",
+                group: "npnf",
+                languages: ["en"],
+                bookScoped: false,
+                run: { try self.ingestThMLVolume(writer: writer, file: "patristics/\(slug).xml", volumeSlug: slug) }
+            ))
+        }
+        return stages
     }
 
     // MARK: - Stage implementations
@@ -696,46 +672,49 @@ public struct Pipeline {
         logger.info("    \(sections.count) English sections")
     }
 
-    private func ingestSummaLatin(writer: CorpusWriter) throws {
-        // Geremia/AquinasOperaOmnia clone is laid out as <root>/summa/<PART>/<file>.html
-        let root = sourceRoot.appendingPathComponent("summa-latin/summa")
-        guard FileManager.default.fileExists(atPath: root.path) else {
-            throw IngestError.sourceMissing(root.path)
-        }
-        let parser = SummaLatinParser()
-        let sections = try parser.parse(rootDirectory: root)
-        // Summa Theologica work row may already exist from the English stage —
-        // insertWork is upsert-by-slug so this returns the existing id.
-        let workID = try writer.insertWork(slug: "summa", title: "Summa Theologica",
-                                            author: "Thomas Aquinas", kind: "summa")
-        for (i, s) in sections.enumerated() {
-            _ = try writer.insertSection(workID: workID, parentID: nil,
-                                         ordinalPath: s.ordinalPath, kind: "respondeo",
-                                         label: nil, language: "la", body: s.body, ordering: i)
-        }
-        logger.info("    \(sections.count) Latin sections")
-    }
-
-    /// Parse one CCEL ThML volume, scoped to a single div container (one work
-    /// per volume in the multi-work NPNF files), and write the result under
-    /// `workSlug`. Metadata (`workTitle` / `author` / `kind`) is supplied by
-    /// the caller — the volume-level <title>/<author> in CCEL ThML reflects
-    /// the whole volume, not the individual treatise we're slicing out.
-    private func ingestThML(writer: CorpusWriter, file: String, workSlug: String,
-                            workTitle: String, author: String, kind: String,
-                            language: String, containerID: String? = nil) throws {
+    /// Parse one CCEL ThML volume, run the discovery pass to enumerate
+    /// non-editorial top-level works, and write a `work` row + section tree
+    /// for each. `volumeSlug` (e.g. "anf01" / "npnf204") is the source-file
+    /// stem; we prefix it onto work slugs to keep them globally unique
+    /// even when two volumes have a work with the same auto-generated
+    /// slug (e.g. multiple volumes each have a "preface").
+    private func ingestThMLVolume(writer: CorpusWriter, file: String, volumeSlug: String) throws {
         let url = sourceRoot.appendingPathComponent(file)
-        guard FileManager.default.fileExists(atPath: url.path) else { throw IngestError.sourceMissing(url.path) }
-        let parser = ThMLParser()
-        let result = try parser.parse(fileURL: url, workSlug: workSlug, containerID: containerID)
-        let workID = try writer.insertWork(slug: workSlug, title: workTitle,
-                                            author: author, kind: kind)
-        for (i, s) in result.sections.enumerated() {
-            _ = try writer.insertSection(workID: workID, parentID: nil,
-                                         ordinalPath: s.ordinalPath, kind: s.kind,
-                                         label: s.label, language: language, body: s.body, ordering: i)
+        guard FileManager.default.fileExists(atPath: url.path) else {
+            throw IngestError.sourceMissing(url.path)
         }
-        logger.info("    \(result.sections.count) sections")
+        let parser = ThMLParser()
+        let manifest = try parser.discoverWorks(fileURL: url)
+        if manifest.works.isEmpty {
+            logger.info("    no works discovered in \(file)")
+            return
+        }
+        let volumeAuthor = manifest.author.isEmpty ? "Various" : manifest.author
+        var totalSections = 0
+        for entry in manifest.works {
+            let workSlug = "\(volumeSlug).\(entry.slug)"
+            let result = try parser.parse(
+                fileURL: url,
+                workSlug: workSlug,
+                containerID: entry.containerID
+            )
+            guard !result.sections.isEmpty else { continue }
+            let workID = try writer.insertWork(
+                slug: workSlug,
+                title: entry.title,
+                author: entry.author ?? volumeAuthor,
+                kind: "treatise"
+            )
+            for (i, s) in result.sections.enumerated() {
+                _ = try writer.insertSection(
+                    workID: workID, parentID: nil,
+                    ordinalPath: s.ordinalPath, kind: s.kind,
+                    label: s.label, language: "en", body: s.body, ordering: i
+                )
+            }
+            totalSections += result.sections.count
+        }
+        logger.info("    \(manifest.works.count) works, \(totalSections) sections")
     }
 }
 
