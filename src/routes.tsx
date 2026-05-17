@@ -6,6 +6,8 @@ import { ReaderRoute } from "@/features/reader/ReaderRoute";
 import { SearchRoute } from "@/features/search/SearchRoute";
 import { LibrariesRoute } from "@/features/libraries/LibrariesRoute";
 import { CommentariesRoute } from "@/features/commentaries/CommentariesRoute";
+import { PatristicsIndexRoute } from "@/features/patristics/PatristicsIndexRoute";
+import { PatristicsRoute } from "@/features/patristics/PatristicsRoute";
 import { SettingsRoute } from "@/features/settings/SettingsRoute";
 
 export const router = createBrowserRouter([
@@ -25,6 +27,8 @@ export const router = createBrowserRouter([
         path: "commentaries/:work/:book/:chapter",
         element: <CommentariesRoute />,
       },
+      { path: "patristics", element: <PatristicsIndexRoute /> },
+      { path: "patristics/:work/:section", element: <PatristicsRoute /> },
       { path: "settings", element: <SettingsRoute /> },
     ],
   },

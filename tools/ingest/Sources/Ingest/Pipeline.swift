@@ -15,30 +15,47 @@ import Logging
 ///       openscriptures/HebrewLexicon.xml         # BDB + Strong's H
 ///       openscriptures/StrongsGreek.xml          # Strong's G + Thayer's fragments
 ///       openbibleinfo/cross_references.txt       # OpenBible.info cross-ref TSV
+///       patristics/summa.json                    # Jacob-Gray/summa.json (English)
+///       patristics/summa-latin/                  # Geremia/AquinasOperaOmnia clone
+///       patristics/anf01.xml                     # CCEL ThML — ANF Vol 1 (incl. Trypho)
+///       patristics/npnf101.xml                   # CCEL ThML — Augustine Vol 1 (Confessions)
+///       patristics/npnf103.xml                   # CCEL ThML — Augustine Vol 3 (Doctrinal/Moral, incl. Enchiridion)
+///       patristics/npnf204.xml                   # CCEL ThML — Athanasius (Incarnation, Against the Arians)
 public struct Pipeline {
     public let sourceRoot: URL
     public let outputPath: String
     /// Restrict Bible/STEPBible stages to these book slugs. Empty = no filter.
-    /// When non-empty, non-book-scoped stages (lexicons, cross-refs) are
-    /// skipped entirely.
+    /// When non-empty, non-book-scoped stages (lexicons, cross-refs, patristics)
+    /// are skipped entirely.
     public let bookFilter: Set<String>
     /// Restrict stages to these language tags. Empty = no filter. Tags must match
     /// one of the tags declared on each stage (see `stageEntries`).
     public let languageFilter: Set<String>
+    /// Restrict stages to these source groups. Empty = no filter. Valid groups:
+    /// "bible" | "commentary" | "summa" | "anf" | "npnf". Bible is the slow,
+    /// rebuilds-everything tier; the others are each substantial enough on
+    /// their own that being able to re-ingest one at a time matters.
+    public let groupFilter: Set<String>
     public let logger = Logger(label: "aletheia.ingest")
 
     public init(sourceRoot: URL, outputPath: String,
-                bookFilter: Set<String> = [], languageFilter: Set<String> = []) {
+                bookFilter: Set<String> = [],
+                languageFilter: Set<String> = [],
+                groupFilter: Set<String> = []) {
         self.sourceRoot = sourceRoot
         self.outputPath = outputPath
         self.bookFilter = bookFilter
         self.languageFilter = languageFilter
+        self.groupFilter = groupFilter
     }
 
-    private var filtersActive: Bool { !bookFilter.isEmpty || !languageFilter.isEmpty }
+    private var filtersActive: Bool {
+        !bookFilter.isEmpty || !languageFilter.isEmpty || !groupFilter.isEmpty
+    }
 
     private struct Stage {
         let name: String
+        let group: String
         let languages: Set<String>
         let bookScoped: Bool
         let run: () throws -> Void
@@ -49,6 +66,7 @@ public struct Pipeline {
             logger.info("Updating Aletheia corpus at \(outputPath) (merge mode)")
             if !bookFilter.isEmpty { logger.info("  books: \(bookFilter.sorted().joined(separator: ","))") }
             if !languageFilter.isEmpty { logger.info("  languages: \(languageFilter.sorted().joined(separator: ","))") }
+            if !groupFilter.isEmpty { logger.info("  groups: \(groupFilter.sorted().joined(separator: ","))") }
         } else {
             logger.info("Building Aletheia corpus at \(outputPath)")
         }
@@ -58,6 +76,10 @@ public struct Pipeline {
         var failed = 0
         var skippedByFilter = 0
         for stage in stages {
+            if !groupFilter.isEmpty && !groupFilter.contains(stage.group) {
+                skippedByFilter += 1
+                continue
+            }
             if !languageFilter.isEmpty && stage.languages.isDisjoint(with: languageFilter) {
                 skippedByFilter += 1
                 continue
@@ -90,65 +112,130 @@ public struct Pipeline {
 
     private func stageEntries(writer: CorpusWriter) -> [Stage] {
         [
-            Stage(name: "BSB", languages: ["en_bsb"], bookScoped: true,
+            Stage(name: "BSB", group: "bible", languages: ["en_bsb"], bookScoped: true,
                   run: { try ingestBSB(writer: writer) }),
-            Stage(name: "KJV (Eng)", languages: ["en_kjv"], bookScoped: true,
+            Stage(name: "KJV (Eng)", group: "bible", languages: ["en_kjv"], bookScoped: true,
                   run: { try ingestKJV(writer: writer) }),
-            Stage(name: "Brenton LXX (Eng)", languages: ["en_brenton"], bookScoped: true,
+            Stage(name: "Brenton LXX (Eng)", group: "bible", languages: ["en_brenton"], bookScoped: true,
                   run: { try ingestBrenton(writer: writer) }),
-            Stage(name: "Brenton LXX (Grk)", languages: ["gk"], bookScoped: true,
+            Stage(name: "Brenton LXX (Grk)", group: "bible", languages: ["gk"], bookScoped: true,
                   run: { try ingestGrcbrent(writer: writer) }),
-            Stage(name: "KJV Apocrypha", languages: ["en_kjv"], bookScoped: true,
+            Stage(name: "KJV Apocrypha", group: "bible", languages: ["en_kjv"], bookScoped: true,
                   run: { try ingestKJVApocrypha(writer: writer) }),
-            Stage(name: "WEB (Eng + Apocrypha)", languages: ["en_web"], bookScoped: true,
+            Stage(name: "WEB (Eng + Apocrypha)", group: "bible", languages: ["en_web"], bookScoped: true,
                   run: { try ingestWEB(writer: writer) }),
             // BSB source is plain TSV with no paragraph markup. Borrow WEB's
             // \p / \q line breaks (also PD, modern English) so BSB reads with
             // the same paragraph rhythm. Must run after both BSB and WEB.
-            Stage(name: "BSB paragraph parity from WEB", languages: ["en_bsb", "en_web"], bookScoped: true,
+            Stage(name: "BSB paragraph parity from WEB", group: "bible", languages: ["en_bsb", "en_web"], bookScoped: true,
                   run: { try copyLeadsFromWEBtoBSB(writer: writer) }),
-            Stage(name: "STEPBible KJV+Strongs", languages: ["en_kjv"], bookScoped: true,
+            Stage(name: "STEPBible KJV+Strongs", group: "bible", languages: ["en_kjv"], bookScoped: true,
                   run: { try ingestSTEP(writer: writer, table: .tkjvs, language: "en_kjv") }),
-            Stage(name: "STEPBible Hebrew (MT)", languages: ["he"], bookScoped: true,
+            Stage(name: "STEPBible Hebrew (MT)", group: "bible", languages: ["he"], bookScoped: true,
                   run: { try ingestSTEP(writer: writer, table: .tahot, language: "he") }),
-            Stage(name: "STEPBible Greek (LXX)", languages: ["gk"], bookScoped: true,
+            Stage(name: "STEPBible Greek (LXX)", group: "bible", languages: ["gk"], bookScoped: true,
                   run: { try ingestSTEP(writer: writer, table: .tagot, language: "gk") }),
-            Stage(name: "STEPBible Greek (NT)", languages: ["gk"], bookScoped: true,
+            Stage(name: "STEPBible Greek (NT)", group: "bible", languages: ["gk"], bookScoped: true,
                   run: { try ingestSTEP(writer: writer, table: .tagnt, language: "gk") }),
             // Must run after Brenton LXX (Grk) (verses) AND STEPBible Greek (NT)
             // (the surface→strongs reference data). See LXXTagger.swift for the
             // rationale on surface-form (not lemma-form) matching.
-            Stage(name: "LXX surface-form tagging", languages: ["gk"], bookScoped: true,
+            Stage(name: "LXX surface-form tagging", group: "bible", languages: ["gk"], bookScoped: true,
                   run: { try tagLXXSurfaces(writer: writer) }),
-            Stage(name: "Lexicon — Hebrew BDB", languages: ["he"], bookScoped: false,
+            Stage(name: "Lexicon — Hebrew BDB", group: "bible", languages: ["he"], bookScoped: false,
                   run: { try ingestLexicon(writer: writer, source: .hebrewBDB(self.sourceRoot.appendingPathComponent("openscriptures/HebrewLexicon.xml"))) }),
-            Stage(name: "Lexicon — Greek Strong's", languages: ["gk"], bookScoped: false,
+            Stage(name: "Lexicon — Greek Strong's", group: "bible", languages: ["gk"], bookScoped: false,
                   run: { try ingestLexicon(writer: writer, source: .greekStrongs(self.sourceRoot.appendingPathComponent("openscriptures/StrongsGreek.xml"))) }),
             // Cross-refs index against en_bsb verses, so a partial book filter would
             // produce broken xrefs. Marked non-book-scoped so --books skips it.
-            Stage(name: "Cross-references", languages: ["en_bsb"], bookScoped: false,
+            Stage(name: "Cross-references", group: "bible", languages: ["en_bsb"], bookScoped: false,
                   run: { try ingestCrossRefs(writer: writer) }),
+            // Patristics — Summa (its own group; the Latin side is bulky enough
+            // to justify being able to skip it on a fast iteration loop).
+            Stage(name: "Summa Theologica (Eng)", group: "summa", languages: ["en"], bookScoped: false,
+                  run: { try ingestSumma(writer: writer) }),
+            Stage(name: "Summa Theologica (Lat)", group: "summa", languages: ["la"], bookScoped: false,
+                  run: { try ingestSummaLatin(writer: writer) }),
+            // Ante-Nicene Fathers (ANF) — pre-325 fathers, Roberts & Donaldson PD edition.
+            // anf01.xml bundles the whole ANF Vol 1; scope to Justin Martyr's
+            // Dialogue with Trypho (div2 id="viii.iv").
+            Stage(name: "ANF — Dialogue with Trypho", group: "anf", languages: ["en"], bookScoped: false,
+                  run: { try ingestThML(
+                      writer: writer,
+                      file: "patristics/anf01.xml",
+                      workSlug: "trypho",
+                      workTitle: "Dialogue with Trypho",
+                      author: "Justin Martyr",
+                      kind: "dialogue",
+                      language: "en",
+                      containerID: "viii.iv") }),
+            // Nicene & Post-Nicene Fathers (NPNF) — Schaff's PD edition.
+            // npnf204.xml bundles the whole Athanasius volume; scope to the two
+            // div2 containers we want — On the Incarnation (vii.ii) and the
+            // Four Discourses Against the Arians (xxi.ii).
+            Stage(name: "NPNF — On the Incarnation", group: "npnf", languages: ["en"], bookScoped: false,
+                  run: { try ingestThML(
+                      writer: writer,
+                      file: "patristics/npnf204.xml",
+                      workSlug: "incarnation",
+                      workTitle: "On the Incarnation of the Word",
+                      author: "Athanasius of Alexandria",
+                      kind: "treatise",
+                      language: "en",
+                      containerID: "vii.ii") }),
+            Stage(name: "NPNF — Discourses Against the Arians", group: "npnf", languages: ["en"], bookScoped: false,
+                  run: { try ingestThML(
+                      writer: writer,
+                      file: "patristics/npnf204.xml",
+                      workSlug: "discourses-against-arians",
+                      workTitle: "Four Discourses Against the Arians",
+                      author: "Athanasius of Alexandria",
+                      kind: "treatise",
+                      language: "en",
+                      containerID: "xxi.ii") }),
+            // Augustine's Confessions: container div1 id="vi" in npnf101.xml.
+            Stage(name: "NPNF — Confessions", group: "npnf", languages: ["en"], bookScoped: false,
+                  run: { try ingestThML(
+                      writer: writer,
+                      file: "patristics/npnf101.xml",
+                      workSlug: "confessions",
+                      workTitle: "The Confessions",
+                      author: "Augustine of Hippo",
+                      kind: "treatise",
+                      language: "en",
+                      containerID: "vi") }),
+            // Augustine's Enchiridion: container div2 id="iv.ii" in npnf103.xml.
+            Stage(name: "NPNF — Enchiridion", group: "npnf", languages: ["en"], bookScoped: false,
+                  run: { try ingestThML(
+                      writer: writer,
+                      file: "patristics/npnf103.xml",
+                      workSlug: "enchiridion",
+                      workTitle: "The Enchiridion",
+                      author: "Augustine of Hippo",
+                      kind: "treatise",
+                      language: "en",
+                      containerID: "iv.ii") }),
             // Commentaries — each writes one `work` row plus per-book/chapter/comment
             // `section` rows. Language tag "en" is shared by all current commentaries;
             // it does NOT match any of the Bible-side `en_*` tags, so a `--languages en_bsb`
             // filter correctly skips these (and a bare `--languages en` runs only them).
-            Stage(name: "Commentary — Matthew Henry", languages: ["en"], bookScoped: false,
+            Stage(name: "Commentary — Matthew Henry", group: "commentary", languages: ["en"], bookScoped: false,
                   run: { try ingestMatthewHenry(writer: writer) }),
-            Stage(name: "Commentary — Calvin", languages: ["en"], bookScoped: false,
+            Stage(name: "Commentary — Calvin", group: "commentary", languages: ["en"], bookScoped: false,
                   run: { try ingestSwordCommentary(
                       writer: writer,
                       jsonName: "calvin.json",
                       workSlug: "calvin",
                       workTitle: "Calvin's Commentaries",
                       author: "John Calvin") }),
-            Stage(name: "Commentary — JFB", languages: ["en"], bookScoped: false,
+            Stage(name: "Commentary — JFB", group: "commentary", languages: ["en"], bookScoped: false,
                   run: { try ingestSwordCommentary(
                       writer: writer,
                       jsonName: "jfb.json",
                       workSlug: "jfb",
                       workTitle: "Commentary Critical and Explanatory on the Whole Bible",
                       author: "Jamieson, Fausset & Brown") }),
-            Stage(name: "Commentary — Wesley's Notes", languages: ["en"], bookScoped: false,
+            Stage(name: "Commentary — Wesley's Notes", group: "commentary", languages: ["en"], bookScoped: false,
                   run: { try ingestSwordCommentary(
                       writer: writer,
                       jsonName: "wesley.json",
@@ -158,7 +245,7 @@ public struct Pipeline {
                       // umbrella "Notes on the Bible" title is accurate.
                       workTitle: "John Wesley's Notes on the Bible",
                       author: "John Wesley") }),
-            Stage(name: "Commentary — Clarke", languages: ["en"], bookScoped: false,
+            Stage(name: "Commentary — Clarke", group: "commentary", languages: ["en"], bookScoped: false,
                   run: { try ingestSwordCommentary(
                       writer: writer,
                       jsonName: "clarke.json",
@@ -587,6 +674,68 @@ public struct Pipeline {
                                        baseText: w.baseText, english: w.english)
             }
         }
+    }
+
+    // MARK: - Patristic ingest helpers
+
+    private func ingestSumma(writer: CorpusWriter) throws {
+        let url = sourceRoot.appendingPathComponent("patristics/summa.json")
+        guard FileManager.default.fileExists(atPath: url.path) else { throw IngestError.sourceMissing(url.path) }
+        let parser = SummaParser()
+        let sections = try parser.parse(fileURL: url)
+        let workID = try writer.insertWork(slug: "summa", title: "Summa Theologica",
+                                            author: "Thomas Aquinas", kind: "summa")
+        var parentIDs: [String: Int64] = [:]
+        for (i, s) in sections.enumerated() {
+            let parentID = s.parentPath.flatMap { parentIDs[$0] }
+            let id = try writer.insertSection(workID: workID, parentID: parentID,
+                                              ordinalPath: s.ordinalPath, kind: s.kind,
+                                              label: s.label, language: "en", body: s.body, ordering: i)
+            parentIDs[s.ordinalPath] = id
+        }
+        logger.info("    \(sections.count) English sections")
+    }
+
+    private func ingestSummaLatin(writer: CorpusWriter) throws {
+        // Geremia/AquinasOperaOmnia clone is laid out as <root>/summa/<PART>/<file>.html
+        let root = sourceRoot.appendingPathComponent("summa-latin/summa")
+        guard FileManager.default.fileExists(atPath: root.path) else {
+            throw IngestError.sourceMissing(root.path)
+        }
+        let parser = SummaLatinParser()
+        let sections = try parser.parse(rootDirectory: root)
+        // Summa Theologica work row may already exist from the English stage —
+        // insertWork is upsert-by-slug so this returns the existing id.
+        let workID = try writer.insertWork(slug: "summa", title: "Summa Theologica",
+                                            author: "Thomas Aquinas", kind: "summa")
+        for (i, s) in sections.enumerated() {
+            _ = try writer.insertSection(workID: workID, parentID: nil,
+                                         ordinalPath: s.ordinalPath, kind: "respondeo",
+                                         label: nil, language: "la", body: s.body, ordering: i)
+        }
+        logger.info("    \(sections.count) Latin sections")
+    }
+
+    /// Parse one CCEL ThML volume, scoped to a single div container (one work
+    /// per volume in the multi-work NPNF files), and write the result under
+    /// `workSlug`. Metadata (`workTitle` / `author` / `kind`) is supplied by
+    /// the caller — the volume-level <title>/<author> in CCEL ThML reflects
+    /// the whole volume, not the individual treatise we're slicing out.
+    private func ingestThML(writer: CorpusWriter, file: String, workSlug: String,
+                            workTitle: String, author: String, kind: String,
+                            language: String, containerID: String? = nil) throws {
+        let url = sourceRoot.appendingPathComponent(file)
+        guard FileManager.default.fileExists(atPath: url.path) else { throw IngestError.sourceMissing(url.path) }
+        let parser = ThMLParser()
+        let result = try parser.parse(fileURL: url, workSlug: workSlug, containerID: containerID)
+        let workID = try writer.insertWork(slug: workSlug, title: workTitle,
+                                            author: author, kind: kind)
+        for (i, s) in result.sections.enumerated() {
+            _ = try writer.insertSection(workID: workID, parentID: nil,
+                                         ordinalPath: s.ordinalPath, kind: s.kind,
+                                         label: s.label, language: language, body: s.body, ordering: i)
+        }
+        logger.info("    \(result.sections.count) sections")
     }
 }
 

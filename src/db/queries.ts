@@ -2,7 +2,9 @@ import { corpusSelect, corpusSelectOne } from "./corpus";
 import type {
   BookRow,
   ChapterRow,
+  CitationRow,
   CorpusLanguage,
+  SectionLanguage,
   SectionRow,
   StrongsRow,
   VerseRow,
@@ -122,6 +124,88 @@ export async function listChapterCommentary(
         )
       ORDER BY s.ordering`,
     [workSlug, bookSlug, chapterStr],
+  );
+}
+
+// ── Patristic works (Summa, NPNF treatises) ───────────────────────────────
+//
+// Patristics share the work/section/citation tables with commentaries but use
+// a different shape:
+//   • `work.kind` is one of 'summa' | 'dialogue' | 'treatise' (everything but
+//     'commentary').
+//   • Sections form a tree via `parent_id`; `ordinal_path` is the dotted
+//     navigation key (e.g. "summa.1.Q1.A1.respondeo" or "incarnation.32").
+//   • `section.language` ranges across 'en' | 'gr' | 'la' — the same logical
+//     section may exist in multiple languages and is joined on ordinal_path.
+export type PatristicLanguage = SectionLanguage;
+
+export async function listPatristicWorks(): Promise<WorkRow[]> {
+  return corpusSelect<WorkRow>(
+    `SELECT * FROM work WHERE kind != 'commentary' ORDER BY id`,
+  );
+}
+
+/** All section rows for a patristic work — used for sidebar TOC + prev/next. */
+export async function listSections(
+  workSlug: string,
+  language: PatristicLanguage,
+): Promise<SectionRow[]> {
+  return corpusSelect<SectionRow>(
+    `SELECT s.* FROM section s
+       JOIN work w ON w.id = s.work_id
+      WHERE w.slug = $1 AND s.language = $2
+      ORDER BY s.ordering`,
+    [workSlug, language],
+  );
+}
+
+/** A section by ordinal_path. Falls back across languages so the route still
+ *  renders if the requested language is missing for this section. */
+export async function getSection(
+  workSlug: string,
+  ordinalPath: string,
+  language: PatristicLanguage,
+): Promise<SectionRow | null> {
+  const direct = await corpusSelectOne<SectionRow>(
+    `SELECT s.* FROM section s
+       JOIN work w ON w.id = s.work_id
+      WHERE w.slug = $1 AND s.ordinal_path = $2 AND s.language = $3`,
+    [workSlug, ordinalPath, language],
+  );
+  if (direct) return direct;
+  return corpusSelectOne<SectionRow>(
+    `SELECT s.* FROM section s
+       JOIN work w ON w.id = s.work_id
+      WHERE w.slug = $1 AND s.ordinal_path = $2
+      ORDER BY CASE s.language WHEN 'en' THEN 0 WHEN 'la' THEN 1 ELSE 2 END
+      LIMIT 1`,
+    [workSlug, ordinalPath],
+  );
+}
+
+/** Direct children of a section (one level deep) — used for Summa article
+ *  bundles where one URL displays the question/article and its sub-sections. */
+export async function listChildSections(
+  workSlug: string,
+  parentPath: string,
+  language: PatristicLanguage,
+): Promise<SectionRow[]> {
+  const prefix = `${parentPath}.`;
+  return corpusSelect<SectionRow>(
+    `SELECT s.* FROM section s
+       JOIN work w ON w.id = s.work_id
+      WHERE w.slug = $1 AND s.language = $2
+        AND s.ordinal_path LIKE $3
+        AND instr(substr(s.ordinal_path, $4), '.') = 0
+      ORDER BY s.ordering`,
+    [workSlug, language, `${prefix}%`, prefix.length + 1],
+  );
+}
+
+export async function listCitations(sectionId: number): Promise<CitationRow[]> {
+  return corpusSelect<CitationRow>(
+    `SELECT * FROM citation WHERE section_id = $1 ORDER BY span_start`,
+    [sectionId],
   );
 }
 

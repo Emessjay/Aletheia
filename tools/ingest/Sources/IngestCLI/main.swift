@@ -14,20 +14,30 @@ struct AletheiaIngest: ParsableCommand {
         commandName: "aletheia-ingest",
         abstract: "Build Aletheia.sqlite from raw source data.",
         discussion: """
-            Without --books or --languages, the corpus is rebuilt from scratch (the
-            output file is deleted first). Passing either filter switches to merge
-            mode: the existing Aletheia.sqlite is kept and only the matching slice
-            is re-ingested over it.
+            Without --books, --languages, or --groups, the corpus is rebuilt from
+            scratch (the output file is deleted first). Passing any filter switches
+            to merge mode: the existing Aletheia.sqlite is kept and only the
+            matching slice is re-ingested over it.
 
             --books takes a comma-separated list of book slugs (e.g. gen,exod,ps).
-            Only Bible/STEPBible stages are book-scoped; lexicons and
-            cross-references are skipped when --books is set.
+            Only Bible/STEPBible stages are book-scoped; lexicons, cross-references,
+            commentaries, and patristics are skipped when --books is set.
 
             --languages takes a comma-separated list of language tags. The known
             tags are:
               en_bsb, en_kjv, en_brenton, en_web    (English Bibles)
               he                                    (Hebrew MT + BDB lexicon)
               gk                                    (Greek LXX/NT + Strong's lexicon)
+              en, la                                (commentaries + patristics)
+
+            --groups takes a comma-separated list of source groups, useful when you
+            want to re-ingest one slice of the corpus without rerunning everything
+            else (each is bulky on its own). The known groups are:
+              bible       — every Bible/STEPBible/lexicon/xref stage
+              commentary  — Matthew Henry, Calvin, JFB, Wesley, Clarke
+              summa       — Summa Theologica (English + Latin)
+              anf         — Ante-Nicene Fathers (Trypho, ...)
+              npnf        — Nicene & Post-Nicene Fathers (Athanasius, Augustine, ...)
             """
     )
 
@@ -43,6 +53,9 @@ struct AletheiaIngest: ParsableCommand {
     @Option(name: [.customShort("l"), .long], help: ArgumentHelp("Restrict stages to these language tags (comma-separated).", valueName: "tags"))
     var languages: String?
 
+    @Option(name: [.customShort("g"), .long], help: ArgumentHelp("Restrict stages to these source groups (comma-separated): bible | commentary | summa | anf | npnf.", valueName: "groups"))
+    var groups: String?
+
     func run() throws {
         let root = URL(fileURLWithPath: sourceRoot, isDirectory: true)
         let outPath = output
@@ -52,8 +65,11 @@ struct AletheiaIngest: ParsableCommand {
         }
         let bookFilter = parseCSV(books)
         let languageFilter = parseCSV(languages)
+        let groupFilter = parseCSV(groups)
         let pipeline = Pipeline(sourceRoot: root, outputPath: outPath,
-                                bookFilter: bookFilter, languageFilter: languageFilter)
+                                bookFilter: bookFilter,
+                                languageFilter: languageFilter,
+                                groupFilter: groupFilter)
         try pipeline.run()
     }
 
