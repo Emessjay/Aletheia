@@ -102,6 +102,11 @@ public struct Pipeline {
                   run: { try ingestKJVApocrypha(writer: writer) }),
             Stage(name: "WEB (Eng + Apocrypha)", languages: ["en_web"], bookScoped: true,
                   run: { try ingestWEB(writer: writer) }),
+            // BSB source is plain TSV with no paragraph markup. Borrow WEB's
+            // \p / \q line breaks (also PD, modern English) so BSB reads with
+            // the same paragraph rhythm. Must run after both BSB and WEB.
+            Stage(name: "BSB paragraph parity from WEB", languages: ["en_bsb", "en_web"], bookScoped: true,
+                  run: { try copyLeadsFromWEBtoBSB(writer: writer) }),
             Stage(name: "STEPBible KJV+Strongs", languages: ["en_kjv"], bookScoped: true,
                   run: { try ingestSTEP(writer: writer, table: .tkjvs, language: "en_kjv") }),
             Stage(name: "STEPBible Hebrew (MT)", languages: ["he"], bookScoped: true,
@@ -280,6 +285,36 @@ public struct Pipeline {
     private func tagLXXSurfaces(writer: CorpusWriter) throws {
         let tagger = LXXTagger(writer: writer, logger: logger, bookFilter: bookFilter)
         try tagger.run()
+    }
+
+    /// BSB ships as plain TSV without paragraph markers, so its verses always
+    /// land with `lead = NULL`. WEB is also PD modern-English and has rich
+    /// USFM paragraph/poetry markup — copy its lead onto BSB by matching
+    /// (book slug, chapter number, verse number). Only overwrites BSB rows
+    /// whose lead is already NULL, so any future authoritative BSB source
+    /// (post this stage) would not be clobbered.
+    private func copyLeadsFromWEBtoBSB(writer: CorpusWriter) throws {
+        try writer.queue.write { db in
+            try db.execute(sql: """
+                UPDATE verse
+                SET lead = m.web_lead
+                FROM (
+                    SELECT bsb_v.id AS bsb_id, web_v.lead AS web_lead
+                    FROM verse bsb_v
+                    JOIN chapter bsb_c ON bsb_v.chapter_id = bsb_c.id
+                    JOIN book bsb_b ON bsb_c.book_id = bsb_b.id
+                    JOIN book web_b ON web_b.language = 'en_web' AND web_b.slug = bsb_b.slug
+                    JOIN chapter web_c ON web_c.book_id = web_b.id AND web_c.number = bsb_c.number
+                    JOIN verse web_v ON web_v.chapter_id = web_c.id AND web_v.number = bsb_v.number
+                    WHERE bsb_b.language = 'en_bsb'
+                      AND web_v.lead IS NOT NULL
+                      AND bsb_v.lead IS NULL
+                ) AS m
+                WHERE verse.id = m.bsb_id;
+                """)
+            let changed = db.changesCount
+            self.logger.info("    copied \(changed) lead markers from WEB to BSB")
+        }
     }
 
     private func tableDirName(_ t: STEPBibleParser.Table) -> String {
