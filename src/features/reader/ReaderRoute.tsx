@@ -29,6 +29,7 @@ import {
   type SingleTab,
   type Tab,
 } from "@/domain/tabs";
+import { sideOf, type SideKey } from "@/domain/sides";
 import { StrongsPopover } from "@/features/lexicon/StrongsPopover";
 import { VerseInline } from "./VerseInline";
 import { VerseToolbar } from "./VerseToolbar";
@@ -51,8 +52,13 @@ interface NewHighlightState {
   ref: VerseRef;
   startToken: number;
   endToken: number;
-  translation: string;
+  translation: SideKey;
   rect: DOMRect;
+}
+
+export interface VerseSelection {
+  number: number;
+  side: SideKey | null;
 }
 
 interface EditHighlightState {
@@ -85,7 +91,7 @@ export function ReaderRoute() {
     t.kind === "single" ? t.lang : t.primary,
   );
   const [strongs, setStrongs] = useState<StrongsState | null>(null);
-  const [selectedVerse, setSelectedVerse] = useState<number | null>(null);
+  const [selection, setSelection] = useState<VerseSelection | null>(null);
   const [toolbarAnchor, setToolbarAnchor] = useState<
     { top: number; left: number; width: number; placement: "below" | "above" } | null
   >(null);
@@ -96,7 +102,7 @@ export function ReaderRoute() {
 
   // Reset selection on chapter change.
   useEffect(() => {
-    setSelectedVerse(null);
+    setSelection(null);
   }, [work, book, chapterNum]);
 
   // Persist last reading position.
@@ -113,21 +119,27 @@ export function ReaderRoute() {
   // viewport-relative coords so the toolbar can be `position: fixed` and live
   // on a layer above the chapter text.
   useLayoutEffect(() => {
-    if (selectedVerse === null) {
+    if (selection === null) {
       setToolbarAnchor(null);
       return;
     }
     const compute = () => {
-      // Prefer the per-verse cell wrapper used by the multi-column grid (its
-      // bounding rect spans the full column width). Fall back to the inline
-      // verse-text span used in single-tab paragraph mode, where the wrapping
-      // <section> provides the column width.
+      // Prefer the cell of the side the user actually clicked in (so the
+      // toolbar anchors to that column, not always the primary one). Fall back
+      // to any cell for the verse, then to the inline span used in single-tab
+      // paragraph mode where the wrapping <section> provides the column width.
+      const sideSel = selection.side
+        ? `[data-verse-cell="${selection.number}"][data-verse-cell-side="${selection.side}"]`
+        : null;
       const verseEl =
+        (sideSel
+          ? document.querySelector<HTMLElement>(sideSel)
+          : null) ??
         document.querySelector<HTMLElement>(
-          `[data-verse-cell-primary="${selectedVerse}"]`,
+          `[data-verse-cell="${selection.number}"]`,
         ) ??
         document.querySelector<HTMLElement>(
-          `[data-verse-text="${selectedVerse}"]`,
+          `[data-verse-text="${selection.number}"]`,
         );
       if (!verseEl) {
         setToolbarAnchor(null);
@@ -159,12 +171,12 @@ export function ReaderRoute() {
     // overlay anchored to one verse, and following it across a scroll just
     // clutters the page.
     window.addEventListener("resize", compute);
-    const teardownScroll = onAnyScroll(() => setSelectedVerse(null));
+    const teardownScroll = onAnyScroll(() => setSelection(null));
     return () => {
       window.removeEventListener("resize", compute);
       teardownScroll();
     };
-  }, [selectedVerse, activeLangs.join(",")]);
+  }, [selection, activeLangs.join(",")]);
 
   // Reset the highlight popover when the chapter changes.
   useEffect(() => {
@@ -177,8 +189,6 @@ export function ReaderRoute() {
   // range from the body start to the selection's anchor/focus.
   useEffect(() => {
     if (!valid) return;
-    const primary = activeLangs[0];
-    if (!primary) return;
     const onMouseUp = () => {
       // Defer one tick so the click that lands inside an existing highlight
       // span (which sets hlUi to "edit") wins over the selection branch.
@@ -192,6 +202,11 @@ export function ReaderRoute() {
         if (!startBody || startBody !== endBody) return;
         const verseNum = Number(startBody.dataset.verseBody);
         if (!Number.isFinite(verseNum) || verseNum < 1) return;
+        // Derive the side from the column the user actually selected text in
+        // — not the primary tab. If the column isn't one of the four named
+        // sides, skip: partial highlights need a side to scope them.
+        const side = sideFromElement(startBody);
+        if (!side) return;
         const startOffset = rangeLength(startBody, range.startContainer, range.startOffset);
         const endOffset = rangeLength(startBody, range.endContainer, range.endOffset);
         const lo = Math.min(startOffset, endOffset);
@@ -208,14 +223,14 @@ export function ReaderRoute() {
           },
           startToken: lo,
           endToken: hi,
-          translation: primary,
+          translation: side,
           rect,
         });
       });
     };
     document.addEventListener("mouseup", onMouseUp);
     return () => document.removeEventListener("mouseup", onMouseUp);
-  }, [valid, activeLangs.join(","), work, book, chapterNum]);
+  }, [valid, work, book, chapterNum]);
 
   // Scroll to #vN anchor after verses mount.
   useEffect(() => {
@@ -291,8 +306,10 @@ export function ReaderRoute() {
         errors={chapterQueries.map((q) => q.error)}
         highlights={allHighlights}
         notes={allNotes}
-        selectedVerse={selectedVerse}
-        onSelectVerse={setSelectedVerse}
+        selection={selection}
+        onSelectVerse={(n, side) =>
+          setSelection(n === null ? null : { number: n, side: side ?? null })
+        }
         onOpenStrongs={(id, rect) => setStrongs({ id, rect })}
         onOpenHighlight={(highlightId, rect) => {
           const h = allHighlights.find((x) => x.id === highlightId);
@@ -312,10 +329,10 @@ export function ReaderRoute() {
           });
         }}
       />
-      {selectedVerse !== null && toolbarAnchor ? (
+      {selection !== null && toolbarAnchor ? (
         <div
           role="dialog"
-          aria-label={`Annotations for verse ${selectedVerse}`}
+          aria-label={`Annotations for verse ${selection.number}`}
           data-scroll-trap
           style={{
             position: "fixed",
@@ -336,10 +353,11 @@ export function ReaderRoute() {
               workSlug: work,
               bookSlug: book,
               chapter: chapterNum,
-              verse: selectedVerse,
+              verse: selection.number,
             }}
-            notes={allNotes.filter((n) => n.verse === selectedVerse)}
-            onDone={() => setSelectedVerse(null)}
+            side={selection.side}
+            notes={allNotes.filter((n) => n.verse === selection.number)}
+            onDone={() => setSelection(null)}
           />
         </div>
       ) : null}
@@ -413,6 +431,26 @@ function closestVerseBody(node: Node | null): HTMLElement | null {
   return null;
 }
 
+/**
+ * Walk up from a node to the nearest [data-column] (set by each rendered
+ * column's chapter-flow wrapper). The column attribute holds the CorpusLanguage
+ * the column was rendered with; sideOf folds that into one of the four
+ * user-visible sides. Returns null for non-side columns (en_brenton, la) or
+ * when no [data-column] ancestor exists.
+ */
+function sideFromElement(node: Node | null): SideKey | null {
+  let n: Node | null = node;
+  while (n) {
+    if (n.nodeType === Node.ELEMENT_NODE) {
+      const el = n as HTMLElement;
+      const col = el.dataset?.column;
+      if (col) return sideOf(col as CorpusLanguage);
+    }
+    n = n.parentNode;
+  }
+  return null;
+}
+
 function rangeLength(
   body: HTMLElement,
   endContainer: Node,
@@ -436,8 +474,8 @@ function ColumnsLayout(props: {
   errors: Array<unknown>;
   highlights: HighlightRow[];
   notes: NoteRow[];
-  selectedVerse: number | null;
-  onSelectVerse: (n: number | null) => void;
+  selection: VerseSelection | null;
+  onSelectVerse: (n: number | null, side: SideKey | null) => void;
   onOpenStrongs: (id: string, rect: DOMRect) => void;
   onOpenHighlight: (highlightId: string, rect: DOMRect) => void;
 }) {
@@ -456,7 +494,7 @@ function SingleTabLayout({
   chapterNum,
   highlights,
   notes,
-  selectedVerse,
+  selection,
   onSelectVerse,
   onOpenStrongs,
   onOpenHighlight,
@@ -469,8 +507,8 @@ function SingleTabLayout({
   chapterNum: number;
   highlights: HighlightRow[];
   notes: NoteRow[];
-  selectedVerse: number | null;
-  onSelectVerse: (n: number | null) => void;
+  selection: VerseSelection | null;
+  onSelectVerse: (n: number | null, side: SideKey | null) => void;
   onOpenStrongs: (id: string, rect: DOMRect) => void;
   onOpenHighlight: (highlightId: string, rect: DOMRect) => void;
   dropCapsEnabled: boolean;
@@ -489,10 +527,9 @@ function SingleTabLayout({
         maxWidth="var(--measure)"
         highlights={highlights}
         notes={notes}
-        selectedVerse={selectedVerse}
+        selection={selection}
         onSelectVerse={onSelectVerse}
         onOpenStrongs={onOpenStrongs}
-        isPrimary
       />
     );
   }
@@ -503,11 +540,10 @@ function SingleTabLayout({
       isPending={pending[0] ?? false}
       error={errors[0] ?? null}
       chapterNum={chapterNum}
-      isPrimary
       maxWidth="var(--measure)"
       highlights={highlights}
       notes={notes}
-      selectedVerse={selectedVerse}
+      selection={selection}
       onSelectVerse={onSelectVerse}
       onOpenStrongs={onOpenStrongs}
       onOpenHighlight={onOpenHighlight}
@@ -532,7 +568,7 @@ function MultiTabGrid({
   chapterNum,
   highlights,
   notes,
-  selectedVerse,
+  selection,
   onSelectVerse,
   onOpenStrongs,
   onOpenHighlight,
@@ -544,8 +580,8 @@ function MultiTabGrid({
   chapterNum: number;
   highlights: HighlightRow[];
   notes: NoteRow[];
-  selectedVerse: number | null;
-  onSelectVerse: (n: number | null) => void;
+  selection: VerseSelection | null;
+  onSelectVerse: (n: number | null, side: SideKey | null) => void;
   onOpenStrongs: (id: string, rect: DOMRect) => void;
   onOpenHighlight: (highlightId: string, rect: DOMRect) => void;
 }) {
@@ -572,7 +608,6 @@ function MultiTabGrid({
           key={tab.kind === "single" ? `s:${tab.lang}:${colIdx}` : `i:${tab.primary}+${tab.secondary}:${colIdx}`}
           tab={tab}
           colIdx={colIdx}
-          isPrimary={colIdx === 0}
           chapter={chapters[colIdx] ?? null}
           isPending={pending[colIdx] ?? false}
           error={errors[colIdx]}
@@ -580,7 +615,7 @@ function MultiTabGrid({
           verseNumbers={verseNumbers}
           highlights={highlights}
           notes={notes}
-          selectedVerse={selectedVerse}
+          selection={selection}
           onSelectVerse={onSelectVerse}
           onOpenStrongs={onOpenStrongs}
           onOpenHighlight={onOpenHighlight}
@@ -600,7 +635,6 @@ function MultiTabGrid({
 function TabColumnCells({
   tab,
   colIdx,
-  isPrimary,
   chapter,
   isPending,
   error,
@@ -608,14 +642,13 @@ function TabColumnCells({
   verseNumbers,
   highlights,
   notes,
-  selectedVerse,
+  selection,
   onSelectVerse,
   onOpenStrongs,
   onOpenHighlight,
 }: {
   tab: Tab;
   colIdx: number;
-  isPrimary: boolean;
   chapter: ChapterPayload | null;
   isPending: boolean;
   error: unknown;
@@ -623,12 +656,16 @@ function TabColumnCells({
   verseNumbers: number[];
   highlights: HighlightRow[];
   notes: NoteRow[];
-  selectedVerse: number | null;
-  onSelectVerse: (n: number | null) => void;
+  selection: VerseSelection | null;
+  onSelectVerse: (n: number | null, side: SideKey | null) => void;
   onOpenStrongs: (id: string, rect: DOMRect) => void;
   onOpenHighlight: (highlightId: string, rect: DOMRect) => void;
 }) {
   const gridColumn = colIdx + 1;
+  // The user-visible side this column represents — used both to scope
+  // highlights/bookmarks to the column the user clicked and to label the
+  // cell's data-verse-cell-side attribute so the toolbar anchors here.
+  const colSide = sideOf(tab.kind === "single" ? tab.lang : tab.primary);
   const label =
     tab.kind === "single"
       ? TRANSLATION_LABELS[tab.lang]
@@ -728,12 +765,14 @@ function TabColumnCells({
             />
           );
         }
-        const isSelected = isPrimary && selectedVerse === n;
+        const isSelected =
+          selection?.number === n && selection?.side === colSide;
         return (
           <div
             key={`v:${n}`}
             data-verse-cell={n}
-            data-verse-cell-primary={isPrimary ? n : undefined}
+            data-verse-cell-side={colSide ?? undefined}
+            data-column={tab.kind === "single" ? tab.lang : tab.primary}
             style={{ gridColumn, gridRow, minWidth: 0, display: "block" }}
           >
             {tab.kind === "single" ? (
@@ -741,7 +780,7 @@ function TabColumnCells({
                 tab={tab}
                 verse={verse}
                 words={chapter.wordsByVerse[verse.id]}
-                isPrimary={isPrimary}
+                side={colSide}
                 isSelected={isSelected}
                 highlights={highlights}
                 notes={notes}
@@ -755,7 +794,7 @@ function TabColumnCells({
                 verse={verse}
                 words={chapter.wordsByVerse[verse.id] ?? []}
                 strongs={strongs}
-                isPrimary={isPrimary}
+                side={colSide}
                 isSelected={isSelected}
                 highlights={highlights}
                 notes={notes}
@@ -774,7 +813,7 @@ function SingleVerseCell({
   tab,
   verse,
   words,
-  isPrimary,
+  side,
   isSelected,
   highlights,
   notes,
@@ -785,18 +824,18 @@ function SingleVerseCell({
   tab: SingleTab;
   verse: VerseRow;
   words: WordRow[] | undefined;
-  isPrimary: boolean;
+  side: SideKey | null;
   isSelected: boolean;
   highlights: HighlightRow[];
   notes: NoteRow[];
-  onSelectVerse: (n: number | null) => void;
+  onSelectVerse: (n: number | null, side: SideKey | null) => void;
   onOpenStrongs: (id: string, rect: DOMRect) => void;
   onOpenHighlight: (highlightId: string, rect: DOMRect) => void;
 }) {
   const verseHls = highlights.filter(
     (h) =>
       h.verse === verse.number &&
-      (h.translation === null || h.translation === tab.lang),
+      (h.translation === null || h.translation === side),
   );
   const verseNotes = notes.filter((n) => n.verse === verse.number);
   return (
@@ -809,13 +848,9 @@ function SingleVerseCell({
         highlights={verseHls}
         notes={verseNotes}
         selected={isSelected}
-        onSelect={
-          isPrimary
-            ? () => onSelectVerse(isSelected ? null : verse.number)
-            : undefined
-        }
+        onSelect={() => onSelectVerse(isSelected ? null : verse.number, side)}
         onOpenStrongs={onOpenStrongs}
-        onOpenHighlight={isPrimary ? onOpenHighlight : undefined}
+        onOpenHighlight={onOpenHighlight}
       />
     </span>
   );
@@ -826,7 +861,7 @@ function InterlinearVerseCell({
   verse,
   words,
   strongs,
-  isPrimary,
+  side,
   isSelected,
   highlights,
   notes,
@@ -837,22 +872,23 @@ function InterlinearVerseCell({
   verse: VerseRow;
   words: WordRow[];
   strongs: Map<string, StrongsRow>;
-  isPrimary: boolean;
+  side: SideKey | null;
   isSelected: boolean;
   highlights: HighlightRow[];
   notes: NoteRow[];
-  onSelectVerse: (n: number | null) => void;
+  onSelectVerse: (n: number | null, side: SideKey | null) => void;
   onOpenStrongs: (id: string, rect: DOMRect) => void;
 }) {
   const tokenLang: "he" | "grc" = tab.primary === "he" ? "he" : "grc";
   const rtl = tab.primary === "he";
-  // Only universal verse-level highlights apply to an interlinear cell — the
-  // visible tokens are primary-language words, not the secondary translation.
+  // Verse-level highlights apply (universal + this side's). Partial highlights
+  // never render here — the visible tokens are primary-language words, so the
+  // character offsets from a secondary-language highlight wouldn't line up.
   const verseHls = highlights.filter(
     (h) =>
       h.verse === verse.number &&
-      h.translation === null &&
-      h.start_token == null,
+      h.start_token == null &&
+      (h.translation === null || h.translation === side),
   );
   const hl = verseHls[0];
   const hasNote = notes.some((n) => n.verse === verse.number);
@@ -876,12 +912,8 @@ function InterlinearVerseCell({
         className={wrapperClass}
         data-verse-text={verse.number}
         lang={tokenLang}
-        onClick={
-          isPrimary
-            ? () => onSelectVerse(isSelected ? null : verse.number)
-            : undefined
-        }
-        style={isPrimary ? { cursor: "pointer" } : undefined}
+        onClick={() => onSelectVerse(isSelected ? null : verse.number, side)}
+        style={{ cursor: "pointer" }}
       >
         <sup
           id={`v${verse.number}`}
@@ -924,11 +956,10 @@ function Column({
   isPending,
   error,
   chapterNum,
-  isPrimary,
   maxWidth,
   highlights,
   notes,
-  selectedVerse,
+  selection,
   onSelectVerse,
   onOpenStrongs,
   onOpenHighlight,
@@ -939,16 +970,16 @@ function Column({
   isPending: boolean;
   error: unknown;
   chapterNum: number;
-  isPrimary: boolean;
   maxWidth: string;
   highlights: HighlightRow[];
   notes: NoteRow[];
-  selectedVerse: number | null;
-  onSelectVerse: (n: number | null) => void;
+  selection: VerseSelection | null;
+  onSelectVerse: (n: number | null, side: SideKey | null) => void;
   onOpenStrongs: (id: string, rect: DOMRect) => void;
   onOpenHighlight: (highlightId: string, rect: DOMRect) => void;
   dropCapsEnabled: boolean;
 }) {
+  const colSide = sideOf(language);
   if (isPending) {
     return (
       <section style={{ maxWidth, minWidth: 0 }}>
@@ -1006,15 +1037,17 @@ function Column({
       >
         {verses.map((v, i) => {
           // Verse-level highlights (translation === null) are universal;
-          // partial highlights are scoped to the translation they were created
-          // against so they don't bleed across columns.
+          // partial highlights are scoped to the side they were created on so
+          // they don't bleed across columns. en_bsb + en_web both fold into
+          // the same "en_modern" side via sideOf.
           const verseHls = highlights.filter(
             (h) =>
               h.verse === v.number &&
-              (h.translation === null || h.translation === language),
+              (h.translation === null || h.translation === colSide),
           );
           const verseNotes = notes.filter((n) => n.verse === v.number);
-          const isSelected = isPrimary && selectedVerse === v.number;
+          const isSelected =
+            selection?.number === v.number && selection?.side === colSide;
           return (
             <VerseInline
               key={v.id}
@@ -1025,13 +1058,11 @@ function Column({
               highlights={verseHls}
               notes={verseNotes}
               selected={isSelected}
-              onSelect={
-                isPrimary
-                  ? () => onSelectVerse(isSelected ? null : v.number)
-                  : undefined
+              onSelect={() =>
+                onSelectVerse(isSelected ? null : v.number, colSide)
               }
               onOpenStrongs={onOpenStrongs}
-              onOpenHighlight={isPrimary ? onOpenHighlight : undefined}
+              onOpenHighlight={onOpenHighlight}
             />
           );
         })}

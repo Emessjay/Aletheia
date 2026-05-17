@@ -243,14 +243,15 @@ export async function listBookmarks(libraryId: string): Promise<BookmarkRow[]> {
 export async function createBookmark(
   libraryId: string,
   ref: VerseRef,
+  translation: string | null = null,
   label: string | null = null,
 ): Promise<BookmarkRow> {
   const id = newId();
   const now = nowMs();
   await userExecute(
     `INSERT INTO bookmarks
-       (id, library_id, work_slug, book_slug, chapter, verse, label, created_at, updated_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8)`,
+       (id, library_id, work_slug, book_slug, chapter, verse, translation, label, created_at, updated_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $9)`,
     [
       id,
       libraryId,
@@ -258,6 +259,7 @@ export async function createBookmark(
       ref.bookSlug,
       ref.chapter,
       ref.verse,
+      translation,
       label,
       now,
     ],
@@ -269,6 +271,7 @@ export async function createBookmark(
     book_slug: ref.bookSlug ?? null,
     chapter: ref.chapter,
     verse: ref.verse,
+    translation,
     label,
     created_at: now,
     updated_at: now,

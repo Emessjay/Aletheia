@@ -9,6 +9,7 @@ import {
 } from "@/db/userHooks";
 import type { LibraryRow } from "@/db/types";
 import { isTauri } from "@/lib/tauri";
+import { SIDE_LABELS, type SideKey } from "@/domain/sides";
 
 export function LibrariesRoute() {
   const libs = useLibraries();
@@ -189,11 +190,28 @@ function LibrarySection({ library }: { library: LibraryRow }) {
                   textDecoration: "none",
                   color: "var(--color-fg)",
                   fontSize: 15,
+                  display: "flex",
+                  alignItems: "baseline",
+                  gap: 10,
                 }}
               >
-                {bm.book_slug && bm.chapter !== null && bm.verse !== null
-                  ? `${capitalize(bm.book_slug)} ${bm.chapter}:${bm.verse}`
-                  : bm.label ?? bm.id}
+                <span>
+                  {bm.book_slug && bm.chapter !== null && bm.verse !== null
+                    ? `${capitalize(bm.book_slug)} ${bm.chapter}:${bm.verse}`
+                    : bm.label ?? bm.id}
+                </span>
+                {bm.translation && bm.translation in SIDE_LABELS ? (
+                  <span
+                    style={{
+                      fontSize: 12,
+                      color: "var(--color-fg-muted)",
+                      fontVariant: "small-caps",
+                      letterSpacing: "0.04em",
+                    }}
+                  >
+                    {SIDE_LABELS[bm.translation as SideKey]}
+                  </span>
+                ) : null}
               </Link>
               <button
                 type="button"
