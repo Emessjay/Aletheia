@@ -387,38 +387,17 @@ def download_to_cache(url: str, dest: Path) -> None:
     tmp.rename(dest)
 
 
-def align_file(mp3: Path, chapter_texts: list[str]) -> list[tuple[float, float]]:
-    """Run aeneas on a single MP3 with one fragment per chapter.
-
-    For single-chapter files, prepends/appends dummy intro/outro fragments
-    so LibriVox boilerplate gets its own timing segment (which we discard).
-    For multi-chapter files the dummies are omitted — the DTW is less
-    precise on long files and the dummy text can steal time from the first
-    chapter.  Multi-chapter files still get accurate internal chapter
-    boundaries; only the file-level intro/outro bleeds into the first/last
-    chapter.
-
-    Returns a list of (start_sec, end_sec) tuples in chapter order.
-    """
+def _run_aeneas(mp3: Path, texts: list[str]) -> list[tuple[float, float]]:
+    """Low-level aeneas alignment: one fragment per text line."""
     ExecuteTask, Task = _aeneas()
-
-    use_dummies = len(chapter_texts) == 1
-    if use_dummies:
-        all_texts = [LIBRIVOX_INTRO] + chapter_texts + [LIBRIVOX_OUTRO]
-    else:
-        all_texts = list(chapter_texts)
-
     with tempfile.TemporaryDirectory() as td_str:
         td = Path(td_str)
         text_file = td / "text.txt"
-        # is_text_type=plain treats each non-empty line as one fragment.
-        # We additionally collapse any embedded newlines in the chapter text.
         text_file.write_text(
-            "\n".join(re.sub(r"\s+", " ", t).strip() for t in all_texts) + "\n",
+            "\n".join(re.sub(r"\s+", " ", t).strip() for t in texts) + "\n",
             encoding="utf-8",
         )
         sync_file = td / "sync.json"
-
         config = "task_language=eng|os_task_file_format=json|is_text_type=plain"
         task = Task(config_string=config)
         task.audio_file_path_absolute = str(mp3)
@@ -426,19 +405,118 @@ def align_file(mp3: Path, chapter_texts: list[str]) -> list[tuple[float, float]]
         task.sync_map_file_path_absolute = str(sync_file)
         ExecuteTask(task).execute()
         task.output_sync_map_file()
-
         data = json.loads(sync_file.read_text())
-        out = []
-        for frag in data["fragments"]:
-            out.append((float(frag["begin"]), float(frag["end"])))
-        if len(out) != len(all_texts):
+        out = [(float(f["begin"]), float(f["end"])) for f in data["fragments"]]
+        if len(out) != len(texts):
             raise RuntimeError(
-                f"aeneas returned {len(out)} fragments, expected {len(all_texts)}"
+                f"aeneas returned {len(out)} fragments, expected {len(texts)}"
             )
-        if use_dummies:
-            # Strip the intro (first) and outro (last) boundary fragments.
-            return out[1:-1]
         return out
+
+
+def _detect_boundary(mp3: Path, region: str) -> float | None:
+    """Use ffmpeg silence detection to find the intro end or outro start.
+
+    `region` is "head" (find intro end in first 60 s) or "tail" (find
+    outro start in last 60 s).  Returns an absolute timestamp, or None
+    if no clear boundary was found.
+
+    Heuristic: the LibriVox intro/outro is separated from the biblical
+    text by a noticeable pause.  We look for the first (head) or last
+    (tail) merged silence gap >= 0.8 s.
+    """
+    import subprocess
+
+    if region == "head":
+        cmd = ["ffmpeg", "-i", str(mp3), "-t", "60",
+               "-af", "silencedetect=noise=-40dB:d=0.25",
+               "-f", "null", "-"]
+        offset = 0.0
+    else:
+        # Get duration first.
+        probe = subprocess.run(
+            ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+             "-of", "default=noprint_wrappers=1:nokey=1", str(mp3)],
+            capture_output=True, text=True, check=True,
+        )
+        duration = float(probe.stdout.strip())
+        offset = max(0.0, duration - 60)
+        cmd = ["ffmpeg", "-ss", str(offset), "-i", str(mp3),
+               "-af", "silencedetect=noise=-40dB:d=0.25",
+               "-f", "null", "-"]
+
+    result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+
+    # Parse silence intervals from stderr.
+    intervals: list[list[float]] = []
+    pending_start: float | None = None
+    for line in result.stderr.splitlines():
+        m = re.search(r"silence_start:\s*([\d.]+)", line)
+        if m:
+            pending_start = float(m.group(1))
+        m = re.search(r"silence_end:\s*([\d.]+)", line)
+        if m and pending_start is not None:
+            intervals.append([pending_start, float(m.group(1))])
+            pending_start = None
+
+    # Merge adjacent intervals (gap < 0.3 s).
+    merged: list[list[float]] = []
+    for iv in intervals:
+        if merged and iv[0] - merged[-1][1] < 0.3:
+            merged[-1][1] = iv[1]
+        else:
+            merged.append(list(iv))
+
+    if region == "head":
+        # First merged silence >= 0.8 s that starts after 3 s.
+        for start, end in merged:
+            if start >= 3.0 and (end - start) >= 0.8:
+                return end  # intro ends here
+    else:
+        # Last merged silence >= 0.8 s.
+        for start, end in reversed(merged):
+            if (end - start) >= 0.8:
+                return offset + start  # outro begins here
+
+    return None
+
+
+def align_file(mp3: Path, chapter_texts: list[str]) -> list[tuple[float, float]]:
+    """Run aeneas on a single MP3 with one fragment per chapter.
+
+    Uses aeneas for internal chapter boundaries, and ffmpeg silence
+    detection to find intro/outro boundaries (more reliable than DTW
+    with dummy text, which drifts on longer files).
+
+    Returns a list of (start_sec, end_sec) tuples in chapter order.
+    """
+    if len(chapter_texts) == 1:
+        # Single chapter: silence detection for both boundaries.
+        import subprocess
+        probe = subprocess.run(
+            ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+             "-of", "default=noprint_wrappers=1:nokey=1", str(mp3)],
+            capture_output=True, text=True, check=True,
+        )
+        duration = float(probe.stdout.strip())
+        intro_end = _detect_boundary(mp3, "head") or 0.0
+        outro_start = _detect_boundary(mp3, "tail")
+        end = outro_start if outro_start and outro_start > intro_end else duration
+        return [(intro_end, end)]
+
+    # Multi-chapter: aeneas for internal boundaries.
+    spans = _run_aeneas(mp3, chapter_texts)
+
+    # Override file-level intro/outro with silence detection.
+    intro_end = _detect_boundary(mp3, "head")
+    if intro_end and intro_end < spans[0][1]:
+        spans[0] = (intro_end, spans[0][1])
+
+    outro_start = _detect_boundary(mp3, "tail")
+    if outro_start and outro_start > spans[-1][0]:
+        spans[-1] = (spans[-1][0], outro_start)
+
+    return spans
 
 
 def main() -> int:
