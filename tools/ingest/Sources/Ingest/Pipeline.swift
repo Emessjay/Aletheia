@@ -162,7 +162,8 @@ public struct Pipeline {
     }
 
     private func ingestBrenton(writer: CorpusWriter) throws {
-        try ingestUSFMDirectory(named: "brenton", language: "en_brenton", writer: writer)
+        try ingestUSFMDirectory(named: "brenton", language: "en_brenton", writer: writer,
+                                transformRows: splitCombinedEzraNeh)
     }
 
     /// Brenton's Greek LXX (eBible.org `grcbrent`). Untagged Greek text under
@@ -171,14 +172,33 @@ public struct Pipeline {
     /// (LJE, SUS, BEL, MAN, 1ES, 3MA, 4MA) are silently skipped by the USFM
     /// parser; DAG/ESG are remapped to dan/esth via the catalog's alias table.
     private func ingestGrcbrent(writer: CorpusWriter) throws {
-        try ingestUSFMDirectory(named: "grcbrent", language: "gk", writer: writer)
+        try ingestUSFMDirectory(named: "grcbrent", language: "gk", writer: writer,
+                                transformRows: splitCombinedEzraNeh)
     }
 
     private func ingestKJVApocrypha(writer: CorpusWriter) throws {
         try ingestUSFMDirectory(named: "kjv-apocrypha", language: "en_kjv", writer: writer)
     }
 
-    private func ingestUSFMDirectory(named: String, language: String, writer: CorpusWriter) throws {
+    /// Brenton's LXX (both Greek and English) ships Ezra+Nehemiah as one combined
+    /// book "Esdras B" under USFM id `EZR` — 23 chapters where 11-23 are Nehemiah.
+    /// Other traditions (KJV, BSB, Hebrew, ESV) treat them as two separate books.
+    /// To keep `book.slug` semantics consistent across languages, split the parsed
+    /// rows: chs 1-10 stay as `ezra`; chs 11-23 become `neh` renumbered to 1-13.
+    ///
+    /// The eng-Brenton tree also ships a redundant `17-NEH` file with the same
+    /// Nehemiah text; `insertVerse` is idempotent so the second ingestion is a
+    /// no-op once the split has populated `neh` from the combined file.
+    private func splitCombinedEzraNeh(_ rows: [USFMParser.Row]) -> [USFMParser.Row] {
+        return rows.map { row in
+            guard row.bookSlug == "ezra", row.chapter >= 11 else { return row }
+            return USFMParser.Row(bookSlug: "neh", chapter: row.chapter - 10,
+                                  verse: row.verse, text: row.text)
+        }
+    }
+
+    private func ingestUSFMDirectory(named: String, language: String, writer: CorpusWriter,
+                                     transformRows: (([USFMParser.Row]) -> [USFMParser.Row])? = nil) throws {
         let dir = sourceRoot.appendingPathComponent(named)
         guard let allFiles = try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)
                 .filter({ ["usfm", "USFM", "sfm"].contains($0.pathExtension) }) else {
@@ -198,7 +218,7 @@ public struct Pipeline {
         for file in files {
             do {
                 let result = try parser.parse(fileURL: file)
-                let rows = result.rows
+                let rows = transformRows?(result.rows) ?? result.rows
                 let filtered = bookFilter.isEmpty ? rows : rows.filter { bookFilter.contains($0.bookSlug) }
                 try writeBibleRows(filtered.map { ($0.bookSlug, $0.chapter, $0.verse, $0.text) },
                                    language: language, writer: writer)
