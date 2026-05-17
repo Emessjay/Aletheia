@@ -1,113 +1,393 @@
 {
+  "1chr:1": {
+    "end_sec": 362.48,
+    "source_url": "https://archive.org/download/1chronicles_jc_librivox/1chronicles_01_kjv.mp3",
+    "start_sec": 29.12
+  },
+  "1chr:10": {
+    "end_sec": 151.28,
+    "source_url": "https://archive.org/download/1chronicles_jc_librivox/1chronicles_10_kjv.mp3",
+    "start_sec": 24.96
+  },
+  "1chr:11": {
+    "end_sec": 379.36,
+    "source_url": "https://archive.org/download/1chronicles_jc_librivox/1chronicles_11_kjv.mp3",
+    "start_sec": 24.52
+  },
+  "1chr:12": {
+    "end_sec": 385.52,
+    "source_url": "https://archive.org/download/1chronicles_jc_librivox/1chronicles_12_kjv.mp3",
+    "start_sec": 24.8
+  },
+  "1chr:13": {
+    "end_sec": 154.48,
+    "source_url": "https://archive.org/download/1chronicles_jc_librivox/1chronicles_13_kjv.mp3",
+    "start_sec": 24.36
+  },
+  "1chr:14": {
+    "end_sec": 159.2,
+    "source_url": "https://archive.org/download/1chronicles_jc_librivox/1chronicles_14_kjv.mp3",
+    "start_sec": 26.32
+  },
+  "1chr:15": {
+    "end_sec": 289.12,
+    "source_url": "https://archive.org/download/1chronicles_jc_librivox/1chronicles_15_kjv.mp3",
+    "start_sec": 25.84
+  },
+  "1chr:16": {
+    "end_sec": 329.36,
+    "source_url": "https://archive.org/download/1chronicles_jc_librivox/1chronicles_16_kjv.mp3",
+    "start_sec": 25.4
+  },
+  "1chr:17": {
+    "end_sec": 279.4,
+    "source_url": "https://archive.org/download/1chronicles_jc_librivox/1chronicles_17_kjv.mp3",
+    "start_sec": 25.12
+  },
+  "1chr:18": {
+    "end_sec": 182.76,
+    "source_url": "https://archive.org/download/1chronicles_jc_librivox/1chronicles_18_kjv.mp3",
+    "start_sec": 24.8
+  },
+  "1chr:19": {
+    "end_sec": 237.32,
+    "source_url": "https://archive.org/download/1chronicles_jc_librivox/1chronicles_19_kjv.mp3",
+    "start_sec": 25.6
+  },
+  "1chr:2": {
+    "end_sec": 410.52,
+    "source_url": "https://archive.org/download/1chronicles_jc_librivox/1chronicles_02_kjv.mp3",
+    "start_sec": 25.48
+  },
+  "1chr:20": {
+    "end_sec": 123.32,
+    "source_url": "https://archive.org/download/1chronicles_jc_librivox/1chronicles_20_kjv.mp3",
+    "start_sec": 25.16
+  },
+  "1chr:21": {
+    "end_sec": 328.12,
+    "source_url": "https://archive.org/download/1chronicles_jc_librivox/1chronicles_21_kjv.mp3",
+    "start_sec": 25.4
+  },
+  "1chr:22": {
+    "end_sec": 225.28,
+    "source_url": "https://archive.org/download/1chronicles_jc_librivox/1chronicles_22_kjv.mp3",
+    "start_sec": 25.96
+  },
+  "1chr:23": {
+    "end_sec": 272.36,
+    "source_url": "https://archive.org/download/1chronicles_jc_librivox/1chronicles_23_kjv.mp3",
+    "start_sec": 24.6
+  },
+  "1chr:24": {
+    "end_sec": 245.16,
+    "source_url": "https://archive.org/download/1chronicles_jc_librivox/1chronicles_24_kjv.mp3",
+    "start_sec": 25.24
+  },
+  "1chr:25": {
+    "end_sec": 253.56,
+    "source_url": "https://archive.org/download/1chronicles_jc_librivox/1chronicles_25_kjv.mp3",
+    "start_sec": 26.28
+  },
+  "1chr:26": {
+    "end_sec": 315.32,
+    "source_url": "https://archive.org/download/1chronicles_jc_librivox/1chronicles_26_kjv.mp3",
+    "start_sec": 25.8
+  },
+  "1chr:27": {
+    "end_sec": 336.4,
+    "source_url": "https://archive.org/download/1chronicles_jc_librivox/1chronicles_27_kjv.mp3",
+    "start_sec": 26.12
+  },
+  "1chr:28": {
+    "end_sec": 314.4,
+    "source_url": "https://archive.org/download/1chronicles_jc_librivox/1chronicles_28_kjv.mp3",
+    "start_sec": 26.76
+  },
+  "1chr:29": {
+    "end_sec": 373.12,
+    "source_url": "https://archive.org/download/1chronicles_jc_librivox/1chronicles_29_kjv.mp3",
+    "start_sec": 25.44
+  },
+  "1chr:3": {
+    "end_sec": 203.04,
+    "source_url": "https://archive.org/download/1chronicles_jc_librivox/1chronicles_03_kjv.mp3",
+    "start_sec": 24.16
+  },
+  "1chr:4": {
+    "end_sec": 387.4,
+    "source_url": "https://archive.org/download/1chronicles_jc_librivox/1chronicles_04_kjv.mp3",
+    "start_sec": 25.28
+  },
+  "1chr:5": {
+    "end_sec": 276.12,
+    "source_url": "https://archive.org/download/1chronicles_jc_librivox/1chronicles_05_kjv.mp3",
+    "start_sec": 24.92
+  },
+  "1chr:6": {
+    "end_sec": 560.12,
+    "source_url": "https://archive.org/download/1chronicles_jc_librivox/1chronicles_06_kjv.mp3",
+    "start_sec": 26.16
+  },
+  "1chr:7": {
+    "end_sec": 375.16,
+    "source_url": "https://archive.org/download/1chronicles_jc_librivox/1chronicles_07_kjv.mp3",
+    "start_sec": 25.32
+  },
+  "1chr:8": {
+    "end_sec": 257.24,
+    "source_url": "https://archive.org/download/1chronicles_jc_librivox/1chronicles_08_kjv.mp3",
+    "start_sec": 25.28
+  },
+  "1chr:9": {
+    "end_sec": 392.52,
+    "source_url": "https://archive.org/download/1chronicles_jc_librivox/1chronicles_09_kjv.mp3",
+    "start_sec": 25.08
+  },
   "1cor:1": {
-    "end_sec": 479.64,
+    "end_sec": 483.72,
     "source_url": "https://archive.org/download/1corinthians_kjv_1103_librivox/1corinthians_1_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 46.4
   },
   "1cor:10": {
-    "end_sec": 681.0,
+    "end_sec": 680.96,
     "source_url": "https://archive.org/download/1corinthians_kjv_1103_librivox/1corinthians_5_kjv.mp3",
-    "start_sec": 466.64
+    "start_sec": 472.48
   },
   "1cor:11": {
-    "end_sec": 393.4,
+    "end_sec": 398.0,
     "source_url": "https://archive.org/download/1corinthians_kjv_1103_librivox/1corinthians_6_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 29.44
   },
   "1cor:12": {
-    "end_sec": 542.44,
+    "end_sec": 542.4,
     "source_url": "https://archive.org/download/1corinthians_kjv_1103_librivox/1corinthians_6_kjv.mp3",
-    "start_sec": 393.4
+    "start_sec": 398.0
   },
   "1cor:13": {
-    "end_sec": 173.4,
+    "end_sec": 177.6,
     "source_url": "https://archive.org/download/1corinthians_kjv_1103_librivox/1corinthians_7_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 25.48
   },
   "1cor:14": {
-    "end_sec": 476.6,
+    "end_sec": 476.56,
     "source_url": "https://archive.org/download/1corinthians_kjv_1103_librivox/1corinthians_7_kjv.mp3",
-    "start_sec": 173.4
+    "start_sec": 177.6
   },
   "1cor:15": {
-    "end_sec": 626.84,
+    "end_sec": 629.88,
     "source_url": "https://archive.org/download/1corinthians_kjv_1103_librivox/1corinthians_8_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 25.4
   },
   "1cor:16": {
-    "end_sec": 640.36,
+    "end_sec": 640.32,
     "source_url": "https://archive.org/download/1corinthians_kjv_1103_librivox/1corinthians_8_kjv.mp3",
-    "start_sec": 626.84
+    "start_sec": 629.88
   },
   "1cor:2": {
-    "end_sec": 549.04,
+    "end_sec": 549.0,
     "source_url": "https://archive.org/download/1corinthians_kjv_1103_librivox/1corinthians_1_kjv.mp3",
-    "start_sec": 479.64
+    "start_sec": 483.72
   },
   "1cor:3": {
-    "end_sec": 359.56,
+    "end_sec": 366.2,
     "source_url": "https://archive.org/download/1corinthians_kjv_1103_librivox/1corinthians_2_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 41.48
   },
   "1cor:4": {
-    "end_sec": 534.12,
+    "end_sec": 534.08,
     "source_url": "https://archive.org/download/1corinthians_kjv_1103_librivox/1corinthians_2_kjv.mp3",
-    "start_sec": 359.56
+    "start_sec": 366.2
   },
   "1cor:5": {
-    "end_sec": 186.28,
+    "end_sec": 191.28,
     "source_url": "https://archive.org/download/1corinthians_kjv_1103_librivox/1corinthians_3_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 30.28
   },
   "1cor:6": {
-    "end_sec": 334.76,
+    "end_sec": 334.72,
     "source_url": "https://archive.org/download/1corinthians_kjv_1103_librivox/1corinthians_3_kjv.mp3",
-    "start_sec": 186.28
+    "start_sec": 191.28
   },
   "1cor:7": {
     "end_sec": 678.96,
     "source_url": "https://archive.org/download/1corinthians_kjv_1103_librivox/1corinthians_4_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 45.88
   },
   "1cor:8": {
-    "end_sec": 679.0,
+    "end_sec": 678.96,
     "source_url": "https://archive.org/download/1corinthians_kjv_1103_librivox/1corinthians_4_kjv.mp3",
     "start_sec": 678.96
   },
   "1cor:9": {
-    "end_sec": 466.64,
+    "end_sec": 472.48,
     "source_url": "https://archive.org/download/1corinthians_kjv_1103_librivox/1corinthians_5_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 44.76
+  },
+  "1john:1": {
+    "end_sec": 108.84,
+    "source_url": "https://archive.org/download/bible_epistlesjohn_rt_librivox/epistlesofjohn_1_kjv.mp3",
+    "start_sec": 22.68
+  },
+  "1john:2": {
+    "end_sec": 291.88,
+    "source_url": "https://archive.org/download/bible_epistlesjohn_rt_librivox/epistlesofjohn_2_kjv.mp3",
+    "start_sec": 16.52
+  },
+  "1john:3": {
+    "end_sec": 232.12,
+    "source_url": "https://archive.org/download/bible_epistlesjohn_rt_librivox/epistlesofjohn_3_kjv.mp3",
+    "start_sec": 13.44
+  },
+  "1john:4": {
+    "end_sec": 205.08,
+    "source_url": "https://archive.org/download/bible_epistlesjohn_rt_librivox/epistlesofjohn_4_kjv.mp3",
+    "start_sec": 16.48
+  },
+  "1john:5": {
+    "end_sec": 225.88,
+    "source_url": "https://archive.org/download/bible_epistlesjohn_rt_librivox/epistlesofjohn_5_kjv.mp3",
+    "start_sec": 16.04
+  },
+  "1kgs:1": {
+    "end_sec": 523.92,
+    "source_url": "https://archive.org/download/bible_kjv_11_1king_0909_librivox/1kings_01_kjv.mp3",
+    "start_sec": 24.16
+  },
+  "1kgs:10": {
+    "end_sec": 288.0,
+    "source_url": "https://archive.org/download/bible_kjv_11_1king_0909_librivox/1kings_10_kjv.mp3",
+    "start_sec": 23.16
+  },
+  "1kgs:11": {
+    "end_sec": 432.08,
+    "source_url": "https://archive.org/download/bible_kjv_11_1king_0909_librivox/1kings_11_kjv.mp3",
+    "start_sec": 24.96
+  },
+  "1kgs:12": {
+    "end_sec": 353.48,
+    "source_url": "https://archive.org/download/bible_kjv_11_1king_0909_librivox/1kings_12_kjv.mp3",
+    "start_sec": 23.8
+  },
+  "1kgs:13": {
+    "end_sec": 349.32,
+    "source_url": "https://archive.org/download/bible_kjv_11_1king_0909_librivox/1kings_13_kjv.mp3",
+    "start_sec": 24.52
+  },
+  "1kgs:14": {
+    "end_sec": 324.32,
+    "source_url": "https://archive.org/download/bible_kjv_11_1king_0909_librivox/1kings_14_kjv.mp3",
+    "start_sec": 24.52
+  },
+  "1kgs:15": {
+    "end_sec": 317.16,
+    "source_url": "https://archive.org/download/bible_kjv_11_1king_0909_librivox/1kings_15_kjv.mp3",
+    "start_sec": 23.48
+  },
+  "1kgs:16": {
+    "end_sec": 336.2,
+    "source_url": "https://archive.org/download/bible_kjv_11_1king_0909_librivox/1kings_16_kjv.mp3",
+    "start_sec": 23.96
+  },
+  "1kgs:17": {
+    "end_sec": 234.24,
+    "source_url": "https://archive.org/download/bible_kjv_11_1king_0909_librivox/1kings_17_kjv.mp3",
+    "start_sec": 24.2
+  },
+  "1kgs:18": {
+    "end_sec": 474.28,
+    "source_url": "https://archive.org/download/bible_kjv_11_1king_0909_librivox/1kings_18_kjv.mp3",
+    "start_sec": 24.32
+  },
+  "1kgs:19": {
+    "end_sec": 263.4,
+    "source_url": "https://archive.org/download/bible_kjv_11_1king_0909_librivox/1kings_19_kjv.mp3",
+    "start_sec": 24.44
+  },
+  "1kgs:2": {
+    "end_sec": 504.68,
+    "source_url": "https://archive.org/download/bible_kjv_11_1king_0909_librivox/1kings_02_kjv.mp3",
+    "start_sec": 23.6
+  },
+  "1kgs:20": {
+    "end_sec": 517.0,
+    "source_url": "https://archive.org/download/bible_kjv_11_1king_0909_librivox/1kings_20_kjv.mp3",
+    "start_sec": 24.56
+  },
+  "1kgs:21": {
+    "end_sec": 309.24,
+    "source_url": "https://archive.org/download/bible_kjv_11_1king_0909_librivox/1kings_21_kjv.mp3",
+    "start_sec": 24.24
+  },
+  "1kgs:22": {
+    "end_sec": 509.4,
+    "source_url": "https://archive.org/download/bible_kjv_11_1king_0909_librivox/1kings_22_kjv.mp3",
+    "start_sec": 23.6
+  },
+  "1kgs:3": {
+    "end_sec": 292.92,
+    "source_url": "https://archive.org/download/bible_kjv_11_1king_0909_librivox/1kings_03_kjv.mp3",
+    "start_sec": 23.88
+  },
+  "1kgs:4": {
+    "end_sec": 271.32,
+    "source_url": "https://archive.org/download/bible_kjv_11_1king_0909_librivox/1kings_04_kjv.mp3",
+    "start_sec": 23.96
+  },
+  "1kgs:5": {
+    "end_sec": 193.72,
+    "source_url": "https://archive.org/download/bible_kjv_11_1king_0909_librivox/1kings_05_kjv.mp3",
+    "start_sec": 23.56
+  },
+  "1kgs:6": {
+    "end_sec": 334.72,
+    "source_url": "https://archive.org/download/bible_kjv_11_1king_0909_librivox/1kings_06_kjv.mp3",
+    "start_sec": 23.44
+  },
+  "1kgs:7": {
+    "end_sec": 488.2,
+    "source_url": "https://archive.org/download/bible_kjv_11_1king_0909_librivox/1kings_07_kjv.mp3",
+    "start_sec": 23.28
+  },
+  "1kgs:8": {
+    "end_sec": 668.2,
+    "source_url": "https://archive.org/download/bible_kjv_11_1king_0909_librivox/1kings_08_kjv.mp3",
+    "start_sec": 22.92
+  },
+  "1kgs:9": {
+    "end_sec": 277.4,
+    "source_url": "https://archive.org/download/bible_kjv_11_1king_0909_librivox/1kings_09_kjv.mp3",
+    "start_sec": 22.88
   },
   "1mac:1": {
-    "end_sec": 696.8,
+    "end_sec": 697.44,
     "source_url": "https://archive.org/download/1maccabees_2005_librivox/maccabees1_01_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 19.68
   },
   "1mac:10": {
-    "end_sec": 2868.12,
+    "end_sec": 2868.08,
     "source_url": "https://archive.org/download/1maccabees_2005_librivox/maccabees1_02_kjv.mp3",
-    "start_sec": 2812.16
+    "start_sec": 2816.16
   },
   "1mac:11": {
-    "end_sec": 948.92,
+    "end_sec": 951.96,
     "source_url": "https://archive.org/download/1maccabees_2005_librivox/maccabees1_03_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 15.76
   },
   "1mac:12": {
-    "end_sec": 1594.24,
+    "end_sec": 1598.64,
     "source_url": "https://archive.org/download/1maccabees_2005_librivox/maccabees1_03_kjv.mp3",
-    "start_sec": 948.92
+    "start_sec": 951.96
   },
   "1mac:13": {
-    "end_sec": 2256.56,
+    "end_sec": 2261.32,
     "source_url": "https://archive.org/download/1maccabees_2005_librivox/maccabees1_03_kjv.mp3",
-    "start_sec": 1594.24
+    "start_sec": 1598.64
   },
   "1mac:14": {
     "end_sec": 2789.8,
     "source_url": "https://archive.org/download/1maccabees_2005_librivox/maccabees1_03_kjv.mp3",
-    "start_sec": 2256.56
+    "start_sec": 2261.32
   },
   "1mac:15": {
     "end_sec": 2789.8,
@@ -115,1128 +395,2308 @@
     "start_sec": 2789.8
   },
   "1mac:16": {
-    "end_sec": 2789.84,
+    "end_sec": 2789.8,
     "source_url": "https://archive.org/download/1maccabees_2005_librivox/maccabees1_03_kjv.mp3",
     "start_sec": 2789.8
   },
   "1mac:2": {
-    "end_sec": 1415.36,
+    "end_sec": 1419.16,
     "source_url": "https://archive.org/download/1maccabees_2005_librivox/maccabees1_01_kjv.mp3",
-    "start_sec": 696.8
+    "start_sec": 697.44
   },
   "1mac:3": {
-    "end_sec": 2149.16,
+    "end_sec": 2153.92,
     "source_url": "https://archive.org/download/1maccabees_2005_librivox/maccabees1_01_kjv.mp3",
-    "start_sec": 1415.36
+    "start_sec": 1419.16
   },
   "1mac:4": {
     "end_sec": 2720.08,
     "source_url": "https://archive.org/download/1maccabees_2005_librivox/maccabees1_01_kjv.mp3",
-    "start_sec": 2149.16
+    "start_sec": 2153.92
   },
   "1mac:5": {
-    "end_sec": 2720.12,
+    "end_sec": 2720.08,
     "source_url": "https://archive.org/download/1maccabees_2005_librivox/maccabees1_01_kjv.mp3",
     "start_sec": 2720.08
   },
   "1mac:6": {
-    "end_sec": 824.96,
+    "end_sec": 828.88,
     "source_url": "https://archive.org/download/1maccabees_2005_librivox/maccabees1_02_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 14.88
   },
   "1mac:7": {
-    "end_sec": 1434.48,
+    "end_sec": 1438.52,
     "source_url": "https://archive.org/download/1maccabees_2005_librivox/maccabees1_02_kjv.mp3",
-    "start_sec": 824.96
+    "start_sec": 828.88
   },
   "1mac:8": {
-    "end_sec": 1904.52,
+    "end_sec": 1907.64,
     "source_url": "https://archive.org/download/1maccabees_2005_librivox/maccabees1_02_kjv.mp3",
-    "start_sec": 1434.48
+    "start_sec": 1438.52
   },
   "1mac:9": {
-    "end_sec": 2812.16,
+    "end_sec": 2816.16,
     "source_url": "https://archive.org/download/1maccabees_2005_librivox/maccabees1_02_kjv.mp3",
-    "start_sec": 1904.52
+    "start_sec": 1907.64
   },
   "1pet:1": {
-    "end_sec": 466.72,
+    "end_sec": 474.32,
     "source_url": "https://archive.org/download/epistlesofpeter_kjv_1109_librivox/epistlesofpeter_1_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 37.36
   },
   "1pet:2": {
-    "end_sec": 886.12,
+    "end_sec": 890.68,
     "source_url": "https://archive.org/download/epistlesofpeter_kjv_1109_librivox/epistlesofpeter_1_kjv.mp3",
-    "start_sec": 466.72
+    "start_sec": 474.32
   },
   "1pet:3": {
-    "end_sec": 1286.68,
+    "end_sec": 1289.36,
     "source_url": "https://archive.org/download/epistlesofpeter_kjv_1109_librivox/epistlesofpeter_1_kjv.mp3",
-    "start_sec": 886.12
+    "start_sec": 890.68
   },
   "1pet:4": {
     "end_sec": 1356.96,
     "source_url": "https://archive.org/download/epistlesofpeter_kjv_1109_librivox/epistlesofpeter_1_kjv.mp3",
-    "start_sec": 1286.68
+    "start_sec": 1289.36
   },
   "1pet:5": {
-    "end_sec": 1357.0,
+    "end_sec": 1356.96,
     "source_url": "https://archive.org/download/epistlesofpeter_kjv_1109_librivox/epistlesofpeter_1_kjv.mp3",
     "start_sec": 1356.96
   },
+  "1sam:1": {
+    "end_sec": 305.2,
+    "source_url": "https://archive.org/download/bible_1samuel_kjv_0903_librivox/1samuel_01_kjv.mp3",
+    "start_sec": 28.84
+  },
+  "1sam:10": {
+    "end_sec": 318.6,
+    "source_url": "https://archive.org/download/bible_1samuel_kjv_0903_librivox/1samuel_10_kjv.mp3",
+    "start_sec": 26.88
+  },
+  "1sam:11": {
+    "end_sec": 205.6,
+    "source_url": "https://archive.org/download/bible_1samuel_kjv_0903_librivox/1samuel_11_kjv.mp3",
+    "start_sec": 28.6
+  },
+  "1sam:12": {
+    "end_sec": 294.8,
+    "source_url": "https://archive.org/download/bible_1samuel_kjv_0903_librivox/1samuel_12_kjv.mp3",
+    "start_sec": 27.72
+  },
+  "1sam:13": {
+    "end_sec": 272.52,
+    "source_url": "https://archive.org/download/bible_1samuel_kjv_0903_librivox/1samuel_13_kjv.mp3",
+    "start_sec": 27.4
+  },
+  "1sam:14": {
+    "end_sec": 588.32,
+    "source_url": "https://archive.org/download/bible_1samuel_kjv_0903_librivox/1samuel_14_kjv.mp3",
+    "start_sec": 27.48
+  },
+  "1sam:15": {
+    "end_sec": 377.12,
+    "source_url": "https://archive.org/download/bible_1samuel_kjv_0903_librivox/1samuel_15_kjv.mp3",
+    "start_sec": 27.6
+  },
+  "1sam:16": {
+    "end_sec": 270.24,
+    "source_url": "https://archive.org/download/bible_1samuel_kjv_0903_librivox/1samuel_16_kjv.mp3",
+    "start_sec": 26.4
+  },
+  "1sam:17": {
+    "end_sec": 607.44,
+    "source_url": "https://archive.org/download/bible_1samuel_kjv_0903_librivox/1samuel_17_kjv.mp3",
+    "start_sec": 28.36
+  },
+  "1sam:18": {
+    "end_sec": 324.64,
+    "source_url": "https://archive.org/download/bible_1samuel_kjv_0903_librivox/1samuel_18_kjv.mp3",
+    "start_sec": 26.88
+  },
+  "1sam:19": {
+    "end_sec": 277.32,
+    "source_url": "https://archive.org/download/bible_1samuel_kjv_0903_librivox/1samuel_19_kjv.mp3",
+    "start_sec": 27.44
+  },
+  "1sam:2": {
+    "end_sec": 386.32,
+    "source_url": "https://archive.org/download/bible_1samuel_kjv_0903_librivox/1samuel_02_kjv.mp3",
+    "start_sec": 27.76
+  },
+  "1sam:20": {
+    "end_sec": 460.68,
+    "source_url": "https://archive.org/download/bible_1samuel_kjv_0903_librivox/1samuel_20_kjv.mp3",
+    "start_sec": 26.76
+  },
+  "1sam:21": {
+    "end_sec": 191.4,
+    "source_url": "https://archive.org/download/bible_1samuel_kjv_0903_librivox/1samuel_21_kjv.mp3",
+    "start_sec": 28.72
+  },
+  "1sam:22": {
+    "end_sec": 281.32,
+    "source_url": "https://archive.org/download/bible_1samuel_kjv_0903_librivox/1samuel_22_kjv.mp3",
+    "start_sec": 27.08
+  },
+  "1sam:23": {
+    "end_sec": 321.08,
+    "source_url": "https://archive.org/download/bible_1samuel_kjv_0903_librivox/1samuel_23_kjv.mp3",
+    "start_sec": 28.12
+  },
+  "1sam:24": {
+    "end_sec": 258.04,
+    "source_url": "https://archive.org/download/bible_1samuel_kjv_0903_librivox/1samuel_24_kjv.mp3",
+    "start_sec": 26.88
+  },
+  "1sam:25": {
+    "end_sec": 515.8,
+    "source_url": "https://archive.org/download/bible_1samuel_kjv_0903_librivox/1samuel_25_kjv.mp3",
+    "start_sec": 28.48
+  },
+  "1sam:26": {
+    "end_sec": 330.8,
+    "source_url": "https://archive.org/download/bible_1samuel_kjv_0903_librivox/1samuel_26_kjv.mp3",
+    "start_sec": 28.88
+  },
+  "1sam:27": {
+    "end_sec": 158.92,
+    "source_url": "https://archive.org/download/bible_1samuel_kjv_0903_librivox/1samuel_27_kjv.mp3",
+    "start_sec": 27.76
+  },
+  "1sam:28": {
+    "end_sec": 311.6,
+    "source_url": "https://archive.org/download/bible_1samuel_kjv_0903_librivox/1samuel_28_kjv.mp3",
+    "start_sec": 26.96
+  },
+  "1sam:29": {
+    "end_sec": 166.48,
+    "source_url": "https://archive.org/download/bible_1samuel_kjv_0903_librivox/1samuel_29_kjv.mp3",
+    "start_sec": 27.64
+  },
+  "1sam:3": {
+    "end_sec": 222.6,
+    "source_url": "https://archive.org/download/bible_1samuel_kjv_0903_librivox/1samuel_03_kjv.mp3",
+    "start_sec": 27.04
+  },
+  "1sam:30": {
+    "end_sec": 344.64,
+    "source_url": "https://archive.org/download/bible_1samuel_kjv_0903_librivox/1samuel_30_kjv.mp3",
+    "start_sec": 25.84
+  },
+  "1sam:31": {
+    "end_sec": 150.6,
+    "source_url": "https://archive.org/download/bible_1samuel_kjv_0903_librivox/1samuel_31_kjv.mp3",
+    "start_sec": 27.36
+  },
+  "1sam:4": {
+    "end_sec": 275.08,
+    "source_url": "https://archive.org/download/bible_1samuel_kjv_0903_librivox/1samuel_04_kjv.mp3",
+    "start_sec": 27.68
+  },
+  "1sam:5": {
+    "end_sec": 167.68,
+    "source_url": "https://archive.org/download/bible_1samuel_kjv_0903_librivox/1samuel_05_kjv.mp3",
+    "start_sec": 25.84
+  },
+  "1sam:6": {
+    "end_sec": 274.72,
+    "source_url": "https://archive.org/download/bible_1samuel_kjv_0903_librivox/1samuel_06_kjv.mp3",
+    "start_sec": 26.72
+  },
+  "1sam:7": {
+    "end_sec": 213.12,
+    "source_url": "https://archive.org/download/bible_1samuel_kjv_0903_librivox/1samuel_07_kjv.mp3",
+    "start_sec": 26.52
+  },
+  "1sam:8": {
+    "end_sec": 212.68,
+    "source_url": "https://archive.org/download/bible_1samuel_kjv_0903_librivox/1samuel_08_kjv.mp3",
+    "start_sec": 26.92
+  },
+  "1sam:9": {
+    "end_sec": 353.76,
+    "source_url": "https://archive.org/download/bible_1samuel_kjv_0903_librivox/1samuel_09_kjv.mp3",
+    "start_sec": 26.88
+  },
   "1thes:1": {
-    "end_sec": 160.56,
+    "end_sec": 165.48,
     "source_url": "https://archive.org/download/bible_1thessalonians_kjv_1010_librivox/1_thessalonians_01_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 35.36
   },
   "1thes:2": {
-    "end_sec": 407.16,
+    "end_sec": 411.48,
     "source_url": "https://archive.org/download/bible_1thessalonians_kjv_1010_librivox/1_thessalonians_01_kjv.mp3",
-    "start_sec": 160.56
+    "start_sec": 165.48
   },
   "1thes:3": {
-    "end_sec": 558.72,
+    "end_sec": 564.48,
     "source_url": "https://archive.org/download/bible_1thessalonians_kjv_1010_librivox/1_thessalonians_01_kjv.mp3",
-    "start_sec": 407.16
+    "start_sec": 411.48
   },
   "1thes:4": {
     "end_sec": 726.36,
     "source_url": "https://archive.org/download/bible_1thessalonians_kjv_1010_librivox/1_thessalonians_01_kjv.mp3",
-    "start_sec": 558.72
+    "start_sec": 564.48
   },
   "1thes:5": {
-    "end_sec": 726.4,
+    "end_sec": 726.36,
     "source_url": "https://archive.org/download/bible_1thessalonians_kjv_1010_librivox/1_thessalonians_01_kjv.mp3",
     "start_sec": 726.36
   },
   "1tim:1": {
-    "end_sec": 265.4,
+    "end_sec": 270.36,
     "source_url": "https://archive.org/download/bible_1timothy_kjv_1007_librivox/1_timothy_01_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 30.0
   },
   "1tim:2": {
-    "end_sec": 409.56,
+    "end_sec": 414.28,
     "source_url": "https://archive.org/download/bible_1timothy_kjv_1007_librivox/1_timothy_01_kjv.mp3",
-    "start_sec": 265.4
+    "start_sec": 270.36
   },
   "1tim:3": {
-    "end_sec": 438.6,
+    "end_sec": 438.56,
     "source_url": "https://archive.org/download/bible_1timothy_kjv_1007_librivox/1_timothy_01_kjv.mp3",
-    "start_sec": 409.56
+    "start_sec": 414.28
   },
   "1tim:4": {
-    "end_sec": 193.6,
+    "end_sec": 198.48,
     "source_url": "https://archive.org/download/bible_1timothy_kjv_1007_librivox/1_timothy_02_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 18.08
   },
   "1tim:5": {
-    "end_sec": 456.36,
+    "end_sec": 460.44,
     "source_url": "https://archive.org/download/bible_1timothy_kjv_1007_librivox/1_timothy_02_kjv.mp3",
-    "start_sec": 193.6
+    "start_sec": 198.48
   },
   "1tim:6": {
-    "end_sec": 547.36,
+    "end_sec": 547.32,
     "source_url": "https://archive.org/download/bible_1timothy_kjv_1007_librivox/1_timothy_02_kjv.mp3",
-    "start_sec": 456.36
+    "start_sec": 460.44
   },
   "2cor:1": {
-    "end_sec": 449.84,
+    "end_sec": 454.92,
     "source_url": "https://archive.org/download/2corinthians_kjv_1105_librivox/2corinthians_1_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 42.32
   },
   "2cor:10": {
-    "end_sec": 461.0,
+    "end_sec": 460.96,
     "source_url": "https://archive.org/download/2corinthians_kjv_1105_librivox/2corinthians_5_kjv.mp3",
-    "start_sec": 299.16
+    "start_sec": 304.16
   },
   "2cor:11": {
-    "end_sec": 407.0,
+    "end_sec": 406.96,
     "source_url": "https://archive.org/download/2corinthians_kjv_1105_librivox/2corinthians_6_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 43.24
   },
   "2cor:12": {
-    "end_sec": 425.96,
+    "end_sec": 432.0,
     "source_url": "https://archive.org/download/2corinthians_kjv_1105_librivox/2corinthians_7_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 41.8
   },
   "2cor:13": {
-    "end_sec": 487.0,
+    "end_sec": 486.96,
     "source_url": "https://archive.org/download/2corinthians_kjv_1105_librivox/2corinthians_7_kjv.mp3",
-    "start_sec": 425.96
+    "start_sec": 432.0
   },
   "2cor:2": {
-    "end_sec": 546.04,
+    "end_sec": 546.0,
     "source_url": "https://archive.org/download/2corinthians_kjv_1105_librivox/2corinthians_1_kjv.mp3",
-    "start_sec": 449.84
+    "start_sec": 454.92
   },
   "2cor:3": {
-    "end_sec": 293.4,
+    "end_sec": 300.04,
     "source_url": "https://archive.org/download/2corinthians_kjv_1105_librivox/2corinthians_2_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 40.36
   },
   "2cor:4": {
-    "end_sec": 429.0,
+    "end_sec": 428.96,
     "source_url": "https://archive.org/download/2corinthians_kjv_1105_librivox/2corinthians_2_kjv.mp3",
-    "start_sec": 293.4
+    "start_sec": 300.04
   },
   "2cor:5": {
-    "end_sec": 389.12,
+    "end_sec": 395.6,
     "source_url": "https://archive.org/download/2corinthians_kjv_1105_librivox/2corinthians_3_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 38.64
   },
   "2cor:6": {
-    "end_sec": 503.08,
+    "end_sec": 503.04,
     "source_url": "https://archive.org/download/2corinthians_kjv_1105_librivox/2corinthians_3_kjv.mp3",
-    "start_sec": 389.12
+    "start_sec": 395.6
   },
   "2cor:7": {
-    "end_sec": 352.0,
+    "end_sec": 357.12,
     "source_url": "https://archive.org/download/2corinthians_kjv_1105_librivox/2corinthians_4_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 42.28
   },
   "2cor:8": {
-    "end_sec": 556.0,
+    "end_sec": 555.96,
     "source_url": "https://archive.org/download/2corinthians_kjv_1105_librivox/2corinthians_4_kjv.mp3",
-    "start_sec": 352.0
+    "start_sec": 357.12
   },
   "2cor:9": {
-    "end_sec": 299.16,
+    "end_sec": 304.16,
     "source_url": "https://archive.org/download/2corinthians_kjv_1105_librivox/2corinthians_5_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 45.12
+  },
+  "2john:1": {
+    "end_sec": 147.56,
+    "source_url": "https://archive.org/download/bible_epistlesjohn_rt_librivox/epistlesofjohn_6_kjv.mp3",
+    "start_sec": 22.88
+  },
+  "2kgs:1": {
+    "end_sec": 240.28,
+    "source_url": "https://archive.org/download/bible_kjv_2kings_jc_librivox/2kings_01_kjv.mp3",
+    "start_sec": 24.88
+  },
+  "2kgs:10": {
+    "end_sec": 415.08,
+    "source_url": "https://archive.org/download/bible_kjv_2kings_jc_librivox/2kings_10_kjv.mp3",
+    "start_sec": 24.68
+  },
+  "2kgs:11": {
+    "end_sec": 244.2,
+    "source_url": "https://archive.org/download/bible_kjv_2kings_jc_librivox/2kings_11_kjv.mp3",
+    "start_sec": 24.2
+  },
+  "2kgs:12": {
+    "end_sec": 235.12,
+    "source_url": "https://archive.org/download/bible_kjv_2kings_jc_librivox/2kings_12_kjv.mp3",
+    "start_sec": 25.08
+  },
+  "2kgs:13": {
+    "end_sec": 289.12,
+    "source_url": "https://archive.org/download/bible_kjv_2kings_jc_librivox/2kings_13_kjv.mp3",
+    "start_sec": 27.16
+  },
+  "2kgs:14": {
+    "end_sec": 314.24,
+    "source_url": "https://archive.org/download/bible_kjv_2kings_jc_librivox/2kings_14_kjv.mp3",
+    "start_sec": 26.44
+  },
+  "2kgs:15": {
+    "end_sec": 383.16,
+    "source_url": "https://archive.org/download/bible_kjv_2kings_jc_librivox/2kings_15_kjv.mp3",
+    "start_sec": 26.16
+  },
+  "2kgs:16": {
+    "end_sec": 238.2,
+    "source_url": "https://archive.org/download/bible_kjv_2kings_jc_librivox/2kings_16_kjv.mp3",
+    "start_sec": 25.96
+  },
+  "2kgs:17": {
+    "end_sec": 425.28,
+    "source_url": "https://archive.org/download/bible_kjv_2kings_jc_librivox/2kings_17_kjv.mp3",
+    "start_sec": 25.56
+  },
+  "2kgs:18": {
+    "end_sec": 440.0,
+    "source_url": "https://archive.org/download/bible_kjv_2kings_jc_librivox/2kings_18_kjv.mp3",
+    "start_sec": 25.76
+  },
+  "2kgs:19": {
+    "end_sec": 413.2,
+    "source_url": "https://archive.org/download/bible_kjv_2kings_jc_librivox/2kings_19_kjv.mp3",
+    "start_sec": 25.16
+  },
+  "2kgs:2": {
+    "end_sec": 311.28,
+    "source_url": "https://archive.org/download/bible_kjv_2kings_jc_librivox/2kings_02_kjv.mp3",
+    "start_sec": 22.76
+  },
+  "2kgs:20": {
+    "end_sec": 248.36,
+    "source_url": "https://archive.org/download/bible_kjv_2kings_jc_librivox/2kings_20_kjv.mp3",
+    "start_sec": 24.68
+  },
+  "2kgs:21": {
+    "end_sec": 266.24,
+    "source_url": "https://archive.org/download/bible_kjv_2kings_jc_librivox/2kings_21_kjv.mp3",
+    "start_sec": 25.92
+  },
+  "2kgs:22": {
+    "end_sec": 252.44,
+    "source_url": "https://archive.org/download/bible_kjv_2kings_jc_librivox/2kings_22_kjv.mp3",
+    "start_sec": 25.92
+  },
+  "2kgs:23": {
+    "end_sec": 491.24,
+    "source_url": "https://archive.org/download/bible_kjv_2kings_jc_librivox/2kings_23_kjv.mp3",
+    "start_sec": 25.0
+  },
+  "2kgs:24": {
+    "end_sec": 219.64,
+    "source_url": "https://archive.org/download/bible_kjv_2kings_jc_librivox/2kings_24_kjv.mp3",
+    "start_sec": 25.32
+  },
+  "2kgs:25": {
+    "end_sec": 342.16,
+    "source_url": "https://archive.org/download/bible_kjv_2kings_jc_librivox/2kings_25_kjv.mp3",
+    "start_sec": 25.56
+  },
+  "2kgs:3": {
+    "end_sec": 309.24,
+    "source_url": "https://archive.org/download/bible_kjv_2kings_jc_librivox/2kings_03_kjv.mp3",
+    "start_sec": 23.76
+  },
+  "2kgs:4": {
+    "end_sec": 454.2,
+    "source_url": "https://archive.org/download/bible_kjv_2kings_jc_librivox/2kings_04_kjv.mp3",
+    "start_sec": 24.4
+  },
+  "2kgs:5": {
+    "end_sec": 334.36,
+    "source_url": "https://archive.org/download/bible_kjv_2kings_jc_librivox/2kings_05_kjv.mp3",
+    "start_sec": 24.12
+  },
+  "2kgs:6": {
+    "end_sec": 351.0,
+    "source_url": "https://archive.org/download/bible_kjv_2kings_jc_librivox/2kings_06_kjv.mp3",
+    "start_sec": 24.2
+  },
+  "2kgs:7": {
+    "end_sec": 268.28,
+    "source_url": "https://archive.org/download/bible_kjv_2kings_jc_librivox/2kings_07_kjv.mp3",
+    "start_sec": 25.04
+  },
+  "2kgs:8": {
+    "end_sec": 328.6,
+    "source_url": "https://archive.org/download/bible_kjv_2kings_jc_librivox/2kings_08_kjv.mp3",
+    "start_sec": 23.96
+  },
+  "2kgs:9": {
+    "end_sec": 426.32,
+    "source_url": "https://archive.org/download/bible_kjv_2kings_jc_librivox/2kings_09_kjv.mp3",
+    "start_sec": 24.64
   },
   "2mac:1": {
-    "end_sec": 453.2,
+    "end_sec": 456.32,
     "source_url": "https://archive.org/download/2maccabees_2005_librivox/maccabees2_01_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 16.08
   },
   "2mac:10": {
-    "end_sec": 2032.56,
+    "end_sec": 2032.52,
     "source_url": "https://archive.org/download/2maccabees_2005_librivox/maccabees2_02_kjv.mp3",
     "start_sec": 2032.52
   },
   "2mac:11": {
-    "end_sec": 499.64,
+    "end_sec": 504.2,
     "source_url": "https://archive.org/download/2maccabees_2005_librivox/maccabees2_03_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 15.6
   },
   "2mac:12": {
-    "end_sec": 1266.68,
+    "end_sec": 1272.72,
     "source_url": "https://archive.org/download/2maccabees_2005_librivox/maccabees2_03_kjv.mp3",
-    "start_sec": 499.64
+    "start_sec": 504.2
   },
   "2mac:13": {
-    "end_sec": 1673.2,
+    "end_sec": 1677.56,
     "source_url": "https://archive.org/download/2maccabees_2005_librivox/maccabees2_03_kjv.mp3",
-    "start_sec": 1266.68
+    "start_sec": 1272.72
   },
   "2mac:14": {
     "end_sec": 2183.72,
     "source_url": "https://archive.org/download/2maccabees_2005_librivox/maccabees2_03_kjv.mp3",
-    "start_sec": 1673.2
+    "start_sec": 1677.56
   },
   "2mac:15": {
-    "end_sec": 2183.76,
+    "end_sec": 2183.72,
     "source_url": "https://archive.org/download/2maccabees_2005_librivox/maccabees2_03_kjv.mp3",
     "start_sec": 2183.72
   },
   "2mac:2": {
-    "end_sec": 859.72,
+    "end_sec": 863.88,
     "source_url": "https://archive.org/download/2maccabees_2005_librivox/maccabees2_01_kjv.mp3",
-    "start_sec": 453.2
+    "start_sec": 456.32
   },
   "2mac:3": {
-    "end_sec": 1411.88,
+    "end_sec": 1416.0,
     "source_url": "https://archive.org/download/2maccabees_2005_librivox/maccabees2_01_kjv.mp3",
-    "start_sec": 859.72
+    "start_sec": 863.88
   },
   "2mac:4": {
     "end_sec": 1884.76,
     "source_url": "https://archive.org/download/2maccabees_2005_librivox/maccabees2_01_kjv.mp3",
-    "start_sec": 1411.88
+    "start_sec": 1416.0
   },
   "2mac:5": {
-    "end_sec": 1884.8,
+    "end_sec": 1884.76,
     "source_url": "https://archive.org/download/2maccabees_2005_librivox/maccabees2_01_kjv.mp3",
     "start_sec": 1884.76
   },
   "2mac:6": {
-    "end_sec": 501.64,
+    "end_sec": 505.68,
     "source_url": "https://archive.org/download/2maccabees_2005_librivox/maccabees2_02_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 15.84
   },
   "2mac:7": {
-    "end_sec": 1127.8,
+    "end_sec": 1129.08,
     "source_url": "https://archive.org/download/2maccabees_2005_librivox/maccabees2_02_kjv.mp3",
-    "start_sec": 501.64
+    "start_sec": 505.68
   },
   "2mac:8": {
-    "end_sec": 1742.84,
+    "end_sec": 1747.84,
     "source_url": "https://archive.org/download/2maccabees_2005_librivox/maccabees2_02_kjv.mp3",
-    "start_sec": 1127.8
+    "start_sec": 1129.08
   },
   "2mac:9": {
     "end_sec": 2032.52,
     "source_url": "https://archive.org/download/2maccabees_2005_librivox/maccabees2_02_kjv.mp3",
-    "start_sec": 1742.84
+    "start_sec": 1747.84
   },
   "2pet:1": {
-    "end_sec": 263.32,
+    "end_sec": 267.28,
     "source_url": "https://archive.org/download/epistlesofpeter_kjv_1109_librivox/epistlesofpeter_2_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 25.16
   },
   "2pet:2": {
-    "end_sec": 557.76,
+    "end_sec": 562.4,
     "source_url": "https://archive.org/download/epistlesofpeter_kjv_1109_librivox/epistlesofpeter_2_kjv.mp3",
-    "start_sec": 263.32
+    "start_sec": 267.28
   },
   "2pet:3": {
-    "end_sec": 595.12,
+    "end_sec": 595.08,
     "source_url": "https://archive.org/download/epistlesofpeter_kjv_1109_librivox/epistlesofpeter_2_kjv.mp3",
-    "start_sec": 557.76
+    "start_sec": 562.4
+  },
+  "2sam:1": {
+    "end_sec": 288.6,
+    "source_url": "https://archive.org/download/bible_2samuel_kjv_jc_librivox/2samuel_01_kjv.mp3",
+    "start_sec": 27.32
+  },
+  "2sam:10": {
+    "end_sec": 235.44,
+    "source_url": "https://archive.org/download/bible_2samuel_kjv_jc_librivox/2samuel_10_kjv.mp3",
+    "start_sec": 26.2
+  },
+  "2sam:11": {
+    "end_sec": 303.36,
+    "source_url": "https://archive.org/download/bible_2samuel_kjv_jc_librivox/2samuel_11_kjv.mp3",
+    "start_sec": 26.52
+  },
+  "2sam:12": {
+    "end_sec": 360.36,
+    "source_url": "https://archive.org/download/bible_2samuel_kjv_jc_librivox/2samuel_12_kjv.mp3",
+    "start_sec": 26.48
+  },
+  "2sam:13": {
+    "end_sec": 428.52,
+    "source_url": "https://archive.org/download/bible_2samuel_kjv_jc_librivox/2samuel_13_kjv.mp3",
+    "start_sec": 30.88
+  },
+  "2sam:14": {
+    "end_sec": 391.44,
+    "source_url": "https://archive.org/download/bible_2samuel_kjv_jc_librivox/2samuel_14_kjv.mp3",
+    "start_sec": 25.52
+  },
+  "2sam:15": {
+    "end_sec": 416.96,
+    "source_url": "https://archive.org/download/bible_2samuel_kjv_jc_librivox/2samuel_15_kjv.mp3",
+    "start_sec": 26.0
+  },
+  "2sam:16": {
+    "end_sec": 288.08,
+    "source_url": "https://archive.org/download/bible_2samuel_kjv_jc_librivox/2samuel_16_kjv.mp3",
+    "start_sec": 27.76
+  },
+  "2sam:17": {
+    "end_sec": 354.12,
+    "source_url": "https://archive.org/download/bible_2samuel_kjv_jc_librivox/2samuel_17_kjv.mp3",
+    "start_sec": 28.92
+  },
+  "2sam:18": {
+    "end_sec": 405.52,
+    "source_url": "https://archive.org/download/bible_2samuel_kjv_jc_librivox/2samuel_18_kjv.mp3",
+    "start_sec": 25.48
+  },
+  "2sam:19": {
+    "end_sec": 507.8,
+    "source_url": "https://archive.org/download/bible_2samuel_kjv_jc_librivox/2samuel_19_kjv.mp3",
+    "start_sec": 26.72
+  },
+  "2sam:2": {
+    "end_sec": 370.16,
+    "source_url": "https://archive.org/download/bible_2samuel_kjv_jc_librivox/2samuel_02_kjv.mp3",
+    "start_sec": 26.64
+  },
+  "2sam:20": {
+    "end_sec": 315.48,
+    "source_url": "https://archive.org/download/bible_2samuel_kjv_jc_librivox/2samuel_20_kjv.mp3",
+    "start_sec": 27.08
+  },
+  "2sam:21": {
+    "end_sec": 280.56,
+    "source_url": "https://archive.org/download/bible_2samuel_kjv_jc_librivox/2samuel_21_kjv.mp3",
+    "start_sec": 20.08
+  },
+  "2sam:22": {
+    "end_sec": 365.4,
+    "source_url": "https://archive.org/download/bible_2samuel_kjv_jc_librivox/2samuel_22_kjv.mp3",
+    "start_sec": 26.88
+  },
+  "2sam:23": {
+    "end_sec": 350.12,
+    "source_url": "https://archive.org/download/bible_2samuel_kjv_jc_librivox/2samuel_23_kjv.mp3",
+    "start_sec": 27.64
+  },
+  "2sam:24": {
+    "end_sec": 321.96,
+    "source_url": "https://archive.org/download/bible_2samuel_kjv_jc_librivox/2samuel_24_kjv.mp3",
+    "start_sec": 27.04
+  },
+  "2sam:3": {
+    "end_sec": 440.12,
+    "source_url": "https://archive.org/download/bible_2samuel_kjv_jc_librivox/2samuel_03_kjv.mp3",
+    "start_sec": 27.04
+  },
+  "2sam:4": {
+    "end_sec": 178.6,
+    "source_url": "https://archive.org/download/bible_2samuel_kjv_jc_librivox/2samuel_04_kjv.mp3",
+    "start_sec": 27.52
+  },
+  "2sam:5": {
+    "end_sec": 260.44,
+    "source_url": "https://archive.org/download/bible_2samuel_kjv_jc_librivox/2samuel_05_kjv.mp3",
+    "start_sec": 26.36
+  },
+  "2sam:6": {
+    "end_sec": 269.44,
+    "source_url": "https://archive.org/download/bible_2samuel_kjv_jc_librivox/2samuel_06_kjv.mp3",
+    "start_sec": 28.64
+  },
+  "2sam:7": {
+    "end_sec": 318.56,
+    "source_url": "https://archive.org/download/bible_2samuel_kjv_jc_librivox/2samuel_07_kjv.mp3",
+    "start_sec": 26.04
+  },
+  "2sam:8": {
+    "end_sec": 197.36,
+    "source_url": "https://archive.org/download/bible_2samuel_kjv_jc_librivox/2samuel_08_kjv.mp3",
+    "start_sec": 25.32
+  },
+  "2sam:9": {
+    "end_sec": 174.8,
+    "source_url": "https://archive.org/download/bible_2samuel_kjv_jc_librivox/2samuel_09_kjv.mp3",
+    "start_sec": 25.92
   },
   "2thes:1": {
-    "end_sec": 171.64,
+    "end_sec": 175.52,
     "source_url": "https://archive.org/download/bible_2thessalonians_kjv_1011_librivox/2_thessalonians_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 33.04
   },
   "2thes:2": {
-    "end_sec": 359.6,
+    "end_sec": 364.76,
     "source_url": "https://archive.org/download/bible_2thessalonians_kjv_1011_librivox/2_thessalonians_kjv.mp3",
-    "start_sec": 171.64
+    "start_sec": 175.52
   },
   "2thes:3": {
-    "end_sec": 405.36,
+    "end_sec": 405.32,
     "source_url": "https://archive.org/download/bible_2thessalonians_kjv_1011_librivox/2_thessalonians_kjv.mp3",
-    "start_sec": 359.6
+    "start_sec": 364.76
   },
   "2tim:1": {
-    "end_sec": 246.2,
+    "end_sec": 250.52,
     "source_url": "https://archive.org/download/bible_2timothy_kjv_1009_librivox/2_timothy_01_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 28.72
   },
   "2tim:2": {
-    "end_sec": 525.36,
+    "end_sec": 529.32,
     "source_url": "https://archive.org/download/bible_2timothy_kjv_1009_librivox/2_timothy_01_kjv.mp3",
-    "start_sec": 246.2
+    "start_sec": 250.52
   },
   "2tim:3": {
     "end_sec": 700.56,
     "source_url": "https://archive.org/download/bible_2timothy_kjv_1009_librivox/2_timothy_01_kjv.mp3",
-    "start_sec": 525.36
+    "start_sec": 529.32
   },
   "2tim:4": {
-    "end_sec": 700.6,
+    "end_sec": 700.56,
     "source_url": "https://archive.org/download/bible_2timothy_kjv_1009_librivox/2_timothy_01_kjv.mp3",
     "start_sec": 700.56
   },
+  "3john:1": {
+    "end_sec": 151.68,
+    "source_url": "https://archive.org/download/bible_epistlesjohn_rt_librivox/epistlesofjohn_7_kjv.mp3",
+    "start_sec": 25.08
+  },
   "acts:1": {
-    "end_sec": 439.84,
+    "end_sec": 445.56,
     "source_url": "https://archive.org/download/acts_kjv_1112_librivox/acts_01_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 24.08
   },
   "acts:10": {
     "end_sec": 1041.64,
     "source_url": "https://archive.org/download/acts_kjv_1112_librivox/acts_04_kjv.mp3",
-    "start_sec": 536.44
+    "start_sec": 540.84
   },
   "acts:11": {
-    "end_sec": 1041.68,
+    "end_sec": 1041.64,
     "source_url": "https://archive.org/download/acts_kjv_1112_librivox/acts_04_kjv.mp3",
     "start_sec": 1041.64
   },
   "acts:12": {
-    "end_sec": 389.72,
+    "end_sec": 395.0,
     "source_url": "https://archive.org/download/acts_kjv_1112_librivox/acts_05_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 39.4
   },
   "acts:13": {
     "end_sec": 1037.28,
     "source_url": "https://archive.org/download/acts_kjv_1112_librivox/acts_05_kjv.mp3",
-    "start_sec": 389.72
+    "start_sec": 395.0
   },
   "acts:14": {
-    "end_sec": 1037.32,
+    "end_sec": 1037.28,
     "source_url": "https://archive.org/download/acts_kjv_1112_librivox/acts_05_kjv.mp3",
     "start_sec": 1037.28
   },
   "acts:15": {
-    "end_sec": 578.92,
+    "end_sec": 582.72,
     "source_url": "https://archive.org/download/acts_kjv_1112_librivox/acts_06_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 24.88
   },
   "acts:16": {
-    "end_sec": 1178.76,
+    "end_sec": 1183.76,
     "source_url": "https://archive.org/download/acts_kjv_1112_librivox/acts_06_kjv.mp3",
-    "start_sec": 578.92
+    "start_sec": 582.72
   },
   "acts:17": {
-    "end_sec": 1252.8,
+    "end_sec": 1252.76,
     "source_url": "https://archive.org/download/acts_kjv_1112_librivox/acts_06_kjv.mp3",
-    "start_sec": 1178.76
+    "start_sec": 1183.76
   },
   "acts:18": {
-    "end_sec": 421.96,
+    "end_sec": 426.68,
     "source_url": "https://archive.org/download/acts_kjv_1112_librivox/acts_07_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 24.56
   },
   "acts:19": {
-    "end_sec": 1026.16,
+    "end_sec": 1031.36,
     "source_url": "https://archive.org/download/acts_kjv_1112_librivox/acts_07_kjv.mp3",
-    "start_sec": 421.96
+    "start_sec": 426.68
   },
   "acts:2": {
     "end_sec": 1094.84,
     "source_url": "https://archive.org/download/acts_kjv_1112_librivox/acts_01_kjv.mp3",
-    "start_sec": 439.84
+    "start_sec": 445.56
   },
   "acts:20": {
-    "end_sec": 1145.44,
+    "end_sec": 1145.4,
     "source_url": "https://archive.org/download/acts_kjv_1112_librivox/acts_07_kjv.mp3",
-    "start_sec": 1026.16
+    "start_sec": 1031.36
   },
   "acts:21": {
-    "end_sec": 484.8,
+    "end_sec": 488.64,
     "source_url": "https://archive.org/download/acts_kjv_1112_librivox/acts_08_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 27.08
   },
   "acts:22": {
-    "end_sec": 819.24,
+    "end_sec": 823.84,
     "source_url": "https://archive.org/download/acts_kjv_1112_librivox/acts_08_kjv.mp3",
-    "start_sec": 484.8
+    "start_sec": 488.64
   },
   "acts:23": {
-    "end_sec": 896.8,
+    "end_sec": 896.76,
     "source_url": "https://archive.org/download/acts_kjv_1112_librivox/acts_08_kjv.mp3",
-    "start_sec": 819.24
+    "start_sec": 823.84
   },
   "acts:24": {
-    "end_sec": 264.6,
+    "end_sec": 264.56,
     "source_url": "https://archive.org/download/acts_kjv_1112_librivox/acts_09_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 22.72
   },
   "acts:25": {
-    "end_sec": 449.36,
+    "end_sec": 457.56,
     "source_url": "https://archive.org/download/acts_kjv_1112_librivox/acts_10_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 25.68
   },
   "acts:26": {
-    "end_sec": 718.16,
+    "end_sec": 718.12,
     "source_url": "https://archive.org/download/acts_kjv_1112_librivox/acts_10_kjv.mp3",
-    "start_sec": 449.36
+    "start_sec": 457.56
   },
   "acts:27": {
-    "end_sec": 478.0,
+    "end_sec": 481.64,
     "source_url": "https://archive.org/download/acts_kjv_1112_librivox/acts_11_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 20.0
   },
   "acts:28": {
-    "end_sec": 640.36,
+    "end_sec": 640.32,
     "source_url": "https://archive.org/download/acts_kjv_1112_librivox/acts_11_kjv.mp3",
-    "start_sec": 478.0
+    "start_sec": 481.64
   },
   "acts:3": {
-    "end_sec": 1094.88,
+    "end_sec": 1094.84,
     "source_url": "https://archive.org/download/acts_kjv_1112_librivox/acts_01_kjv.mp3",
     "start_sec": 1094.84
   },
   "acts:4": {
-    "end_sec": 541.68,
+    "end_sec": 545.4,
     "source_url": "https://archive.org/download/acts_kjv_1112_librivox/acts_02_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 25.8
   },
   "acts:5": {
     "end_sec": 1019.16,
     "source_url": "https://archive.org/download/acts_kjv_1112_librivox/acts_02_kjv.mp3",
-    "start_sec": 541.68
+    "start_sec": 545.4
   },
   "acts:6": {
-    "end_sec": 1019.2,
+    "end_sec": 1019.16,
     "source_url": "https://archive.org/download/acts_kjv_1112_librivox/acts_02_kjv.mp3",
     "start_sec": 1019.16
   },
   "acts:7": {
-    "end_sec": 705.72,
+    "end_sec": 710.44,
     "source_url": "https://archive.org/download/acts_kjv_1112_librivox/acts_03_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 21.8
   },
   "acts:8": {
-    "end_sec": 849.36,
+    "end_sec": 849.32,
     "source_url": "https://archive.org/download/acts_kjv_1112_librivox/acts_03_kjv.mp3",
-    "start_sec": 705.72
+    "start_sec": 710.44
   },
   "acts:9": {
-    "end_sec": 536.44,
+    "end_sec": 540.84,
     "source_url": "https://archive.org/download/acts_kjv_1112_librivox/acts_04_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 21.56
   },
   "eph:1": {
-    "end_sec": 242.08,
+    "end_sec": 245.92,
     "source_url": "https://archive.org/download/ephesians_kjv_nt_librivox/ephesians_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 26.04
   },
   "eph:2": {
-    "end_sec": 447.88,
+    "end_sec": 451.88,
     "source_url": "https://archive.org/download/ephesians_kjv_nt_librivox/ephesians_kjv.mp3",
-    "start_sec": 242.08
+    "start_sec": 245.92
   },
   "eph:3": {
-    "end_sec": 637.4,
+    "end_sec": 642.0,
     "source_url": "https://archive.org/download/ephesians_kjv_nt_librivox/ephesians_kjv.mp3",
-    "start_sec": 447.88
+    "start_sec": 451.88
   },
   "eph:4": {
-    "end_sec": 931.52,
+    "end_sec": 935.24,
     "source_url": "https://archive.org/download/ephesians_kjv_nt_librivox/ephesians_kjv.mp3",
-    "start_sec": 637.4
+    "start_sec": 642.0
   },
   "eph:5": {
     "end_sec": 1053.44,
     "source_url": "https://archive.org/download/ephesians_kjv_nt_librivox/ephesians_kjv.mp3",
-    "start_sec": 931.52
+    "start_sec": 935.24
   },
   "eph:6": {
-    "end_sec": 1053.48,
+    "end_sec": 1053.44,
     "source_url": "https://archive.org/download/ephesians_kjv_nt_librivox/ephesians_kjv.mp3",
     "start_sec": 1053.44
   },
+  "gal:1": {
+    "end_sec": 214.92,
+    "source_url": "https://archive.org/download/galatians_kjv_1412_librivox/galatians_1_kjv.mp3",
+    "start_sec": 20.48
+  },
+  "gal:2": {
+    "end_sec": 254.0,
+    "source_url": "https://archive.org/download/galatians_kjv_1412_librivox/galatians_2_kjv.mp3",
+    "start_sec": 14.24
+  },
+  "gal:3": {
+    "end_sec": 291.48,
+    "source_url": "https://archive.org/download/galatians_kjv_1412_librivox/galatians_3_kjv.mp3",
+    "start_sec": 15.4
+  },
+  "gal:4": {
+    "end_sec": 278.96,
+    "source_url": "https://archive.org/download/galatians_kjv_1412_librivox/galatians_4_kjv.mp3",
+    "start_sec": 13.6
+  },
+  "gal:5": {
+    "end_sec": 207.92,
+    "source_url": "https://archive.org/download/galatians_kjv_1412_librivox/galatians_5_kjv.mp3",
+    "start_sec": 14.76
+  },
+  "gal:6": {
+    "end_sec": 157.76,
+    "source_url": "https://archive.org/download/galatians_kjv_1412_librivox/galatians_6_kjv.mp3",
+    "start_sec": 15.32
+  },
   "heb:1": {
-    "end_sec": 182.08,
+    "end_sec": 186.4,
     "source_url": "https://archive.org/download/hebrews_kjv_1111_librivox/hebrews_1_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 25.8
   },
   "heb:10": {
-    "end_sec": 520.44,
+    "end_sec": 526.52,
     "source_url": "https://archive.org/download/hebrews_kjv_1111_librivox/hebrews_4_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 25.4
   },
   "heb:11": {
-    "end_sec": 815.08,
+    "end_sec": 815.04,
     "source_url": "https://archive.org/download/hebrews_kjv_1111_librivox/hebrews_4_kjv.mp3",
-    "start_sec": 520.44
+    "start_sec": 526.52
   },
   "heb:12": {
-    "end_sec": 371.88,
+    "end_sec": 376.36,
     "source_url": "https://archive.org/download/hebrews_kjv_1111_librivox/hebrews_5_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 26.88
   },
   "heb:13": {
-    "end_sec": 474.84,
+    "end_sec": 474.8,
     "source_url": "https://archive.org/download/hebrews_kjv_1111_librivox/hebrews_5_kjv.mp3",
-    "start_sec": 371.88
+    "start_sec": 376.36
   },
   "heb:2": {
-    "end_sec": 413.84,
+    "end_sec": 418.12,
     "source_url": "https://archive.org/download/hebrews_kjv_1111_librivox/hebrews_1_kjv.mp3",
-    "start_sec": 182.08
+    "start_sec": 186.4
   },
   "heb:3": {
-    "end_sec": 445.56,
+    "end_sec": 445.52,
     "source_url": "https://archive.org/download/hebrews_kjv_1111_librivox/hebrews_1_kjv.mp3",
-    "start_sec": 413.84
+    "start_sec": 418.12
   },
   "heb:4": {
-    "end_sec": 243.68,
+    "end_sec": 248.16,
     "source_url": "https://archive.org/download/hebrews_kjv_1111_librivox/hebrews_2_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 33.64
   },
   "heb:5": {
-    "end_sec": 421.44,
+    "end_sec": 426.36,
     "source_url": "https://archive.org/download/hebrews_kjv_1111_librivox/hebrews_2_kjv.mp3",
-    "start_sec": 243.68
+    "start_sec": 248.16
   },
   "heb:6": {
-    "end_sec": 497.12,
+    "end_sec": 497.08,
     "source_url": "https://archive.org/download/hebrews_kjv_1111_librivox/hebrews_2_kjv.mp3",
-    "start_sec": 421.44
+    "start_sec": 426.36
   },
   "heb:7": {
-    "end_sec": 439.0,
+    "end_sec": 444.52,
     "source_url": "https://archive.org/download/hebrews_kjv_1111_librivox/hebrews_3_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 33.36
   },
   "heb:8": {
-    "end_sec": 667.12,
+    "end_sec": 672.88,
     "source_url": "https://archive.org/download/hebrews_kjv_1111_librivox/hebrews_3_kjv.mp3",
-    "start_sec": 439.0
+    "start_sec": 444.52
   },
   "heb:9": {
-    "end_sec": 834.6,
+    "end_sec": 834.56,
     "source_url": "https://archive.org/download/hebrews_kjv_1111_librivox/hebrews_3_kjv.mp3",
-    "start_sec": 667.12
+    "start_sec": 672.88
   },
   "jdt:1": {
-    "end_sec": 300.88,
+    "end_sec": 304.64,
     "source_url": "https://archive.org/download/bookofjudith_2007_librivox/bookofjudith_01_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 20.84
   },
   "jdt:10": {
-    "end_sec": 1418.0,
+    "end_sec": 1417.96,
     "source_url": "https://archive.org/download/bookofjudith_2007_librivox/bookofjudith_02_kjv.mp3",
     "start_sec": 1417.96
   },
   "jdt:11": {
-    "end_sec": 396.72,
+    "end_sec": 401.28,
     "source_url": "https://archive.org/download/bookofjudith_2007_librivox/bookofjudith_03_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 14.08
   },
   "jdt:12": {
-    "end_sec": 662.6,
+    "end_sec": 666.36,
     "source_url": "https://archive.org/download/bookofjudith_2007_librivox/bookofjudith_03_kjv.mp3",
-    "start_sec": 396.72
+    "start_sec": 401.28
   },
   "jdt:13": {
-    "end_sec": 992.24,
+    "end_sec": 995.4,
     "source_url": "https://archive.org/download/bookofjudith_2007_librivox/bookofjudith_03_kjv.mp3",
-    "start_sec": 662.6
+    "start_sec": 666.36
   },
   "jdt:14": {
-    "end_sec": 1279.56,
+    "end_sec": 1283.12,
     "source_url": "https://archive.org/download/bookofjudith_2007_librivox/bookofjudith_03_kjv.mp3",
-    "start_sec": 992.24
+    "start_sec": 995.4
   },
   "jdt:15": {
     "end_sec": 1358.76,
     "source_url": "https://archive.org/download/bookofjudith_2007_librivox/bookofjudith_03_kjv.mp3",
-    "start_sec": 1279.56
+    "start_sec": 1283.12
   },
   "jdt:16": {
-    "end_sec": 1358.8,
+    "end_sec": 1358.76,
     "source_url": "https://archive.org/download/bookofjudith_2007_librivox/bookofjudith_03_kjv.mp3",
     "start_sec": 1358.76
   },
   "jdt:2": {
-    "end_sec": 673.84,
+    "end_sec": 674.96,
     "source_url": "https://archive.org/download/bookofjudith_2007_librivox/bookofjudith_01_kjv.mp3",
-    "start_sec": 300.88
+    "start_sec": 304.64
   },
   "jdt:3": {
-    "end_sec": 784.44,
+    "end_sec": 788.84,
     "source_url": "https://archive.org/download/bookofjudith_2007_librivox/bookofjudith_01_kjv.mp3",
-    "start_sec": 673.84
+    "start_sec": 674.96
   },
   "jdt:4": {
     "end_sec": 1002.92,
     "source_url": "https://archive.org/download/bookofjudith_2007_librivox/bookofjudith_01_kjv.mp3",
-    "start_sec": 784.44
+    "start_sec": 788.84
   },
   "jdt:5": {
-    "end_sec": 1002.96,
+    "end_sec": 1002.92,
     "source_url": "https://archive.org/download/bookofjudith_2007_librivox/bookofjudith_01_kjv.mp3",
     "start_sec": 1002.92
   },
   "jdt:6": {
-    "end_sec": 320.96,
+    "end_sec": 325.44,
     "source_url": "https://archive.org/download/bookofjudith_2007_librivox/bookofjudith_02_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 16.24
   },
   "jdt:7": {
-    "end_sec": 817.36,
+    "end_sec": 821.52,
     "source_url": "https://archive.org/download/bookofjudith_2007_librivox/bookofjudith_02_kjv.mp3",
-    "start_sec": 320.96
+    "start_sec": 325.44
   },
   "jdt:8": {
-    "end_sec": 1331.32,
+    "end_sec": 1335.04,
     "source_url": "https://archive.org/download/bookofjudith_2007_librivox/bookofjudith_02_kjv.mp3",
-    "start_sec": 817.36
+    "start_sec": 821.52
   },
   "jdt:9": {
     "end_sec": 1417.96,
     "source_url": "https://archive.org/download/bookofjudith_2007_librivox/bookofjudith_02_kjv.mp3",
-    "start_sec": 1331.32
+    "start_sec": 1335.04
   },
   "john:1": {
-    "end_sec": 668.2,
+    "end_sec": 673.32,
     "source_url": "https://archive.org/download/biblent04_john_kjv_librivox/gospeljohn_1_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 32.64
   },
   "john:10": {
-    "end_sec": 738.76,
+    "end_sec": 742.56,
     "source_url": "https://archive.org/download/biblent04_john_kjv_librivox/gospeljohn_3_kjv.mp3",
-    "start_sec": 409.08
+    "start_sec": 412.68
   },
   "john:11": {
     "end_sec": 1201.36,
     "source_url": "https://archive.org/download/biblent04_john_kjv_librivox/gospeljohn_3_kjv.mp3",
-    "start_sec": 738.76
+    "start_sec": 742.56
   },
   "john:12": {
-    "end_sec": 1201.4,
+    "end_sec": 1201.36,
     "source_url": "https://archive.org/download/biblent04_john_kjv_librivox/gospeljohn_3_kjv.mp3",
     "start_sec": 1201.36
   },
   "john:13": {
-    "end_sec": 399.48,
+    "end_sec": 403.04,
     "source_url": "https://archive.org/download/biblent04_john_kjv_librivox/gospeljohn_4_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 27.08
   },
   "john:14": {
-    "end_sec": 714.52,
+    "end_sec": 722.56,
     "source_url": "https://archive.org/download/biblent04_john_kjv_librivox/gospeljohn_4_kjv.mp3",
-    "start_sec": 399.48
+    "start_sec": 403.04
   },
   "john:15": {
-    "end_sec": 980.4,
+    "end_sec": 983.64,
     "source_url": "https://archive.org/download/biblent04_john_kjv_librivox/gospeljohn_4_kjv.mp3",
-    "start_sec": 714.52
+    "start_sec": 722.56
   },
   "john:16": {
     "end_sec": 1163.0,
     "source_url": "https://archive.org/download/biblent04_john_kjv_librivox/gospeljohn_4_kjv.mp3",
-    "start_sec": 980.4
+    "start_sec": 983.64
   },
   "john:17": {
-    "end_sec": 1163.04,
+    "end_sec": 1163.0,
     "source_url": "https://archive.org/download/biblent04_john_kjv_librivox/gospeljohn_4_kjv.mp3",
     "start_sec": 1163.0
   },
   "john:18": {
-    "end_sec": 656.68,
+    "end_sec": 665.28,
     "source_url": "https://archive.org/download/biblent04_john_kjv_librivox/gospeljohn_5_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 33.56
   },
   "john:19": {
-    "end_sec": 1349.68,
+    "end_sec": 1355.68,
     "source_url": "https://archive.org/download/biblent04_john_kjv_librivox/gospeljohn_5_kjv.mp3",
-    "start_sec": 656.68
+    "start_sec": 665.28
   },
   "john:2": {
-    "end_sec": 984.44,
+    "end_sec": 988.64,
     "source_url": "https://archive.org/download/biblent04_john_kjv_librivox/gospeljohn_1_kjv.mp3",
-    "start_sec": 668.2
+    "start_sec": 673.32
   },
   "john:20": {
     "end_sec": 1710.96,
     "source_url": "https://archive.org/download/biblent04_john_kjv_librivox/gospeljohn_5_kjv.mp3",
-    "start_sec": 1349.68
+    "start_sec": 1355.68
   },
   "john:21": {
-    "end_sec": 1711.0,
+    "end_sec": 1710.96,
     "source_url": "https://archive.org/download/biblent04_john_kjv_librivox/gospeljohn_5_kjv.mp3",
     "start_sec": 1710.96
   },
   "john:3": {
-    "end_sec": 1437.96,
+    "end_sec": 1442.68,
     "source_url": "https://archive.org/download/biblent04_john_kjv_librivox/gospeljohn_1_kjv.mp3",
-    "start_sec": 984.44
+    "start_sec": 988.64
   },
   "john:4": {
-    "end_sec": 1543.84,
+    "end_sec": 1543.8,
     "source_url": "https://archive.org/download/biblent04_john_kjv_librivox/gospeljohn_1_kjv.mp3",
-    "start_sec": 1437.96
+    "start_sec": 1442.68
   },
   "john:5": {
-    "end_sec": 708.08,
+    "end_sec": 714.2,
     "source_url": "https://archive.org/download/biblent04_john_kjv_librivox/gospeljohn_2_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 38.68
   },
   "john:6": {
-    "end_sec": 1709.12,
+    "end_sec": 1715.92,
     "source_url": "https://archive.org/download/biblent04_john_kjv_librivox/gospeljohn_2_kjv.mp3",
-    "start_sec": 708.08
+    "start_sec": 714.2
   },
   "john:7": {
     "end_sec": 2390.0,
     "source_url": "https://archive.org/download/biblent04_john_kjv_librivox/gospeljohn_2_kjv.mp3",
-    "start_sec": 1709.12
+    "start_sec": 1715.92
   },
   "john:8": {
-    "end_sec": 2390.04,
+    "end_sec": 2390.0,
     "source_url": "https://archive.org/download/biblent04_john_kjv_librivox/gospeljohn_2_kjv.mp3",
     "start_sec": 2390.0
   },
   "john:9": {
-    "end_sec": 409.08,
+    "end_sec": 412.68,
     "source_url": "https://archive.org/download/biblent04_john_kjv_librivox/gospeljohn_3_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 22.32
+  },
+  "josh:1": {
+    "end_sec": 209.92,
+    "source_url": "https://archive.org/download/bible_kjv_joshua_jc_librivox/joshua_01_kjv.mp3",
+    "start_sec": 24.68
+  },
+  "josh:10": {
+    "end_sec": 477.4,
+    "source_url": "https://archive.org/download/bible_kjv_joshua_jc_librivox/joshua_10_kjv.mp3",
+    "start_sec": 25.6
+  },
+  "josh:11": {
+    "end_sec": 267.32,
+    "source_url": "https://archive.org/download/bible_kjv_joshua_jc_librivox/joshua_11_kjv.mp3",
+    "start_sec": 23.84
+  },
+  "josh:12": {
+    "end_sec": 206.44,
+    "source_url": "https://archive.org/download/bible_kjv_joshua_jc_librivox/joshua_12_kjv.mp3",
+    "start_sec": 24.04
+  },
+  "josh:13": {
+    "end_sec": 316.32,
+    "source_url": "https://archive.org/download/bible_kjv_joshua_jc_librivox/joshua_13_kjv.mp3",
+    "start_sec": 23.52
+  },
+  "josh:14": {
+    "end_sec": 184.92,
+    "source_url": "https://archive.org/download/bible_kjv_joshua_jc_librivox/joshua_14_kjv.mp3",
+    "start_sec": 23.4
+  },
+  "josh:15": {
+    "end_sec": 427.04,
+    "source_url": "https://archive.org/download/bible_kjv_joshua_jc_librivox/joshua_15_kjv.mp3",
+    "start_sec": 23.8
+  },
+  "josh:16": {
+    "end_sec": 119.36,
+    "source_url": "https://archive.org/download/bible_kjv_joshua_jc_librivox/joshua_16_kjv.mp3",
+    "start_sec": 24.8
+  },
+  "josh:17": {
+    "end_sec": 252.16,
+    "source_url": "https://archive.org/download/bible_kjv_joshua_jc_librivox/joshua_17_kjv.mp3",
+    "start_sec": 25.12
+  },
+  "josh:18": {
+    "end_sec": 289.16,
+    "source_url": "https://archive.org/download/bible_kjv_joshua_jc_librivox/joshua_18_kjv.mp3",
+    "start_sec": 24.08
+  },
+  "josh:19": {
+    "end_sec": 399.24,
+    "source_url": "https://archive.org/download/bible_kjv_joshua_jc_librivox/joshua_19_kjv.mp3",
+    "start_sec": 24.36
+  },
+  "josh:2": {
+    "end_sec": 259.64,
+    "source_url": "https://archive.org/download/bible_kjv_joshua_jc_librivox/joshua_02_kjv.mp3",
+    "start_sec": 25.04
+  },
+  "josh:20": {
+    "end_sec": 130.08,
+    "source_url": "https://archive.org/download/bible_kjv_joshua_jc_librivox/joshua_20_kjv.mp3",
+    "start_sec": 24.2
+  },
+  "josh:21": {
+    "end_sec": 373.16,
+    "source_url": "https://archive.org/download/bible_kjv_joshua_jc_librivox/joshua_21_kjv.mp3",
+    "start_sec": 24.8
+  },
+  "josh:22": {
+    "end_sec": 441.2,
+    "source_url": "https://archive.org/download/bible_kjv_joshua_jc_librivox/joshua_22_kjv.mp3",
+    "start_sec": 23.6
+  },
+  "josh:23": {
+    "end_sec": 203.28,
+    "source_url": "https://archive.org/download/bible_kjv_joshua_jc_librivox/joshua_23_kjv.mp3",
+    "start_sec": 23.84
+  },
+  "josh:24": {
+    "end_sec": 375.68,
+    "source_url": "https://archive.org/download/bible_kjv_joshua_jc_librivox/joshua_24_kjv.mp3",
+    "start_sec": 23.8
+  },
+  "josh:3": {
+    "end_sec": 199.92,
+    "source_url": "https://archive.org/download/bible_kjv_joshua_jc_librivox/joshua_03_kjv.mp3",
+    "start_sec": 23.56
+  },
+  "josh:4": {
+    "end_sec": 235.2,
+    "source_url": "https://archive.org/download/bible_kjv_joshua_jc_librivox/joshua_04_kjv.mp3",
+    "start_sec": 22.68
+  },
+  "josh:6": {
+    "end_sec": 308.48,
+    "source_url": "https://archive.org/download/bible_kjv_joshua_jc_librivox/joshua_06_kjv.mp3",
+    "start_sec": 23.4
+  },
+  "josh:7": {
+    "end_sec": 318.28,
+    "source_url": "https://archive.org/download/bible_kjv_joshua_jc_librivox/joshua_07_kjv.mp3",
+    "start_sec": 23.56
+  },
+  "josh:8": {
+    "end_sec": 401.0,
+    "source_url": "https://archive.org/download/bible_kjv_joshua_jc_librivox/joshua_08_kjv.mp3",
+    "start_sec": 24.28
+  },
+  "josh:9": {
+    "end_sec": 270.2,
+    "source_url": "https://archive.org/download/bible_kjv_joshua_jc_librivox/joshua_09_kjv.mp3",
+    "start_sec": 22.44
+  },
+  "judg:1": {
+    "end_sec": 372.12,
+    "source_url": "https://archive.org/download/bible_judges_kjv_jc_librivox/judges_01_kjv.mp3",
+    "start_sec": 26.56
+  },
+  "judg:10": {
+    "end_sec": 190.28,
+    "source_url": "https://archive.org/download/bible_judges_kjv_jc_librivox/judges_10_kjv.mp3",
+    "start_sec": 23.92
+  },
+  "judg:11": {
+    "end_sec": 431.64,
+    "source_url": "https://archive.org/download/bible_judges_kjv_jc_librivox/judges_11_kjv.mp3",
+    "start_sec": 24.92
+  },
+  "judg:13": {
+    "end_sec": 243.44,
+    "source_url": "https://archive.org/download/bible_judges_kjv_jc_librivox/judges_13_kjv.mp3",
+    "start_sec": 21.08
+  },
+  "judg:14": {
+    "end_sec": 245.4,
+    "source_url": "https://archive.org/download/bible_judges_kjv_jc_librivox/judges_14_kjv.mp3",
+    "start_sec": 24.32
+  },
+  "judg:15": {
+    "end_sec": 243.48,
+    "source_url": "https://archive.org/download/bible_judges_kjv_jc_librivox/judges_15_kjv.mp3",
+    "start_sec": 24.68
+  },
+  "judg:16": {
+    "end_sec": 366.64,
+    "source_url": "https://archive.org/download/bible_judges_kjv_jc_librivox/judges_16_kjv.mp3",
+    "start_sec": 23.04
+  },
+  "judg:17": {
+    "end_sec": 148.72,
+    "source_url": "https://archive.org/download/bible_judges_kjv_jc_librivox/judges_17_kjv.mp3",
+    "start_sec": 24.64
+  },
+  "judg:18": {
+    "end_sec": 348.32,
+    "source_url": "https://archive.org/download/bible_judges_kjv_jc_librivox/judges_18_kjv.mp3",
+    "start_sec": 24.4
+  },
+  "judg:19": {
+    "end_sec": 367.24,
+    "source_url": "https://archive.org/download/bible_judges_kjv_jc_librivox/judges_19_kjv.mp3",
+    "start_sec": 25.16
+  },
+  "judg:2": {
+    "end_sec": 260.28,
+    "source_url": "https://archive.org/download/bible_judges_kjv_jc_librivox/judges_02_kjv.mp3",
+    "start_sec": 28.6
+  },
+  "judg:20": {
+    "end_sec": 496.28,
+    "source_url": "https://archive.org/download/bible_judges_kjv_jc_librivox/judges_20_kjv.mp3",
+    "start_sec": 24.96
+  },
+  "judg:21": {
+    "end_sec": 261.4,
+    "source_url": "https://archive.org/download/bible_judges_kjv_jc_librivox/judges_21_kjv.mp3",
+    "start_sec": 24.76
+  },
+  "judg:3": {
+    "end_sec": 322.64,
+    "source_url": "https://archive.org/download/bible_judges_kjv_jc_librivox/judges_03_kjv.mp3",
+    "start_sec": 24.32
+  },
+  "judg:4": {
+    "end_sec": 284.04,
+    "source_url": "https://archive.org/download/bible_judges_kjv_jc_librivox/judges_04_kjv.mp3",
+    "start_sec": 25.16
+  },
+  "judg:5": {
+    "end_sec": 300.52,
+    "source_url": "https://archive.org/download/bible_judges_kjv_jc_librivox/judges_05_kjv.mp3",
+    "start_sec": 24.96
+  },
+  "judg:6": {
+    "end_sec": 435.08,
+    "source_url": "https://archive.org/download/bible_judges_kjv_jc_librivox/judges_06_kjv.mp3",
+    "start_sec": 24.2
+  },
+  "judg:7": {
+    "end_sec": 339.36,
+    "source_url": "https://archive.org/download/bible_judges_kjv_jc_librivox/judges_07_kjv.mp3",
+    "start_sec": 25.12
+  },
+  "judg:8": {
+    "end_sec": 354.4,
+    "source_url": "https://archive.org/download/bible_judges_kjv_jc_librivox/judges_08_kjv.mp3",
+    "start_sec": 24.96
+  },
+  "lam:1": {
+    "end_sec": 335.24,
+    "source_url": "https://archive.org/download/bible_kjv_25_lamentations_mp_0909_librivox/lamentations_1_kjv.mp3",
+    "start_sec": 32.2
+  },
+  "lam:2": {
+    "end_sec": 291.92,
+    "source_url": "https://archive.org/download/bible_kjv_25_lamentations_mp_0909_librivox/lamentations_2_kjv.mp3",
+    "start_sec": 22.64
+  },
+  "lam:3": {
+    "end_sec": 352.76,
+    "source_url": "https://archive.org/download/bible_kjv_25_lamentations_mp_0909_librivox/lamentations_3_kjv.mp3",
+    "start_sec": 24.0
+  },
+  "lam:4": {
+    "end_sec": 247.88,
+    "source_url": "https://archive.org/download/bible_kjv_25_lamentations_mp_0909_librivox/lamentations_4_kjv.mp3",
+    "start_sec": 23.32
+  },
+  "lam:5": {
+    "end_sec": 178.08,
+    "source_url": "https://archive.org/download/bible_kjv_25_lamentations_mp_0909_librivox/lamentations_5_kjv.mp3",
+    "start_sec": 24.16
   },
   "luke:1": {
-    "end_sec": 821.24,
+    "end_sec": 826.68,
     "source_url": "https://archive.org/download/bible_kjv_nt_03_luke_0812_librivox/luke_01-02_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 27.32
   },
   "luke:10": {
-    "end_sec": 948.0,
+    "end_sec": 947.96,
     "source_url": "https://archive.org/download/bible_kjv_nt_03_luke_0812_librivox/luke_09-10_kjv.mp3",
-    "start_sec": 766.56
+    "start_sec": 770.28
   },
   "luke:11": {
-    "end_sec": 778.08,
+    "end_sec": 783.16,
     "source_url": "https://archive.org/download/bible_kjv_nt_03_luke_0812_librivox/luke_11-12_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 42.32
   },
   "luke:12": {
-    "end_sec": 1155.0,
+    "end_sec": 1154.96,
     "source_url": "https://archive.org/download/bible_kjv_nt_03_luke_0812_librivox/luke_11-12_kjv.mp3",
-    "start_sec": 778.08
+    "start_sec": 783.16
   },
   "luke:13": {
-    "end_sec": 508.24,
+    "end_sec": 513.24,
     "source_url": "https://archive.org/download/bible_kjv_nt_03_luke_0812_librivox/luke_13-14_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 45.0
   },
   "luke:14": {
-    "end_sec": 724.08,
+    "end_sec": 724.04,
     "source_url": "https://archive.org/download/bible_kjv_nt_03_luke_0812_librivox/luke_13-14_kjv.mp3",
-    "start_sec": 508.24
+    "start_sec": 513.24
   },
   "luke:15": {
-    "end_sec": 440.36,
+    "end_sec": 445.28,
     "source_url": "https://archive.org/download/bible_kjv_nt_03_luke_0812_librivox/luke_15-16_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 46.76
   },
   "luke:16": {
-    "end_sec": 653.44,
+    "end_sec": 653.4,
     "source_url": "https://archive.org/download/bible_kjv_nt_03_luke_0812_librivox/luke_15-16_kjv.mp3",
-    "start_sec": 440.36
+    "start_sec": 445.28
   },
   "luke:17": {
-    "end_sec": 510.12,
+    "end_sec": 515.16,
     "source_url": "https://archive.org/download/bible_kjv_nt_03_luke_0812_librivox/luke_17-18_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 41.56
   },
   "luke:18": {
-    "end_sec": 791.04,
+    "end_sec": 791.0,
     "source_url": "https://archive.org/download/bible_kjv_nt_03_luke_0812_librivox/luke_17-18_kjv.mp3",
-    "start_sec": 510.12
+    "start_sec": 515.16
   },
   "luke:19": {
-    "end_sec": 631.64,
+    "end_sec": 637.4,
     "source_url": "https://archive.org/download/bible_kjv_nt_03_luke_0812_librivox/luke_19-20_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 30.08
   },
   "luke:2": {
-    "end_sec": 1010.44,
+    "end_sec": 1010.4,
     "source_url": "https://archive.org/download/bible_kjv_nt_03_luke_0812_librivox/luke_01-02_kjv.mp3",
-    "start_sec": 821.24
+    "start_sec": 826.68
   },
   "luke:20": {
-    "end_sec": 907.04,
+    "end_sec": 907.0,
     "source_url": "https://archive.org/download/bible_kjv_nt_03_luke_0812_librivox/luke_19-20_kjv.mp3",
-    "start_sec": 631.64
+    "start_sec": 637.4
   },
   "luke:21": {
-    "end_sec": 514.88,
+    "end_sec": 520.48,
     "source_url": "https://archive.org/download/bible_kjv_nt_03_luke_0812_librivox/luke_21-22_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 49.12
   },
   "luke:22": {
-    "end_sec": 1022.04,
+    "end_sec": 1022.0,
     "source_url": "https://archive.org/download/bible_kjv_nt_03_luke_0812_librivox/luke_21-22_kjv.mp3",
-    "start_sec": 514.88
+    "start_sec": 520.48
   },
   "luke:23": {
-    "end_sec": 766.4,
+    "end_sec": 770.4,
     "source_url": "https://archive.org/download/bible_kjv_nt_03_luke_0812_librivox/luke_23-24_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 46.32
   },
   "luke:24": {
-    "end_sec": 1065.88,
+    "end_sec": 1065.84,
     "source_url": "https://archive.org/download/bible_kjv_nt_03_luke_0812_librivox/luke_23-24_kjv.mp3",
-    "start_sec": 766.4
+    "start_sec": 770.4
   },
   "luke:3": {
-    "end_sec": 534.2,
+    "end_sec": 538.48,
     "source_url": "https://archive.org/download/bible_kjv_nt_03_luke_0812_librivox/luke_03-04_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 22.96
   },
   "luke:4": {
-    "end_sec": 790.88,
+    "end_sec": 790.84,
     "source_url": "https://archive.org/download/bible_kjv_nt_03_luke_0812_librivox/luke_03-04_kjv.mp3",
-    "start_sec": 534.2
+    "start_sec": 538.48
   },
   "luke:5": {
-    "end_sec": 497.12,
+    "end_sec": 501.04,
     "source_url": "https://archive.org/download/bible_kjv_nt_03_luke_0812_librivox/luke_05-06_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 24.12
   },
   "luke:6": {
-    "end_sec": 826.48,
+    "end_sec": 826.44,
     "source_url": "https://archive.org/download/bible_kjv_nt_03_luke_0812_librivox/luke_05-06_kjv.mp3",
-    "start_sec": 497.12
+    "start_sec": 501.04
   },
   "luke:7": {
-    "end_sec": 634.52,
+    "end_sec": 637.88,
     "source_url": "https://archive.org/download/bible_kjv_nt_03_luke_0812_librivox/luke_07-08_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 29.4
   },
   "luke:8": {
-    "end_sec": 1002.16,
+    "end_sec": 1002.12,
     "source_url": "https://archive.org/download/bible_kjv_nt_03_luke_0812_librivox/luke_07-08_kjv.mp3",
-    "start_sec": 634.52
+    "start_sec": 637.88
   },
   "luke:9": {
-    "end_sec": 766.56,
+    "end_sec": 770.28,
     "source_url": "https://archive.org/download/bible_kjv_nt_03_luke_0812_librivox/luke_09-10_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 25.4
+  },
+  "man:1": {
+    "end_sec": 189.92,
+    "source_url": "https://archive.org/download/prayer_manasseh_ss_librivox/prayerofmanasseh_01_kjv.mp3",
+    "start_sec": 23.64
   },
   "mark:1": {
-    "end_sec": 650.28,
+    "end_sec": 654.96,
     "source_url": "https://archive.org/download/mark_kjv_sw_librivox/gospelofmark_01_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 36.4
   },
   "mark:10": {
-    "end_sec": 1178.04,
+    "end_sec": 1178.0,
     "source_url": "https://archive.org/download/mark_kjv_sw_librivox/gospelofmark_05_kjv.mp3",
-    "start_sec": 796.4
+    "start_sec": 802.52
   },
   "mark:11": {
-    "end_sec": 543.52,
+    "end_sec": 549.36,
     "source_url": "https://archive.org/download/mark_kjv_sw_librivox/gospelofmark_06_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 35.96
   },
   "mark:12": {
-    "end_sec": 931.0,
+    "end_sec": 930.96,
     "source_url": "https://archive.org/download/mark_kjv_sw_librivox/gospelofmark_06_kjv.mp3",
-    "start_sec": 543.52
+    "start_sec": 549.36
   },
   "mark:13": {
-    "end_sec": 574.44,
+    "end_sec": 579.44,
     "source_url": "https://archive.org/download/mark_kjv_sw_librivox/gospelofmark_07_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 36.92
   },
   "mark:14": {
-    "end_sec": 1158.0,
+    "end_sec": 1157.96,
     "source_url": "https://archive.org/download/mark_kjv_sw_librivox/gospelofmark_07_kjv.mp3",
-    "start_sec": 574.44
+    "start_sec": 579.44
   },
   "mark:15": {
-    "end_sec": 641.2,
+    "end_sec": 646.0,
     "source_url": "https://archive.org/download/mark_kjv_sw_librivox/gospelofmark_08_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 35.92
   },
   "mark:16": {
-    "end_sec": 701.0,
+    "end_sec": 700.96,
     "source_url": "https://archive.org/download/mark_kjv_sw_librivox/gospelofmark_08_kjv.mp3",
-    "start_sec": 641.2
+    "start_sec": 646.0
   },
   "mark:2": {
-    "end_sec": 837.0,
+    "end_sec": 836.96,
     "source_url": "https://archive.org/download/mark_kjv_sw_librivox/gospelofmark_01_kjv.mp3",
-    "start_sec": 650.28
+    "start_sec": 654.96
   },
   "mark:3": {
-    "end_sec": 477.04,
+    "end_sec": 482.4,
     "source_url": "https://archive.org/download/mark_kjv_sw_librivox/gospelofmark_02_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 38.16
   },
   "mark:4": {
-    "end_sec": 789.0,
+    "end_sec": 788.96,
     "source_url": "https://archive.org/download/mark_kjv_sw_librivox/gospelofmark_02_kjv.mp3",
-    "start_sec": 477.04
+    "start_sec": 482.4
   },
   "mark:5": {
-    "end_sec": 626.6,
+    "end_sec": 633.56,
     "source_url": "https://archive.org/download/mark_kjv_sw_librivox/gospelofmark_03_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 34.28
   },
   "mark:6": {
-    "end_sec": 1077.0,
+    "end_sec": 1076.96,
     "source_url": "https://archive.org/download/mark_kjv_sw_librivox/gospelofmark_03_kjv.mp3",
-    "start_sec": 626.6
+    "start_sec": 633.56
   },
   "mark:7": {
-    "end_sec": 545.08,
+    "end_sec": 549.08,
     "source_url": "https://archive.org/download/mark_kjv_sw_librivox/gospelofmark_04_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 34.64
   },
   "mark:8": {
-    "end_sec": 801.0,
+    "end_sec": 800.96,
     "source_url": "https://archive.org/download/mark_kjv_sw_librivox/gospelofmark_04_kjv.mp3",
-    "start_sec": 545.08
+    "start_sec": 549.08
   },
   "mark:9": {
-    "end_sec": 796.4,
+    "end_sec": 802.52,
     "source_url": "https://archive.org/download/mark_kjv_sw_librivox/gospelofmark_05_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 37.96
+  },
+  "matt:1": {
+    "end_sec": 260.2,
+    "source_url": "https://archive.org/download/matthew_kjv_mp_librivox/matthew_01_kjv.mp3",
+    "start_sec": 25.2
+  },
+  "matt:10": {
+    "end_sec": 448.24,
+    "source_url": "https://archive.org/download/matthew_kjv_mp_librivox/matthew_10_kjv.mp3",
+    "start_sec": 15.68
+  },
+  "matt:11": {
+    "end_sec": 322.76,
+    "source_url": "https://archive.org/download/matthew_kjv_mp_librivox/matthew_11_kjv.mp3",
+    "start_sec": 16.84
+  },
+  "matt:12": {
+    "end_sec": 533.12,
+    "source_url": "https://archive.org/download/matthew_kjv_mp_librivox/matthew_12_kjv.mp3",
+    "start_sec": 17.12
+  },
+  "matt:13": {
+    "end_sec": 642.96,
+    "source_url": "https://archive.org/download/matthew_kjv_mp_librivox/matthew_13_kjv.mp3",
+    "start_sec": 17.04
+  },
+  "matt:14": {
+    "end_sec": 350.28,
+    "source_url": "https://archive.org/download/matthew_kjv_mp_librivox/matthew_14_kjv.mp3",
+    "start_sec": 18.32
+  },
+  "matt:15": {
+    "end_sec": 393.44,
+    "source_url": "https://archive.org/download/matthew_kjv_mp_librivox/matthew_15_kjv.mp3",
+    "start_sec": 17.28
+  },
+  "matt:16": {
+    "end_sec": 337.48,
+    "source_url": "https://archive.org/download/matthew_kjv_mp_librivox/matthew_16_kjv.mp3",
+    "start_sec": 18.32
+  },
+  "matt:17": {
+    "end_sec": 317.4,
+    "source_url": "https://archive.org/download/matthew_kjv_mp_librivox/matthew_17_kjv.mp3",
+    "start_sec": 18.36
+  },
+  "matt:18": {
+    "end_sec": 398.16,
+    "source_url": "https://archive.org/download/matthew_kjv_mp_librivox/matthew_18_kjv.mp3",
+    "start_sec": 17.36
+  },
+  "matt:19": {
+    "end_sec": 346.16,
+    "source_url": "https://archive.org/download/matthew_kjv_mp_librivox/matthew_19_kjv.mp3",
+    "start_sec": 17.4
+  },
+  "matt:2": {
+    "end_sec": 257.28,
+    "source_url": "https://archive.org/download/matthew_kjv_mp_librivox/matthew_02_kjv.mp3",
+    "start_sec": 16.12
+  },
+  "matt:20": {
+    "end_sec": 362.56,
+    "source_url": "https://archive.org/download/matthew_kjv_mp_librivox/matthew_20_kjv.mp3",
+    "start_sec": 17.88
+  },
+  "matt:21": {
+    "end_sec": 522.52,
+    "source_url": "https://archive.org/download/matthew_kjv_mp_librivox/matthew_21_kjv.mp3",
+    "start_sec": 16.68
+  },
+  "matt:22": {
+    "end_sec": 387.8,
+    "source_url": "https://archive.org/download/matthew_kjv_mp_librivox/matthew_22_kjv.mp3",
+    "start_sec": 16.12
+  },
+  "matt:23": {
+    "end_sec": 451.76,
+    "source_url": "https://archive.org/download/matthew_kjv_mp_librivox/matthew_23_kjv.mp3",
+    "start_sec": 16.12
+  },
+  "matt:24": {
+    "end_sec": 507.6,
+    "source_url": "https://archive.org/download/matthew_kjv_mp_librivox/matthew_24_kjv.mp3",
+    "start_sec": 16.24
+  },
+  "matt:25": {
+    "end_sec": 480.4,
+    "source_url": "https://archive.org/download/matthew_kjv_mp_librivox/matthew_25_kjv.mp3",
+    "start_sec": 17.28
+  },
+  "matt:26": {
+    "end_sec": 780.12,
+    "source_url": "https://archive.org/download/matthew_kjv_mp_librivox/matthew_26_kjv.mp3",
+    "start_sec": 16.2
+  },
+  "matt:27": {
+    "end_sec": 652.28,
+    "source_url": "https://archive.org/download/matthew_kjv_mp_librivox/matthew_27_kjv.mp3",
+    "start_sec": 17.32
+  },
+  "matt:28": {
+    "end_sec": 221.56,
+    "source_url": "https://archive.org/download/matthew_kjv_mp_librivox/matthew_28_kjv.mp3",
+    "start_sec": 17.32
+  },
+  "matt:3": {
+    "end_sec": 190.24,
+    "source_url": "https://archive.org/download/matthew_kjv_mp_librivox/matthew_03_kjv.mp3",
+    "start_sec": 16.56
+  },
+  "matt:4": {
+    "end_sec": 255.32,
+    "source_url": "https://archive.org/download/matthew_kjv_mp_librivox/matthew_04_kjv.mp3",
+    "start_sec": 16.12
+  },
+  "matt:5": {
+    "end_sec": 466.48,
+    "source_url": "https://archive.org/download/matthew_kjv_mp_librivox/matthew_05_kjv.mp3",
+    "start_sec": 17.72
+  },
+  "matt:6": {
+    "end_sec": 365.88,
+    "source_url": "https://archive.org/download/matthew_kjv_mp_librivox/matthew_06_kjv.mp3",
+    "start_sec": 15.24
+  },
+  "matt:7": {
+    "end_sec": 278.44,
+    "source_url": "https://archive.org/download/matthew_kjv_mp_librivox/matthew_07_kjv.mp3",
+    "start_sec": 16.08
+  },
+  "matt:8": {
+    "end_sec": 374.52,
+    "source_url": "https://archive.org/download/matthew_kjv_mp_librivox/matthew_08_kjv.mp3",
+    "start_sec": 14.72
+  },
+  "matt:9": {
+    "end_sec": 410.52,
+    "source_url": "https://archive.org/download/matthew_kjv_mp_librivox/matthew_09_kjv.mp3",
+    "start_sec": 16.12
+  },
+  "phil:1": {
+    "end_sec": 218.6,
+    "source_url": "https://archive.org/download/philippians_kjv_vm_librivox/philippians_1_kjv.mp3",
+    "start_sec": 23.52
+  },
+  "phil:2": {
+    "end_sec": 228.84,
+    "source_url": "https://archive.org/download/philippians_kjv_vm_librivox/philippians_2_kjv.mp3",
+    "start_sec": 24.92
+  },
+  "phil:3": {
+    "end_sec": 196.8,
+    "source_url": "https://archive.org/download/philippians_kjv_vm_librivox/philippians_3_kjv.mp3",
+    "start_sec": 25.44
+  },
+  "phil:4": {
+    "end_sec": 219.96,
+    "source_url": "https://archive.org/download/philippians_kjv_vm_librivox/philippians_4_kjv.mp3",
+    "start_sec": 26.32
+  },
+  "phlm:1": {
+    "end_sec": 205.2,
+    "source_url": "https://archive.org/download/bible_philemon_kjv_1007_librivox/philemon_01_kjv.mp3",
+    "start_sec": 25.8
+  },
+  "prov:1": {
+    "end_sec": 278.24,
+    "source_url": "https://archive.org/download/proverbs_kjv_mp_librivox/proverbs_01_kjv.mp3",
+    "start_sec": 27.16
+  },
+  "prov:10": {
+    "end_sec": 261.28,
+    "source_url": "https://archive.org/download/proverbs_kjv_mp_librivox/proverbs_10_kjv.mp3",
+    "start_sec": 18.48
+  },
+  "prov:11": {
+    "end_sec": 253.28,
+    "source_url": "https://archive.org/download/proverbs_kjv_mp_librivox/proverbs_11_kjv.mp3",
+    "start_sec": 15.76
+  },
+  "prov:12": {
+    "end_sec": 219.2,
+    "source_url": "https://archive.org/download/proverbs_kjv_mp_librivox/proverbs_12_kjv.mp3",
+    "start_sec": 15.36
+  },
+  "prov:13": {
+    "end_sec": 215.8,
+    "source_url": "https://archive.org/download/proverbs_kjv_mp_librivox/proverbs_13_kjv.mp3",
+    "start_sec": 15.28
+  },
+  "prov:14": {
+    "end_sec": 276.64,
+    "source_url": "https://archive.org/download/proverbs_kjv_mp_librivox/proverbs_14_kjv.mp3",
+    "start_sec": 14.68
+  },
+  "prov:15": {
+    "end_sec": 249.0,
+    "source_url": "https://archive.org/download/proverbs_kjv_mp_librivox/proverbs_15_kjv.mp3",
+    "start_sec": 15.4
+  },
+  "prov:16": {
+    "end_sec": 246.76,
+    "source_url": "https://archive.org/download/proverbs_kjv_mp_librivox/proverbs_16_kjv.mp3",
+    "start_sec": 14.24
+  },
+  "prov:17": {
+    "end_sec": 214.8,
+    "source_url": "https://archive.org/download/proverbs_kjv_mp_librivox/proverbs_17_kjv.mp3",
+    "start_sec": 14.4
+  },
+  "prov:18": {
+    "end_sec": 184.56,
+    "source_url": "https://archive.org/download/proverbs_kjv_mp_librivox/proverbs_18_kjv.mp3",
+    "start_sec": 13.56
+  },
+  "prov:19": {
+    "end_sec": 244.56,
+    "source_url": "https://archive.org/download/proverbs_kjv_mp_librivox/proverbs_19_kjv.mp3",
+    "start_sec": 14.2
+  },
+  "prov:2": {
+    "end_sec": 159.28,
+    "source_url": "https://archive.org/download/proverbs_kjv_mp_librivox/proverbs_02_kjv.mp3",
+    "start_sec": 18.2
+  },
+  "prov:20": {
+    "end_sec": 240.16,
+    "source_url": "https://archive.org/download/proverbs_kjv_mp_librivox/proverbs_20_kjv.mp3",
+    "start_sec": 16.08
+  },
+  "prov:21": {
+    "end_sec": 243.16,
+    "source_url": "https://archive.org/download/proverbs_kjv_mp_librivox/proverbs_21_kjv.mp3",
+    "start_sec": 13.48
+  },
+  "prov:22": {
+    "end_sec": 228.84,
+    "source_url": "https://archive.org/download/proverbs_kjv_mp_librivox/proverbs_22_kjv.mp3",
+    "start_sec": 15.76
+  },
+  "prov:23": {
+    "end_sec": 252.76,
+    "source_url": "https://archive.org/download/proverbs_kjv_mp_librivox/proverbs_23_kjv.mp3",
+    "start_sec": 16.12
+  },
+  "prov:24": {
+    "end_sec": 262.44,
+    "source_url": "https://archive.org/download/proverbs_kjv_mp_librivox/proverbs_24_kjv.mp3",
+    "start_sec": 14.56
+  },
+  "prov:25": {
+    "end_sec": 236.2,
+    "source_url": "https://archive.org/download/proverbs_kjv_mp_librivox/proverbs_25_kjv.mp3",
+    "start_sec": 14.88
+  },
+  "prov:26": {
+    "end_sec": 225.52,
+    "source_url": "https://archive.org/download/proverbs_kjv_mp_librivox/proverbs_26_kjv.mp3",
+    "start_sec": 15.48
+  },
+  "prov:27": {
+    "end_sec": 229.64,
+    "source_url": "https://archive.org/download/proverbs_kjv_mp_librivox/proverbs_27_kjv.mp3",
+    "start_sec": 14.52
+  },
+  "prov:28": {
+    "end_sec": 267.52,
+    "source_url": "https://archive.org/download/proverbs_kjv_mp_librivox/proverbs_28_kjv.mp3",
+    "start_sec": 15.32
+  },
+  "prov:29": {
+    "end_sec": 222.36,
+    "source_url": "https://archive.org/download/proverbs_kjv_mp_librivox/proverbs_29_kjv.mp3",
+    "start_sec": 14.0
+  },
+  "prov:3": {
+    "end_sec": 260.52,
+    "source_url": "https://archive.org/download/proverbs_kjv_mp_librivox/proverbs_03_kjv.mp3",
+    "start_sec": 17.12
+  },
+  "prov:30": {
+    "end_sec": 287.12,
+    "source_url": "https://archive.org/download/proverbs_kjv_mp_librivox/proverbs_30_kjv.mp3",
+    "start_sec": 15.12
+  },
+  "prov:31": {
+    "end_sec": 233.12,
+    "source_url": "https://archive.org/download/proverbs_kjv_mp_librivox/proverbs_31_kjv.mp3",
+    "start_sec": 15.92
+  },
+  "prov:4": {
+    "end_sec": 187.8,
+    "source_url": "https://archive.org/download/proverbs_kjv_mp_librivox/proverbs_04_kjv.mp3",
+    "start_sec": 15.8
+  },
+  "prov:5": {
+    "end_sec": 171.16,
+    "source_url": "https://archive.org/download/proverbs_kjv_mp_librivox/proverbs_05_kjv.mp3",
+    "start_sec": 15.52
+  },
+  "prov:6": {
+    "end_sec": 255.48,
+    "source_url": "https://archive.org/download/proverbs_kjv_mp_librivox/proverbs_06_kjv.mp3",
+    "start_sec": 14.28
+  },
+  "prov:7": {
+    "end_sec": 184.8,
+    "source_url": "https://archive.org/download/proverbs_kjv_mp_librivox/proverbs_07_kjv.mp3",
+    "start_sec": 14.72
+  },
+  "prov:8": {
+    "end_sec": 249.16,
+    "source_url": "https://archive.org/download/proverbs_kjv_mp_librivox/proverbs_08_kjv.mp3",
+    "start_sec": 13.44
+  },
+  "prov:9": {
+    "end_sec": 133.08,
+    "source_url": "https://archive.org/download/proverbs_kjv_mp_librivox/proverbs_09_kjv.mp3",
+    "start_sec": 16.0
+  },
+  "rev:1": {
+    "end_sec": 283.52,
+    "source_url": "https://archive.org/download/bible_kjvnt_27_revelation_1401_librivox/bible_kjvnt_27_revelation_01_kingjamesversion(kjv).mp3",
+    "start_sec": 30.92
+  },
+  "rev:10": {
+    "end_sec": 150.12,
+    "source_url": "https://archive.org/download/bible_kjvnt_27_revelation_1401_librivox/bible_kjvnt_27_revelation_10_kingjamesversion(kjv).mp3",
+    "start_sec": 16.24
+  },
+  "rev:11": {
+    "end_sec": 259.08,
+    "source_url": "https://archive.org/download/bible_kjvnt_27_revelation_1401_librivox/bible_kjvnt_27_revelation_11_kingjamesversion(kjv).mp3",
+    "start_sec": 17.64
+  },
+  "rev:12": {
+    "end_sec": 213.52,
+    "source_url": "https://archive.org/download/bible_kjvnt_27_revelation_1401_librivox/bible_kjvnt_27_revelation_12_kingjamesversion(kjv).mp3",
+    "start_sec": 15.84
+  },
+  "rev:13": {
+    "end_sec": 234.16,
+    "source_url": "https://archive.org/download/bible_kjvnt_27_revelation_1401_librivox/bible_kjvnt_27_revelation_13_kingjamesversion(kjv).mp3",
+    "start_sec": 17.72
+  },
+  "rev:14": {
+    "end_sec": 278.12,
+    "source_url": "https://archive.org/download/bible_kjvnt_27_revelation_1401_librivox/bible_kjvnt_27_revelation_14_kingjamesversion(kjv).mp3",
+    "start_sec": 17.32
+  },
+  "rev:15": {
+    "end_sec": 122.0,
+    "source_url": "https://archive.org/download/bible_kjvnt_27_revelation_1401_librivox/bible_kjvnt_27_revelation_15_kingjamesversion(kjv).mp3",
+    "start_sec": 18.44
+  },
+  "rev:16": {
+    "end_sec": 242.76,
+    "source_url": "https://archive.org/download/bible_kjvnt_27_revelation_1401_librivox/bible_kjvnt_27_revelation_16_kingjamesversion(kjv).mp3",
+    "start_sec": 16.48
+  },
+  "rev:17": {
+    "end_sec": 237.24,
+    "source_url": "https://archive.org/download/bible_kjvnt_27_revelation_1401_librivox/bible_kjvnt_27_revelation_17_kingjamesversion(kjv).mp3",
+    "start_sec": 15.84
+  },
+  "rev:18": {
+    "end_sec": 334.44,
+    "source_url": "https://archive.org/download/bible_kjvnt_27_revelation_1401_librivox/bible_kjvnt_27_revelation_18_kingjamesversion(kjv).mp3",
+    "start_sec": 17.16
+  },
+  "rev:19": {
+    "end_sec": 274.56,
+    "source_url": "https://archive.org/download/bible_kjvnt_27_revelation_1401_librivox/bible_kjvnt_27_revelation_19_kingjamesversion(kjv).mp3",
+    "start_sec": 15.64
+  },
+  "rev:2": {
+    "end_sec": 348.2,
+    "source_url": "https://archive.org/download/bible_kjvnt_27_revelation_1401_librivox/bible_kjvnt_27_revelation_02_kingjamesversion(kjv).mp3",
+    "start_sec": 16.4
+  },
+  "rev:20": {
+    "end_sec": 195.12,
+    "source_url": "https://archive.org/download/bible_kjvnt_27_revelation_1401_librivox/bible_kjvnt_27_revelation_20_kingjamesversion(kjv).mp3",
+    "start_sec": 15.56
+  },
+  "rev:21": {
+    "end_sec": 323.76,
+    "source_url": "https://archive.org/download/bible_kjvnt_27_revelation_1401_librivox/bible_kjvnt_27_revelation_21_kingjamesversion(kjv).mp3",
+    "start_sec": 16.68
+  },
+  "rev:22": {
+    "end_sec": 266.4,
+    "source_url": "https://archive.org/download/bible_kjvnt_27_revelation_1401_librivox/bible_kjvnt_27_revelation_22_kingjamesversion(kjv).mp3",
+    "start_sec": 16.2
+  },
+  "rev:3": {
+    "end_sec": 298.64,
+    "source_url": "https://archive.org/download/bible_kjvnt_27_revelation_1401_librivox/bible_kjvnt_27_revelation_03_kingjamesversion(kjv).mp3",
+    "start_sec": 18.6
+  },
+  "rev:4": {
+    "end_sec": 160.76,
+    "source_url": "https://archive.org/download/bible_kjvnt_27_revelation_1401_librivox/bible_kjvnt_27_revelation_04_kingjamesversion(kjv).mp3",
+    "start_sec": 15.48
+  },
+  "rev:5": {
+    "end_sec": 195.64,
+    "source_url": "https://archive.org/download/bible_kjvnt_27_revelation_1401_librivox/bible_kjvnt_27_revelation_05_kingjamesversion(kjv).mp3",
+    "start_sec": 16.16
+  },
+  "rev:6": {
+    "end_sec": 229.92,
+    "source_url": "https://archive.org/download/bible_kjvnt_27_revelation_1401_librivox/bible_kjvnt_27_revelation_06_kingjamesversion(kjv).mp3",
+    "start_sec": 18.24
+  },
+  "rev:7": {
+    "end_sec": 217.2,
+    "source_url": "https://archive.org/download/bible_kjvnt_27_revelation_1401_librivox/bible_kjvnt_27_revelation_07_kingjamesversion(kjv).mp3",
+    "start_sec": 16.56
+  },
+  "rev:8": {
+    "end_sec": 170.48,
+    "source_url": "https://archive.org/download/bible_kjvnt_27_revelation_1401_librivox/bible_kjvnt_27_revelation_08_kingjamesversion(kjv).mp3",
+    "start_sec": 15.04
+  },
+  "rev:9": {
+    "end_sec": 243.88,
+    "source_url": "https://archive.org/download/bible_kjvnt_27_revelation_1401_librivox/bible_kjvnt_27_revelation_09_kingjamesversion(kjv).mp3",
+    "start_sec": 16.4
   },
   "rom:1": {
-    "end_sec": 582.88,
+    "end_sec": 589.12,
     "source_url": "https://archive.org/download/romans_kjv_1103_librivox/romans_1_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 43.12
   },
   "rom:10": {
-    "end_sec": 535.84,
+    "end_sec": 535.8,
     "source_url": "https://archive.org/download/romans_kjv_1103_librivox/romans_5_kjv.mp3",
-    "start_sec": 443.64
+    "start_sec": 448.92
   },
   "rom:11": {
-    "end_sec": 512.28,
+    "end_sec": 517.84,
     "source_url": "https://archive.org/download/romans_kjv_1103_librivox/romans_6_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 26.84
   },
   "rom:12": {
-    "end_sec": 577.96,
+    "end_sec": 577.92,
     "source_url": "https://archive.org/download/romans_kjv_1103_librivox/romans_6_kjv.mp3",
-    "start_sec": 512.28
+    "start_sec": 517.84
   },
   "rom:13": {
-    "end_sec": 221.84,
+    "end_sec": 226.36,
     "source_url": "https://archive.org/download/romans_kjv_1103_librivox/romans_7_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 25.32
   },
   "rom:14": {
-    "end_sec": 379.52,
+    "end_sec": 379.48,
     "source_url": "https://archive.org/download/romans_kjv_1103_librivox/romans_7_kjv.mp3",
-    "start_sec": 221.84
+    "start_sec": 226.36
   },
   "rom:15": {
-    "end_sec": 528.36,
+    "end_sec": 535.16,
     "source_url": "https://archive.org/download/romans_kjv_1103_librivox/romans_8_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 45.0
   },
   "rom:16": {
-    "end_sec": 690.04,
+    "end_sec": 690.0,
     "source_url": "https://archive.org/download/romans_kjv_1103_librivox/romans_8_kjv.mp3",
-    "start_sec": 528.36
+    "start_sec": 535.16
   },
   "rom:2": {
-    "end_sec": 781.0,
+    "end_sec": 780.96,
     "source_url": "https://archive.org/download/romans_kjv_1103_librivox/romans_1_kjv.mp3",
-    "start_sec": 582.88
+    "start_sec": 589.12
   },
   "rom:3": {
-    "end_sec": 417.76,
+    "end_sec": 423.84,
     "source_url": "https://archive.org/download/romans_kjv_1103_librivox/romans_2_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 40.36
   },
   "rom:4": {
-    "end_sec": 599.0,
+    "end_sec": 598.96,
     "source_url": "https://archive.org/download/romans_kjv_1103_librivox/romans_2_kjv.mp3",
-    "start_sec": 417.76
+    "start_sec": 423.84
   },
   "rom:5": {
-    "end_sec": 278.32,
+    "end_sec": 282.88,
     "source_url": "https://archive.org/download/romans_kjv_1103_librivox/romans_3_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 24.48
   },
   "rom:6": {
-    "end_sec": 399.84,
+    "end_sec": 399.8,
     "source_url": "https://archive.org/download/romans_kjv_1103_librivox/romans_3_kjv.mp3",
-    "start_sec": 278.32
+    "start_sec": 282.88
   },
   "rom:7": {
-    "end_sec": 321.8,
+    "end_sec": 326.52,
     "source_url": "https://archive.org/download/romans_kjv_1103_librivox/romans_4_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 23.44
   },
   "rom:8": {
-    "end_sec": 580.84,
+    "end_sec": 580.8,
     "source_url": "https://archive.org/download/romans_kjv_1103_librivox/romans_4_kjv.mp3",
-    "start_sec": 321.8
+    "start_sec": 326.52
   },
   "rom:9": {
-    "end_sec": 443.64,
+    "end_sec": 448.92,
     "source_url": "https://archive.org/download/romans_kjv_1103_librivox/romans_5_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 26.16
   },
   "titus:1": {
-    "end_sec": 210.0,
+    "end_sec": 214.08,
     "source_url": "https://archive.org/download/bible_titus_kjv_1007_librivox/titus_01_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 29.28
   },
   "titus:2": {
-    "end_sec": 360.44,
+    "end_sec": 364.84,
     "source_url": "https://archive.org/download/bible_titus_kjv_1007_librivox/titus_01_kjv.mp3",
-    "start_sec": 210.0
+    "start_sec": 214.08
   },
   "titus:3": {
-    "end_sec": 403.68,
+    "end_sec": 403.64,
     "source_url": "https://archive.org/download/bible_titus_kjv_1007_librivox/titus_01_kjv.mp3",
-    "start_sec": 360.44
+    "start_sec": 364.84
+  },
+  "tob:1": {
+    "end_sec": 274.16,
+    "source_url": "https://archive.org/download/tobit_kjv_1512_librivox/tobit_01_kjv.mp3",
+    "start_sec": 31.24
+  },
+  "tob:10": {
+    "end_sec": 142.04,
+    "source_url": "https://archive.org/download/tobit_kjv_1512_librivox/tobit_10_kjv.mp3",
+    "start_sec": 20.92
+  },
+  "tob:11": {
+    "end_sec": 180.24,
+    "source_url": "https://archive.org/download/tobit_kjv_1512_librivox/tobit_11_kjv.mp3",
+    "start_sec": 20.68
+  },
+  "tob:12": {
+    "end_sec": 196.24,
+    "source_url": "https://archive.org/download/tobit_kjv_1512_librivox/tobit_12_kjv.mp3",
+    "start_sec": 18.68
+  },
+  "tob:13": {
+    "end_sec": 211.52,
+    "source_url": "https://archive.org/download/tobit_kjv_1512_librivox/tobit_13_kjv.mp3",
+    "start_sec": 21.6
+  },
+  "tob:14": {
+    "end_sec": 220.92,
+    "source_url": "https://archive.org/download/tobit_kjv_1512_librivox/tobit_14_kjv.mp3",
+    "start_sec": 20.36
+  },
+  "tob:2": {
+    "end_sec": 180.04,
+    "source_url": "https://archive.org/download/tobit_kjv_1512_librivox/tobit_02_kjv.mp3",
+    "start_sec": 21.08
+  },
+  "tob:3": {
+    "end_sec": 253.8,
+    "source_url": "https://archive.org/download/tobit_kjv_1512_librivox/tobit_03_kjv.mp3",
+    "start_sec": 20.52
+  },
+  "tob:4": {
+    "end_sec": 280.56,
+    "source_url": "https://archive.org/download/tobit_kjv_1512_librivox/tobit_04_kjv.mp3",
+    "start_sec": 20.6
+  },
+  "tob:5": {
+    "end_sec": 217.72,
+    "source_url": "https://archive.org/download/tobit_kjv_1512_librivox/tobit_05_kjv.mp3",
+    "start_sec": 20.32
+  },
+  "tob:6": {
+    "end_sec": 227.48,
+    "source_url": "https://archive.org/download/tobit_kjv_1512_librivox/tobit_06_kjv.mp3",
+    "start_sec": 19.32
+  },
+  "tob:7": {
+    "end_sec": 196.16,
+    "source_url": "https://archive.org/download/tobit_kjv_1512_librivox/tobit_07_kjv.mp3",
+    "start_sec": 22.08
+  },
+  "tob:8": {
+    "end_sec": 186.28,
+    "source_url": "https://archive.org/download/tobit_kjv_1512_librivox/tobit_08_kjv.mp3",
+    "start_sec": 19.8
+  },
+  "tob:9": {
+    "end_sec": 64.0,
+    "source_url": "https://archive.org/download/tobit_kjv_1512_librivox/tobit_09_kjv.mp3",
+    "start_sec": 20.56
   },
   "wis:1": {
-    "end_sec": 245.04,
+    "end_sec": 249.24,
     "source_url": "https://archive.org/download/wisdom_of_solomon_kjv_1407_librivox/wisdomofsolomon_01_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 31.16
   },
   "wis:10": {
-    "end_sec": 827.48,
+    "end_sec": 831.92,
     "source_url": "https://archive.org/download/wisdom_of_solomon_kjv_1407_librivox/wisdomofsolomon_02_kjv.mp3",
-    "start_sec": 534.28
+    "start_sec": 538.76
   },
   "wis:11": {
-    "end_sec": 1162.96,
+    "end_sec": 1168.0,
     "source_url": "https://archive.org/download/wisdom_of_solomon_kjv_1407_librivox/wisdomofsolomon_02_kjv.mp3",
-    "start_sec": 827.48
+    "start_sec": 831.92
   },
   "wis:12": {
     "end_sec": 1377.0,
     "source_url": "https://archive.org/download/wisdom_of_solomon_kjv_1407_librivox/wisdomofsolomon_02_kjv.mp3",
-    "start_sec": 1162.96
+    "start_sec": 1168.0
   },
   "wis:13": {
-    "end_sec": 1377.04,
+    "end_sec": 1377.0,
     "source_url": "https://archive.org/download/wisdom_of_solomon_kjv_1407_librivox/wisdomofsolomon_02_kjv.mp3",
     "start_sec": 1377.0
   },
   "wis:14": {
-    "end_sec": 467.28,
+    "end_sec": 472.84,
     "source_url": "https://archive.org/download/wisdom_of_solomon_kjv_1407_librivox/wisdomofsolomon_03_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 18.84
   },
   "wis:15": {
-    "end_sec": 772.28,
+    "end_sec": 777.76,
     "source_url": "https://archive.org/download/wisdom_of_solomon_kjv_1407_librivox/wisdomofsolomon_03_kjv.mp3",
-    "start_sec": 467.28
+    "start_sec": 472.84
   },
   "wis:16": {
-    "end_sec": 1209.68,
+    "end_sec": 1214.6,
     "source_url": "https://archive.org/download/wisdom_of_solomon_kjv_1407_librivox/wisdomofsolomon_03_kjv.mp3",
-    "start_sec": 772.28
+    "start_sec": 777.76
   },
   "wis:17": {
-    "end_sec": 1513.76,
+    "end_sec": 1519.0,
     "source_url": "https://archive.org/download/wisdom_of_solomon_kjv_1407_librivox/wisdomofsolomon_03_kjv.mp3",
-    "start_sec": 1209.68
+    "start_sec": 1214.6
   },
   "wis:18": {
     "end_sec": 1648.56,
     "source_url": "https://archive.org/download/wisdom_of_solomon_kjv_1407_librivox/wisdomofsolomon_03_kjv.mp3",
-    "start_sec": 1513.76
+    "start_sec": 1519.0
   },
   "wis:19": {
-    "end_sec": 1648.6,
+    "end_sec": 1648.56,
     "source_url": "https://archive.org/download/wisdom_of_solomon_kjv_1407_librivox/wisdomofsolomon_03_kjv.mp3",
     "start_sec": 1648.56
   },
   "wis:2": {
-    "end_sec": 568.8,
+    "end_sec": 574.68,
     "source_url": "https://archive.org/download/wisdom_of_solomon_kjv_1407_librivox/wisdomofsolomon_01_kjv.mp3",
-    "start_sec": 245.04
+    "start_sec": 249.24
   },
   "wis:3": {
-    "end_sec": 807.24,
+    "end_sec": 811.88,
     "source_url": "https://archive.org/download/wisdom_of_solomon_kjv_1407_librivox/wisdomofsolomon_01_kjv.mp3",
-    "start_sec": 568.8
+    "start_sec": 574.68
   },
   "wis:4": {
-    "end_sec": 1101.84,
+    "end_sec": 1107.4,
     "source_url": "https://archive.org/download/wisdom_of_solomon_kjv_1407_librivox/wisdomofsolomon_01_kjv.mp3",
-    "start_sec": 807.24
+    "start_sec": 811.88
   },
   "wis:5": {
-    "end_sec": 1461.68,
+    "end_sec": 1467.08,
     "source_url": "https://archive.org/download/wisdom_of_solomon_kjv_1407_librivox/wisdomofsolomon_01_kjv.mp3",
-    "start_sec": 1101.84
+    "start_sec": 1107.4
   },
   "wis:6": {
     "end_sec": 1594.84,
     "source_url": "https://archive.org/download/wisdom_of_solomon_kjv_1407_librivox/wisdomofsolomon_01_kjv.mp3",
-    "start_sec": 1461.68
+    "start_sec": 1467.08
   },
   "wis:7": {
-    "end_sec": 1594.88,
+    "end_sec": 1594.84,
     "source_url": "https://archive.org/download/wisdom_of_solomon_kjv_1407_librivox/wisdomofsolomon_01_kjv.mp3",
     "start_sec": 1594.84
   },
   "wis:8": {
-    "end_sec": 303.44,
+    "end_sec": 307.88,
     "source_url": "https://archive.org/download/wisdom_of_solomon_kjv_1407_librivox/wisdomofsolomon_02_kjv.mp3",
-    "start_sec": 0.0
+    "start_sec": 18.36
   },
   "wis:9": {
-    "end_sec": 534.28,
+    "end_sec": 538.76,
     "source_url": "https://archive.org/download/wisdom_of_solomon_kjv_1407_librivox/wisdomofsolomon_02_kjv.mp3",
-    "start_sec": 303.44
+    "start_sec": 307.88
   }
 }
