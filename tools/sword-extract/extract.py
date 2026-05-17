@@ -43,9 +43,18 @@ from pathlib import Path
 # texts are punctuated for prose reading.
 _C_ENT = re.compile(r"&c;")
 _WS = re.compile(r"\s+")
+# pysword's `clean=True` strips most OSIS markup, but commentary modules
+# carry inline footnote tags like `<note n="…">…</note>` and bare reference
+# anchors that aren't part of pysword's allowlist. Drop the notes wholesale
+# (they're translator annotations, not the author's prose, and inlining them
+# mid-sentence reads as gibberish) and strip any remaining bare tags.
+_NOTE_BLOCK = re.compile(r"<note\b[^>]*>.*?</note>", re.DOTALL | re.IGNORECASE)
+_BARE_TAG = re.compile(r"<[^>]+>")
 
 
 def clean_body(text: str) -> str:
+    text = _NOTE_BLOCK.sub("", text)
+    text = _BARE_TAG.sub("", text)
     text = _C_ENT.sub("&c.", text)
     text = html.unescape(text)
     text = _WS.sub(" ", text)

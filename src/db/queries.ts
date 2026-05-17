@@ -60,6 +60,23 @@ export async function listCommentaryBooks(
   );
 }
 
+/** The book-kind section's body for a (commentary, book), if any. Holds
+ *  the SWORD-anchored front matter (title page, translator's preface, etc.)
+ *  when the ingest detected it; empty string when there's no intro. */
+export async function getCommentaryBookIntro(
+  workSlug: string,
+  bookSlug: string,
+): Promise<string> {
+  const row = await corpusSelectOne<{ body: string }>(
+    `SELECT s.body FROM section s
+       JOIN work w ON w.id = s.work_id
+      WHERE w.slug = $1 AND s.kind = 'book' AND s.label = $2
+      LIMIT 1`,
+    [workSlug, bookSlug],
+  );
+  return row?.body ?? "";
+}
+
 /** Chapter-kind sections for a (commentary, book). `label` on a chapter row
  *  is the chapter number as a string ("1", "2", ...). Ordering relies on the
  *  ingest having written rows in chapter-number order. */

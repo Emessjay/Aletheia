@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { CorpusLanguage, SectionRow, WorkRow } from "./types";
 import {
   getChapter,
+  getCommentaryBookIntro,
   getStrongs,
   listBooksByLanguage,
   listChapterCommentary,
@@ -93,6 +94,21 @@ export function useCommentaryBooks(workSlug: string | null) {
     queryKey: ["corpus", "commentary", workSlug, "books"],
     queryFn: () => (workSlug ? listCommentaryBooks(workSlug) : Promise.resolve([])),
     enabled: !!workSlug,
+    staleTime: Infinity,
+  });
+}
+
+export function useCommentaryBookIntro(
+  workSlug: string | null,
+  bookSlug: string | null,
+) {
+  return useQuery<string>({
+    queryKey: ["corpus", "commentary", workSlug, "intro", bookSlug],
+    queryFn: () =>
+      workSlug && bookSlug
+        ? getCommentaryBookIntro(workSlug, bookSlug)
+        : Promise.resolve(""),
+    enabled: !!workSlug && !!bookSlug,
     staleTime: Infinity,
   });
 }

@@ -471,14 +471,20 @@ public struct Pipeline {
         var ordering = 0
         var totalComments = 0
 
+        var intros = 0
         for bookSlug in orderedSlugs {
             let bookPath = "\(workSlug).\(bookSlug)"
+            // The book row's body holds the front-matter intro (if SWORD
+            // anchored it at Genesis 1:1 etc.); empty otherwise.
+            let chs = byBook[bookSlug]!.sorted { $0.chapter < $1.chapter }
+            let intro = chs.first(where: { $0.chapter == 1 })?.bookIntro ?? ""
+            if !intro.isEmpty { intros += 1 }
             let bookID = try writer.insertSection(
                 workID: workID, parentID: nil, ordinalPath: bookPath,
-                kind: "book", label: bookSlug, language: "en", body: "", ordering: ordering)
+                kind: "book", label: bookSlug, language: "en",
+                body: intro, ordering: ordering)
             ordering += 1
 
-            let chs = byBook[bookSlug]!.sorted { $0.chapter < $1.chapter }
             for ch in chs {
                 let chapterPath = "\(bookPath).\(ch.chapter)"
                 let chapterID = try writer.insertSection(
@@ -499,7 +505,7 @@ public struct Pipeline {
                 }
             }
         }
-        logger.info("    \(totalComments) verse comments across \(byBook.count) books")
+        logger.info("    \(totalComments) verse comments + \(intros) book intros across \(byBook.count) books")
     }
 
     private func ingestCrossRefs(writer: CorpusWriter) throws {

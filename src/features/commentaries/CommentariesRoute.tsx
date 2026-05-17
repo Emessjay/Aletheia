@@ -3,6 +3,7 @@ import { Link, Navigate, useParams } from "react-router-dom";
 import {
   useChapterCommentary,
   useCommentaries,
+  useCommentaryBookIntro,
   useCommentaryBooks,
   useCommentaryChapters,
 } from "@/db/hooks";
@@ -126,16 +127,25 @@ function BookView({
   workSlug: string;
   bookSlug: string;
 }) {
+  const work = useCommentaryEntry(workSlug);
+  const books = useCommentaryBooks(workSlug);
   const chapters = useCommentaryChapters(workSlug, bookSlug);
+  const intro = useCommentaryBookIntro(workSlug, bookSlug);
   const numbers = useMemo(
     () => chapterNumbersFromSections(chapters.data ?? []),
     [chapters.data],
   );
 
-  if (chapters.isPending) return <Loading />;
+  // Wait for both queries: showing the intro landing depends on knowing
+  // whether intro.data is non-empty, so we don't want to render-then-flicker.
+  if (chapters.isPending || intro.isPending) return <Loading />;
   if (chapters.isError) return <Failure error={chapters.error} />;
-  // Skip the book-level index — there's nothing to read here on its own.
-  if (numbers.length > 0) {
+
+  const introBody = (intro.data ?? "").trim();
+
+  // No intro: keep the legacy auto-redirect to chapter 1 — there's nothing
+  // to read at the book level on its own.
+  if (!introBody && numbers.length > 0) {
     return (
       <Navigate
         to={`/commentaries/${workSlug}/${bookSlug}/${numbers[0]}`}
@@ -143,19 +153,60 @@ function BookView({
       />
     );
   }
+
+  if (!introBody && numbers.length === 0) {
+    return (
+      <article style={wrap}>
+        <Header
+          eyebrow={
+            <Link to={`/commentaries/${workSlug}`} style={crumbLink}>
+              ← {workSlug}
+            </Link>
+          }
+          title={bookSlug}
+        />
+        <p style={{ color: "var(--color-fg-muted)" }}>
+          No chapters available for this book.
+        </p>
+      </article>
+    );
+  }
+
+  const bookName =
+    (books.data ?? []).find((b) => b.book_slug === bookSlug)?.book_name ??
+    bookSlug;
+
   return (
     <article style={wrap}>
       <Header
         eyebrow={
-          <Link to={`/commentaries/${workSlug}`} style={crumbLink}>
-            ← {workSlug}
-          </Link>
+          <span>
+            <Link to="/commentaries" style={crumbLink}>
+              Commentaries
+            </Link>
+            {" · "}
+            <Link to={`/commentaries/${workSlug}`} style={crumbLink}>
+              {work.data?.title ?? workSlug}
+            </Link>
+          </span>
         }
-        title={bookSlug}
+        title={bookName}
+        sub="Book introduction"
       />
-      <p style={{ color: "var(--color-fg-muted)" }}>
-        No chapters available for this book.
-      </p>
+      <SectionBody body={introBody} />
+      {numbers.length > 0 ? (
+        <nav style={chapterNav}>
+          <div />
+          <div>
+            <Link
+              to={`/commentaries/${workSlug}/${bookSlug}/${numbers[0]}`}
+              style={linkReset}
+            >
+              Chapter {numbers[0]} →
+            </Link>
+          </div>
+        </nav>
+      ) : null}
     </article>
   );
 }
