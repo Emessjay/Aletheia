@@ -45,6 +45,16 @@ SQLite under `~/Library/Application Support/`. Without this, the
 `tauri_plugin_single_instance` lock in [src-tauri/src/lib.rs](src-tauri/src/lib.rs)
 will refuse to launch a second window.
 
+When launched from a linked worktree (detected by `.git` being a file rather
+than a directory), `dev-instance.sh` also exports `VITE_ALETHEIA_WORKTREE` with
+the worktree slug — the cwd basename minus the `aletheia-` prefix. `AppShell`
+reads this and renders it in the top-right so you can tell parallel dev
+windows apart at a glance. The main checkout leaves it unset and shows
+nothing. If you rename a worktree directory or change the `aletheia-<slug>`
+convention in [scripts/new-worktree.sh](scripts/new-worktree.sh), update the
+prefix-stripping logic in [scripts/dev-instance.sh](scripts/dev-instance.sh)
+to match.
+
 ### Running tests inside a worktree
 
 Because the Bash tool's working directory does not reliably persist between
