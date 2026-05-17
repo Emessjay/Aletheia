@@ -110,6 +110,105 @@ public struct ThMLParser {
 /// Slugify a work title for use as a URL-friendly identifier. Lowercases,
 /// strips diacritics, collapses runs of non-alphanumeric characters into a
 /// single dash, and trims leading/trailing dashes.
+/// Friendly names for the CCEL author IDs (lowercase machine slugs) we
+/// expect to encounter in the ANF/NPNF volume headers. Anything not in the
+/// table falls through to a titlecased rendering of the slug itself.
+private let ccelAuthorDisplay: [String: String] = [
+    "augustine": "Augustine of Hippo",
+    "chrysostom": "John Chrysostom",
+    "athanasius": "Athanasius of Alexandria",
+    "irenaeus": "Irenaeus",
+    "tertullian": "Tertullian",
+    "origen": "Origen",
+    "jerome": "Jerome",
+    "ambrose": "Ambrose",
+    "basil": "Basil of Caesarea",
+    "gregory_nyssa": "Gregory of Nyssa",
+    "gregory_naz": "Gregory of Nazianzus",
+    "gregory_nazianzus": "Gregory of Nazianzus",
+    "gregory_great": "Gregory the Great",
+    "cyprian": "Cyprian of Carthage",
+    "cyril_jerusalem": "Cyril of Jerusalem",
+    "cyril_alexandria": "Cyril of Alexandria",
+    "leo_great": "Leo the Great",
+    "leo": "Leo the Great",
+    "eusebius": "Eusebius of Caesarea",
+    "socrates": "Socrates Scholasticus",
+    "sozomen": "Sozomen",
+    "theodoret": "Theodoret of Cyrus",
+    "hilary_poitiers": "Hilary of Poitiers",
+    "hilary_poit": "Hilary of Poitiers",
+    "hilary": "Hilary of Poitiers",
+    "john_damascene": "John of Damascus",
+    "damascene": "John of Damascus",
+    "justin": "Justin Martyr",
+    "clement_alexandria": "Clement of Alexandria",
+    "clement_rome": "Clement of Rome",
+    "hippolytus": "Hippolytus of Rome",
+    "lactantius": "Lactantius",
+    "methodius": "Methodius of Olympus",
+    "novatian": "Novatian",
+    "sulpicius": "Sulpicius Severus",
+    "vincent_lerins": "Vincent of Lérins",
+    "cassian": "John Cassian",
+    "ephraem_syrus": "Ephrem the Syrian",
+    "ephrem": "Ephrem the Syrian",
+    "aphrahat": "Aphrahat",
+    "minucius": "Minucius Felix",
+    "rufinus": "Rufinus of Aquileia",
+    "ignatius": "Ignatius of Antioch",
+    "polycarp": "Polycarp of Smyrna",
+    "barnabas": "Barnabas",
+    "hermas": "Hermas",
+    "tatian": "Tatian",
+    "athenagoras": "Athenagoras",
+    "theophilus": "Theophilus of Antioch",
+    "mathetes": "Mathetes",
+    "commodian": "Commodian",
+    "thaumaturgus": "Gregory Thaumaturgus",
+    "dionysius": "Dionysius of Alexandria",
+    "anatolius": "Anatolius of Laodicea",
+    "arnobius": "Arnobius of Sicca",
+    "venantius": "Venantius Fortunatus",
+    "asterius": "Asterius of Amasea",
+    "victorinus": "Victorinus of Pettau",
+    "julius_africanus": "Julius Africanus",
+    "juliusafricanus": "Julius Africanus",
+    "gregory_thau": "Gregory Thaumaturgus",
+    "dionysius_gr": "Dionysius of Alexandria",
+    "dionysius_rome": "Dionysius of Rome",
+    "alexander_lyc": "Alexander of Lycopolis",
+    "alexander_alexandria": "Alexander of Alexandria",
+    "peter_alexandria": "Peter of Alexandria",
+    "archelaus": "Archelaus of Carrhae",
+    "clement_alex": "Clement of Alexandria",
+    "cyril_jer": "Cyril of Jerusalem",
+    "theodotus": "Theodotus",
+    "sulpiciusseverus": "Sulpicius Severus",
+    "ephraim": "Ephrem the Syrian",
+    "ephraem": "Ephrem the Syrian",
+    "damascus": "John of Damascus",
+    "gennadius": "Gennadius of Marseilles",
+    "gregory": "Gregory the Great", // ambiguous; NPNF2-12/13 context
+    "schaff": "Various", // Editor falling through as Author in a few stubs
+]
+
+/// Convert a CCEL machine slug (e.g. "sulpiciusseverus", "gregory_naz") to a
+/// rough display name. Used as a last-resort fallback when the slug isn't in
+/// our hand-maintained dictionary above.
+private func humanizeSlug(_ slug: String) -> String {
+    slug.replacingOccurrences(of: "_", with: " ")
+        .split(separator: " ")
+        .map { $0.capitalized }
+        .joined(separator: " ")
+}
+
+extension Array {
+    fileprivate subscript(safe i: Int) -> Element? {
+        return (i >= 0 && i < count) ? self[i] : nil
+    }
+}
+
 private func slugify(_ s: String) -> String {
     let folded = s
         .folding(options: .diacriticInsensitive, locale: .current)
@@ -569,18 +668,58 @@ private final class ThMLDiscoveryDelegate: NSObject, XMLParserDelegate {
 
     var candidates: [Candidate] = []
     var volumeTitle: String = ""
-    /// Joined display string of all DC.Creator authors (sub="Author") in
-    /// the volume header. CCEL uses one creator entry per author per
-    /// scheme; we keep only the "short-form" scheme and join with " & ".
+    /// Joined display string of all DC.Creator authors in the volume
+    /// header, deduped. CCEL emits Authors in three schemes — short-form
+    /// (human display), file-as ("Augustine, Aurelius"), and ccel
+    /// (lowercase machine slug). Some volumes carry only the ccel slug;
+    /// we fall back through them and map known slugs to friendly names.
     var volumeAuthor: String {
+        var resolved: [String] = []
         var seen = Set<String>()
-        let unique = authorsShortForm.filter { seen.insert($0).inserted }
-        return unique.joined(separator: " & ")
+        // For each unique author identified by ccel slug, prefer the
+        // short-form entry, then file-as, then a mapped/titlecased ccel.
+        let slugs = authorsByScheme.ccel.isEmpty
+            ? Array(repeating: "", count: max(authorsByScheme.shortForm.count, authorsByScheme.fileAs.count))
+            : authorsByScheme.ccel
+        for (i, slug) in slugs.enumerated() {
+            let display: String
+            // Canonical name from the slug dict wins when available so a
+            // given father reads identically across volumes (CCEL is
+            // inconsistent: some headers say "St. Chrysostom", others
+            // give only the ccel slug "chrysostom" which we map to
+            // "John Chrysostom"). Fall back to the volume's short-form,
+            // then file-as, then a titlecased slug.
+            let normalizedSlug = slug.lowercased()
+            if let mapped = ccelAuthorDisplay[normalizedSlug] {
+                display = mapped
+            } else if let s = authorsByScheme.shortForm[safe: i] {
+                display = s
+            } else if let f = authorsByScheme.fileAs[safe: i] {
+                display = f.components(separatedBy: ",").first?.trimmingCharacters(in: CharacterSet.whitespaces) ?? f
+            } else if !slug.isEmpty {
+                display = humanizeSlug(slug)
+            } else {
+                continue
+            }
+            if seen.insert(display).inserted { resolved.append(display) }
+        }
+        // No ccel slugs at all? Use whichever short-form/file-as we have.
+        if resolved.isEmpty {
+            for name in authorsByScheme.shortForm + authorsByScheme.fileAs {
+                if seen.insert(name).inserted { resolved.append(name) }
+            }
+        }
+        return resolved.joined(separator: " & ")
     }
 
-    private var authorsShortForm: [String] = []
+    private struct AuthorsByScheme {
+        var shortForm: [String] = []
+        var fileAs: [String] = []
+        var ccel: [String] = []
+    }
+    private var authorsByScheme = AuthorsByScheme()
+    private var currentAuthorScheme: String? = nil
     private var inVolumeTitle = false
-    private var inDCCreatorAuthorShortForm = false
     private var textBuffer = ""
     private var titleDepth = 0
 
@@ -595,10 +734,8 @@ private final class ThMLDiscoveryDelegate: NSObject, XMLParserDelegate {
         }
         if lower == "title" { titleDepth += 1 }
 
-        if lower == "dc.creator",
-           attributes["sub"]?.lowercased() == "author",
-           attributes["scheme"]?.lowercased() == "short-form" {
-            inDCCreatorAuthorShortForm = true
+        if lower == "dc.creator", attributes["sub"]?.lowercased() == "author" {
+            currentAuthorScheme = attributes["scheme"]?.lowercased()
         }
 
         if lower == "div1" {
@@ -616,7 +753,7 @@ private final class ThMLDiscoveryDelegate: NSObject, XMLParserDelegate {
     }
 
     func parser(_ parser: XMLParser, foundCharacters string: String) {
-        if inVolumeTitle || inDCCreatorAuthorShortForm {
+        if inVolumeTitle || currentAuthorScheme != nil {
             textBuffer += string
         }
     }
@@ -631,10 +768,17 @@ private final class ThMLDiscoveryDelegate: NSObject, XMLParserDelegate {
             }
             titleDepth = max(0, titleDepth - 1)
         }
-        if lower == "dc.creator", inDCCreatorAuthorShortForm {
+        if lower == "dc.creator", let scheme = currentAuthorScheme {
             let name = textBuffer.trimmingCharacters(in: .whitespacesAndNewlines)
-            if !name.isEmpty { authorsShortForm.append(name) }
-            inDCCreatorAuthorShortForm = false
+            if !name.isEmpty {
+                switch scheme {
+                case "short-form": authorsByScheme.shortForm.append(name)
+                case "file-as":    authorsByScheme.fileAs.append(name)
+                case "ccel":       authorsByScheme.ccel.append(name)
+                default: break
+                }
+            }
+            currentAuthorScheme = nil
             textBuffer.removeAll(keepingCapacity: true)
         }
     }
