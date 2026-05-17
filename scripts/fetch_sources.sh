@@ -166,30 +166,30 @@ if [[ ! -d "${SUMMA_LAT_DIR}/.git" ]]; then
     git clone --depth=1 https://github.com/Geremia/AquinasOperaOmnia.git "${SUMMA_LAT_DIR}" || true
 fi
 
-# CCEL ThML — Trypho (English) and Athanasius On the Incarnation (English)
-if [[ ! -f "${PAT_DIR}/trypho-en.xml" ]]; then
-    note "Downloading Dialogue with Trypho (CCEL ThML)…"
-    curl -sSL "https://ccel.org/ccel/schaff/anf01.xml" -o "${PAT_DIR}/anf01.xml" || true
-    # The ThML parser handles the full ANF01 volume; we extract Trypho by div ID at ingest time.
-    cp -f "${PAT_DIR}/anf01.xml" "${PAT_DIR}/trypho-en.xml" 2>/dev/null || true
+# CCEL ThML volumes (Schaff PD edition). Each XML bundles a whole NPNF/ANF
+# volume; the ThMLParser scopes per-work at ingest time via div container IDs.
+#
+#   anf01.xml    — Justin Martyr, Dialogue with Trypho (div2 id="viii.iv")
+#   npnf101.xml  — Augustine, The Confessions      (div1 id="vi")
+#   npnf103.xml  — Augustine, The Enchiridion      (div2 id="iv.ii")
+#   npnf204.xml  — Athanasius, On the Incarnation  (div2 id="vii.ii")
+#                  Athanasius, Discourses Against the Arians (div2 id="xxi.ii")
+if [[ ! -f "${PAT_DIR}/anf01.xml" ]]; then
+    note "Downloading ANF Vol. 1 (CCEL ThML)…"
+    curl -sSL "https://ccel.org/ccel/schaff/anf01.xml" -o "${PAT_DIR}/anf01.xml"
 fi
-
-if [[ ! -f "${PAT_DIR}/incarnation-en.xml" ]]; then
-    note "Downloading On the Incarnation (CCEL ThML)…"
-    curl -sSL "https://ccel.org/ccel/schaff/npnf204.xml" -o "${PAT_DIR}/incarnation-en.xml" || true
+if [[ ! -f "${PAT_DIR}/npnf101.xml" ]]; then
+    note "Downloading NPNF1 Vol. 1 — Augustine: Prolegomena, Confessions, Letters (CCEL ThML)…"
+    curl -sSL "https://ccel.org/ccel/schaff/npnf101.xml" -o "${PAT_DIR}/npnf101.xml"
 fi
-
-# OpenGreekAndLatin / First1KGreek TEI XML — CC BY-SA 4.0 (viral SA, see CLAUDE.md).
-# Currently used only for Greek patristics, not biblical content. Reviewing.
-OGL_DIR="${SRC_DIR}/opengreekandlatin"
-if [[ ! -d "${OGL_DIR}/.git" ]]; then
-    note "Cloning First1KGreek (shallow; this is large)…"
-    git clone --depth=1 https://github.com/OpenGreekAndLatin/First1KGreek.git "${OGL_DIR}" || true
+if [[ ! -f "${PAT_DIR}/npnf103.xml" ]]; then
+    note "Downloading NPNF1 Vol. 3 — Augustine: Doctrinal & Moral Treatises (CCEL ThML)…"
+    curl -sSL "https://ccel.org/ccel/schaff/npnf103.xml" -o "${PAT_DIR}/npnf103.xml"
 fi
-# Justin Martyr (TLG 0645) — Dialogue with Trypho is .tlg003
-find "${OGL_DIR}" -path "*tlg0645/tlg003*" -name "*grc*.xml" -exec cp {} "${PAT_DIR}/trypho-gr.xml" \; 2>/dev/null
-# Athanasius (TLG 2035) — De Incarnatione Verbi is .tlg002
-find "${OGL_DIR}" -path "*tlg2035/tlg002*" -name "*grc*.xml" -exec cp {} "${PAT_DIR}/incarnation-gr.xml" \; 2>/dev/null
+if [[ ! -f "${PAT_DIR}/npnf204.xml" ]]; then
+    note "Downloading NPNF2 Vol. 4 — Athanasius (CCEL ThML)…"
+    curl -sSL "https://ccel.org/ccel/schaff/npnf204.xml" -o "${PAT_DIR}/npnf204.xml"
+fi
 
 # -----------------------------------------------------------------------------
 # Bible commentaries — all PD-by-age, sourced from licensing-clean digital

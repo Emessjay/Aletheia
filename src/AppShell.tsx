@@ -114,6 +114,12 @@ export function AppShell() {
               >
                 Commentaries
               </TopBarLink>
+              <TopBarLink
+                to="/patristics"
+                active={loc.pathname.startsWith("/patristics")}
+              >
+                Patristics
+              </TopBarLink>
               <TopBarLink to="/libraries" active={loc.pathname.startsWith("/libraries")}>
                 Notes
               </TopBarLink>

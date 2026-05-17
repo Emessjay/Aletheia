@@ -2,16 +2,22 @@ import { useQuery } from "@tanstack/react-query";
 import type { CorpusLanguage, SectionRow, WorkRow } from "./types";
 import {
   getChapter,
+  getSection,
   getStrongs,
   listBooksByLanguage,
   listChapterCommentary,
+  listChildSections,
+  listCitations,
   listCommentaries,
   listCommentaryBooks,
   listCommentaryChapters,
+  listPatristicWorks,
+  listSections,
   listXrefsForVerse,
   searchVerses,
   type ChapterPayload,
   type CommentaryBookEntry,
+  type PatristicLanguage,
   type SearchHit,
   type XrefHit,
 } from "./queries";
@@ -109,6 +115,60 @@ export function useCommentaryChapters(
         : Promise.resolve([]),
     enabled: !!workSlug && !!bookSlug,
     staleTime: Infinity,
+  });
+}
+
+// ── Patristic works ────────────────────────────────────────────────────────
+
+export function usePatristicWorks() {
+  return useQuery<WorkRow[]>({
+    queryKey: ["corpus", "patristic-works"],
+    queryFn: listPatristicWorks,
+    staleTime: Infinity,
+  });
+}
+
+export function useWorkSections(
+  workSlug: string,
+  language: PatristicLanguage = "en",
+) {
+  return useQuery({
+    queryKey: ["corpus", "work-sections", workSlug, language],
+    queryFn: () => listSections(workSlug, language),
+    enabled: !!workSlug,
+  });
+}
+
+export function useSection(
+  workSlug: string,
+  ordinalPath: string,
+  language: PatristicLanguage = "en",
+) {
+  return useQuery({
+    queryKey: ["corpus", "section", workSlug, ordinalPath, language],
+    queryFn: () => getSection(workSlug, ordinalPath, language),
+    enabled: !!workSlug && !!ordinalPath,
+  });
+}
+
+export function useChildSections(
+  workSlug: string,
+  parentPath: string,
+  language: PatristicLanguage = "en",
+) {
+  return useQuery({
+    queryKey: ["corpus", "section-children", workSlug, parentPath, language],
+    queryFn: () => listChildSections(workSlug, parentPath, language),
+    enabled: !!workSlug && !!parentPath,
+  });
+}
+
+export function useSectionCitations(sectionId: number | null) {
+  return useQuery({
+    queryKey: ["corpus", "citations", sectionId],
+    queryFn: () =>
+      sectionId === null ? Promise.resolve([]) : listCitations(sectionId),
+    enabled: sectionId !== null,
   });
 }
 

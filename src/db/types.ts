@@ -81,10 +81,10 @@ export interface XrefRow {
   weight: number;
 }
 
-// ── Works (commentaries, etc.) ────────────────────────────────────────────
+// ── Works (commentaries + patristics) ─────────────────────────────────────
 // `work.kind` is a free-form text column at the SQL layer; the literal list
 // here matches what the ingest pipeline writes today.
-export type WorkKind = "commentary";
+export type WorkKind = "commentary" | "summa" | "dialogue" | "treatise";
 
 export interface WorkRow {
   id: number;
@@ -94,11 +94,25 @@ export interface WorkRow {
   kind: WorkKind;
 }
 
-// Commentary sections form a 3-level tree:
-//   book      ordinal_path = "<work>.<book>"               — book intro/header
-//     chapter ordinal_path = "<work>.<book>.<ch>"          — chapter intro
-//       comment ordinal_path = "<work>.<book>.<ch>.<seq>"  — one comment block
-export type SectionKind = "book" | "chapter" | "comment";
+// Section kinds span two shapes that share the same table:
+//   • Commentaries: book → chapter → comment.
+//   • Patristics: part / question / article / objection / reply / respondeo /
+//     sedcontra (Summa); chapter / section (Trypho-style treatises).
+export type SectionKind =
+  | "book"
+  | "chapter"
+  | "comment"
+  | "part"
+  | "question"
+  | "article"
+  | "objection"
+  | "reply"
+  | "respondeo"
+  | "sedcontra"
+  | "section"
+  | "intro";
+
+export type SectionLanguage = "en" | "gr" | "la";
 
 export interface SectionRow {
   id: number;
@@ -107,7 +121,7 @@ export interface SectionRow {
   ordinal_path: string;
   kind: SectionKind;
   label: string | null;
-  language: "en";
+  language: SectionLanguage;
   body: string;
   ordering: number;
 }
