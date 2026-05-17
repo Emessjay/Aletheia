@@ -5,7 +5,7 @@ import { useNavigate, useLocation, useParams } from "react-router-dom";
  * Global keyboard shortcuts:
  *   ⌘K / Ctrl+K        — toggle command palette (handled in AppShell)
  *   ?                   — toggle help overlay (returned via [helpOpen, setHelpOpen])
- *   g r / g p / g l / g s — navigate (vim-style two-key chord, 1s timeout)
+ *   g r / g l / g s — navigate (vim-style two-key chord, 1s timeout)
  *   [ / ]               — prev / next chapter on /reader/*
  *   Esc                 — close help overlay
  *
@@ -67,7 +67,6 @@ export function useGlobalShortcuts(): {
       if (chord && now - chord.at < CHORD_MS && chord.key === "g") {
         e.preventDefault();
         if (e.key === "r") navigate("/reader/bible/john/1");
-        else if (e.key === "p") navigate("/patristics");
         else if (e.key === "l") navigate("/libraries");
         else if (e.key === "s") navigate("/settings");
         else if (e.key === "h") navigate("/");

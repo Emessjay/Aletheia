@@ -119,7 +119,6 @@ export function SettingsRoute() {
         <Shortcut keys={["?"]} label="Show all shortcuts" />
         <Shortcut keys={["[", "]"]} label="Previous / next chapter" />
         <Shortcut keys={["g", "r"]} label="Go to reader" />
-        <Shortcut keys={["g", "p"]} label="Go to patristics" />
         <Shortcut keys={["g", "l"]} label="Go to libraries" />
         <Shortcut keys={["g", "s"]} label="Go to settings" />
         <Shortcut keys={["Esc"]} label="Close popovers and palette" />

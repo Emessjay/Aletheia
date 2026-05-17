@@ -15,18 +15,12 @@ import Logging
 ///       openscriptures/HebrewLexicon.xml         # BDB + Strong's H
 ///       openscriptures/StrongsGreek.xml          # Strong's G + Thayer's fragments
 ///       openbibleinfo/cross_references.txt       # OpenBible.info cross-ref TSV
-///       patristics/summa.json                    # Jacob-Gray/summa.json
-///       patristics/summa-latin.txt               # Corpus Thomisticum dump
-///       patristics/trypho-en.xml                 # CCEL ThML
-///       patristics/trypho-gr.xml                 # OpenGreekAndLatin TEI
-///       patristics/incarnation-en.xml
-///       patristics/incarnation-gr.xml
 public struct Pipeline {
     public let sourceRoot: URL
     public let outputPath: String
     /// Restrict Bible/STEPBible stages to these book slugs. Empty = no filter.
-    /// When non-empty, non-book-scoped stages (lexicons, cross-refs, patristics)
-    /// are skipped entirely.
+    /// When non-empty, non-book-scoped stages (lexicons, cross-refs) are
+    /// skipped entirely.
     public let bookFilter: Set<String>
     /// Restrict stages to these language tags. Empty = no filter. Tags must match
     /// one of the tags declared on each stage (see `stageEntries`).
@@ -128,21 +122,7 @@ public struct Pipeline {
             // Cross-refs index against en_bsb verses, so a partial book filter would
             // produce broken xrefs. Marked non-book-scoped so --books skips it.
             Stage(name: "Cross-references", languages: ["en_bsb"], bookScoped: false,
-                  run: { try ingestCrossRefs(writer: writer) }),
-            Stage(name: "Patristics — Summa (Eng)", languages: ["en"], bookScoped: false,
-                  run: { try ingestSumma(writer: writer) }),
-            Stage(name: "Patristics — Summa (Lat)", languages: ["la"], bookScoped: false,
-                  run: { try ingestSummaLatin(writer: writer) }),
-            // anf01.xml is the full ANF Vol. 1; scope to Justin Martyr's div2 "viii.iv" (Dialogue with Trypho).
-            Stage(name: "Patristics — Trypho (Eng)", languages: ["en"], bookScoped: false,
-                  run: { try ingestThML(writer: writer, file: "patristics/trypho-en.xml", workSlug: "trypho", language: "en", containerID: "viii.iv") }),
-            Stage(name: "Patristics — Trypho (Grk)", languages: ["gr"], bookScoped: false,
-                  run: { try ingestTEI(writer: writer, file: "patristics/trypho-gr.xml", workSlug: "trypho", language: "gr") }),
-            // npnf204.xml is the full NPNF2-04; scope to Athanasius's div2 "vii.ii" (On the Incarnation).
-            Stage(name: "Patristics — Incarnation (Eng)", languages: ["en"], bookScoped: false,
-                  run: { try ingestThML(writer: writer, file: "patristics/incarnation-en.xml", workSlug: "incarnation", language: "en", containerID: "vii.ii") }),
-            Stage(name: "Patristics — Incarnation (Grk)", languages: ["gr"], bookScoped: false,
-                  run: { try ingestTEI(writer: writer, file: "patristics/incarnation-gr.xml", workSlug: "incarnation", language: "gr") })
+                  run: { try ingestCrossRefs(writer: writer) })
         ]
     }
 
@@ -337,72 +317,6 @@ public struct Pipeline {
                     VALUES (?, ?, ?, ?)
                     """, arguments: [fromID, toStart, toEnd, row.weight])
             }
-        }
-    }
-
-    private func ingestSumma(writer: CorpusWriter) throws {
-        let url = sourceRoot.appendingPathComponent("patristics/summa.json")
-        guard FileManager.default.fileExists(atPath: url.path) else { throw IngestError.sourceMissing(url.path) }
-        let parser = SummaParser()
-        let sections = try parser.parse(fileURL: url)
-        let workID = try writer.insertWork(slug: "summa", title: "Summa Theologica",
-                                            author: "Thomas Aquinas", kind: "summa")
-        var parentIDs: [String: Int64] = [:]
-        for (i, s) in sections.enumerated() {
-            let parentID = s.parentPath.flatMap { parentIDs[$0] }
-            let id = try writer.insertSection(workID: workID, parentID: parentID,
-                                              ordinalPath: s.ordinalPath, kind: s.kind,
-                                              label: s.label, language: "en", body: s.body, ordering: i)
-            parentIDs[s.ordinalPath] = id
-        }
-    }
-
-    private func ingestSummaLatin(writer: CorpusWriter) throws {
-        // Geremia/AquinasOperaOmnia clone is laid out as <root>/summa/<PART>/<file>.html
-        let root = sourceRoot.appendingPathComponent("summa-latin/summa")
-        guard FileManager.default.fileExists(atPath: root.path) else {
-            throw IngestError.sourceMissing(root.path)
-        }
-        let parser = SummaLatinParser()
-        let sections = try parser.parse(rootDirectory: root)
-        let workID = try writer.insertWork(slug: "summa", title: "Summa Theologica",
-                                            author: "Thomas Aquinas", kind: "summa")
-        for (i, s) in sections.enumerated() {
-            _ = try writer.insertSection(workID: workID, parentID: nil,
-                                         ordinalPath: s.ordinalPath, kind: "respondeo",
-                                         label: nil, language: "la", body: s.body, ordering: i)
-        }
-        logger.info("    \(sections.count) Latin sections")
-    }
-
-    private func ingestThML(writer: CorpusWriter, file: String, workSlug: String, language: String, containerID: String? = nil) throws {
-        let url = sourceRoot.appendingPathComponent(file)
-        guard FileManager.default.fileExists(atPath: url.path) else { throw IngestError.sourceMissing(url.path) }
-        let parser = ThMLParser()
-        let result = try parser.parse(fileURL: url, workSlug: workSlug, containerID: containerID)
-        let workID = try writer.insertWork(slug: workSlug, title: result.title.isEmpty ? workSlug.capitalized : result.title,
-                                            author: result.author, kind: "treatise")
-        for (i, s) in result.sections.enumerated() {
-            _ = try writer.insertSection(workID: workID, parentID: nil,
-                                         ordinalPath: s.ordinalPath, kind: s.kind,
-                                         label: s.label, language: language, body: s.body, ordering: i)
-        }
-        logger.info("    \(result.sections.count) sections")
-    }
-
-    private func ingestTEI(writer: CorpusWriter, file: String, workSlug: String, language: String) throws {
-        let url = sourceRoot.appendingPathComponent(file)
-        guard FileManager.default.fileExists(atPath: url.path) else { throw IngestError.sourceMissing(url.path) }
-        let parser = TEIGreekParser()
-        let result = try parser.parse(fileURL: url, workSlug: workSlug)
-        let workID = try writer.insertWork(slug: workSlug,
-                                            title: result.title.isEmpty ? workSlug.capitalized : result.title,
-                                            author: workSlug == "trypho" ? "Justin Martyr" : "Athanasius",
-                                            kind: "treatise")
-        for (i, s) in result.sections.enumerated() {
-            _ = try writer.insertSection(workID: workID, parentID: nil,
-                                         ordinalPath: s.ordinalPath, kind: s.kind,
-                                         label: s.label, language: language, body: s.body, ordering: i)
         }
     }
 

@@ -2,92 +2,12 @@ import { corpusSelect, corpusSelectOne } from "./corpus";
 import type {
   BookRow,
   ChapterRow,
-  CitationRow,
   CorpusLanguage,
-  SectionRow,
   StrongsRow,
   VerseRow,
   WordRow,
-  WorkRow,
   XrefRow,
 } from "./types";
-
-// ── Patristic works ─────────────────────────────────────────────────────────
-
-export async function listWorks(): Promise<WorkRow[]> {
-  return corpusSelect<WorkRow>(`SELECT * FROM work ORDER BY id`);
-}
-
-export async function findWork(slug: string): Promise<WorkRow | null> {
-  return corpusSelectOne<WorkRow>(`SELECT * FROM work WHERE slug = $1`, [slug]);
-}
-
-export type PatristicLanguage = "en" | "gr" | "la";
-
-/** All section rows for the work — used for sidebar TOC + prev/next. */
-export async function listSections(
-  workSlug: string,
-  language: PatristicLanguage,
-): Promise<SectionRow[]> {
-  return corpusSelect<SectionRow>(
-    `SELECT s.* FROM section s
-       JOIN work w ON w.id = s.work_id
-      WHERE w.slug = $1 AND s.language = $2
-      ORDER BY s.ordering`,
-    [workSlug, language],
-  );
-}
-
-/** A section by ordinal_path. Falls back across languages so the route still
- *  renders if the requested language is missing for this section. */
-export async function getSection(
-  workSlug: string,
-  ordinalPath: string,
-  language: PatristicLanguage,
-): Promise<SectionRow | null> {
-  const direct = await corpusSelectOne<SectionRow>(
-    `SELECT s.* FROM section s
-       JOIN work w ON w.id = s.work_id
-      WHERE w.slug = $1 AND s.ordinal_path = $2 AND s.language = $3`,
-    [workSlug, ordinalPath, language],
-  );
-  if (direct) return direct;
-  return corpusSelectOne<SectionRow>(
-    `SELECT s.* FROM section s
-       JOIN work w ON w.id = s.work_id
-      WHERE w.slug = $1 AND s.ordinal_path = $2
-      ORDER BY CASE s.language WHEN 'en' THEN 0 WHEN 'la' THEN 1 ELSE 2 END
-      LIMIT 1`,
-    [workSlug, ordinalPath],
-  );
-}
-
-/** Direct children of a section (one level deep) — used for Summa article
- *  bundles where one URL displays the question/article and its sub-sections. */
-export async function listChildSections(
-  workSlug: string,
-  parentPath: string,
-  language: PatristicLanguage,
-): Promise<SectionRow[]> {
-  // ordinal_path starts with `${parentPath}.` and contains no further dot.
-  const prefix = `${parentPath}.`;
-  return corpusSelect<SectionRow>(
-    `SELECT s.* FROM section s
-       JOIN work w ON w.id = s.work_id
-      WHERE w.slug = $1 AND s.language = $2
-        AND s.ordinal_path LIKE $3
-        AND instr(substr(s.ordinal_path, $4), '.') = 0
-      ORDER BY s.ordering`,
-    [workSlug, language, `${prefix}%`, prefix.length + 1],
-  );
-}
-
-export async function listCitations(sectionId: number): Promise<CitationRow[]> {
-  return corpusSelect<CitationRow>(
-    `SELECT * FROM citation WHERE section_id = $1 ORDER BY span_start`,
-    [sectionId],
-  );
-}
 
 // ── Cross-references ────────────────────────────────────────────────────────
 
@@ -138,7 +58,7 @@ export async function listXrefsForVerse(
 }
 
 // Keep tree-shaken TS happy: types are re-exported where helpful.
-export type { SectionRow, WorkRow, XrefRow, CitationRow };
+export type { XrefRow };
 
 export async function getStrongs(id: string): Promise<StrongsRow | null> {
   return corpusSelectOne<StrongsRow>(
