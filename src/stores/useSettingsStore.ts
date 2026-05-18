@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { CorpusLanguage } from "@/db/types";
+import { readerTabTranslations } from "@/domain/translations";
 import {
   resolveInterlinear,
   type PrimaryLang,
@@ -24,12 +25,11 @@ export const MAX_FONT_SIZE = 24;
 
 // Languages exposed as togglable tabs in the reader header. Their order is
 // user-rearrangeable and determines the rendering order of selected columns.
-export const TOGGLEABLE_LANGS: CorpusLanguage[] = [
-  "en_bsb",
-  "en_kjv",
-  "gk",
-  "he",
-];
+// Derived from the translations registry — flip `isReaderTab` there to add or
+// remove an entry rather than editing this list.
+export const TOGGLEABLE_LANGS: CorpusLanguage[] = readerTabTranslations().map(
+  (t) => t.id,
+);
 
 function readTheme(): ThemeMode {
   if (typeof window === "undefined") return "light";
