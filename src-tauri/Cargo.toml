@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Bible and classics reader"
 authors = ["jack"]
 edition = "2021"
+license = "CC0-1.0"
 
 [lib]
 name = "aletheia_lib"
