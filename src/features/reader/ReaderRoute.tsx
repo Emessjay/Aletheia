@@ -29,6 +29,10 @@ import {
   type Tab,
 } from "@/domain/tabs";
 import { sideOf, type SideKey } from "@/domain/sides";
+import {
+  activeTabsRequireMTRemap,
+  isLXXVersified,
+} from "@/domain/versification";
 import { StrongsPopover } from "@/features/lexicon/StrongsPopover";
 import { VerseInline } from "./VerseInline";
 import { VerseToolbar } from "./VerseToolbar";
@@ -267,14 +271,25 @@ export function ReaderRoute() {
 
   const annotations = useChapterAnnotations(work, book, chapterNum);
 
+  // When the layout pairs an LXX-versified single column with an MT-versified
+  // single column, swap LXX-versified columns onto MT chapter+verse numbering
+  // so all columns line up by reference (see [[versification]]). Single Greek
+  // alone, or a Greek+English interlinear, stays on LXX.
+  const mtRemap = activeTabsRequireMTRemap(activeTabs);
+  const versificationFor = (lang: CorpusLanguage): "native" | "mt" =>
+    mtRemap && isLXXVersified(lang) ? "mt" : "native";
+
   // Fetch one chapter per active language. useQueries shares cache keys with
-  // useChapter, so other consumers of the same (lang, book, chapter) tuple
-  // (e.g. ChapterPicker via the primary) don't double-fetch.
+  // useChapter, so other consumers of the same (lang, book, chapter,
+  // versification) tuple don't double-fetch.
   const chapterQueries = useQueries({
-    queries: activeLangs.map((lang) => ({
-      queryKey: ["corpus", "chapter", lang, book, chapterNum],
-      queryFn: () => getChapter(lang, book, chapterNum),
-    })),
+    queries: activeLangs.map((lang) => {
+      const versification = versificationFor(lang);
+      return {
+        queryKey: ["corpus", "chapter", lang, book, chapterNum, versification],
+        queryFn: () => getChapter(lang, book, chapterNum, { versification }),
+      };
+    }),
   });
 
   // The primary translation drives the chapter selector + nav (chapter list,

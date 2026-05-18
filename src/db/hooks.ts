@@ -20,6 +20,7 @@ import {
   type CommentaryBookEntry,
   type PatristicLanguage,
   type SearchHit,
+  type VersificationMode,
   type XrefHit,
 } from "./queries";
 
@@ -78,10 +79,19 @@ export function useChapter(
   language: CorpusLanguage,
   bookSlug: string,
   chapterNumber: number,
+  options: { versification?: VersificationMode } = {},
 ) {
+  const versification = options.versification ?? "native";
   return useQuery<ChapterPayload | null>({
-    queryKey: ["corpus", "chapter", language, bookSlug, chapterNumber],
-    queryFn: () => getChapter(language, bookSlug, chapterNumber),
+    queryKey: [
+      "corpus",
+      "chapter",
+      language,
+      bookSlug,
+      chapterNumber,
+      versification,
+    ],
+    queryFn: () => getChapter(language, bookSlug, chapterNumber, { versification }),
   });
 }
 
