@@ -34,10 +34,11 @@ struct AletheiaIngest: ParsableCommand {
             want to re-ingest one slice of the corpus without rerunning everything
             else (each is bulky on its own). The known groups are:
               bible       — every Bible/STEPBible/lexicon/xref stage
-              commentary  — Matthew Henry, Calvin, JFB, Wesley, Clarke
+              commentary  — Matthew Henry, Calvin, JFB, Wesley, Clarke, Luther
               summa       — Summa Theologica (English + Latin)
               anf         — Ante-Nicene Fathers (Trypho, ...)
               npnf        — Nicene & Post-Nicene Fathers (Athanasius, Augustine, ...)
+              reformers   — Luther + Calvin non-commentary (Bondage, Institutes, ...)
             """
     )
 

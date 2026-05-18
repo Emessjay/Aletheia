@@ -181,6 +181,48 @@ for n in 01 02 03 04 05 06 07 08 09 10 11 12 13 14; do
     fetch_ccel_volume "npnf2${n}" "NPNF Series 2 Vol. ${n#0}"
 done
 
+# Reformers — non-commentary works land in patristics/ alongside ANF/NPNF.
+# CCEL ThML is acceptable here for the same reason it's acceptable for the
+# Schaff editions: it's how the existing patristics pipeline is fed. The
+# commentary tab (see below) deliberately avoids CCEL — Luther's biblical
+# commentaries are sourced from Project Gutenberg plain text instead.
+#
+# Author-prefixed filenames avoid the Calvin/Luther `sermons.xml` collision
+# without needing a per-author subdirectory.
+fetch_ccel_authored() {
+    local author="$1"   # 'luther' or 'calvin'
+    local slug="$2"     # CCEL work slug
+    local label="$3"
+    local out="${PAT_DIR}/${author}_${slug}.xml"
+    if [[ ! -f "${out}" ]]; then
+        note "Downloading ${label} (CCEL ThML)…"
+        curl -sSL "https://www.ccel.org/ccel/${author:0:1}/${author}/${slug}.xml" -o "${out}"
+    fi
+}
+# Luther — bondage, table talk, the 95 theses + three primary works (which
+# already subsume "Concerning Christian Liberty" via the Wace edition), the
+# confessional/catechetical core, the Open Letter on Translating, and the
+# Preface to Romans. Galatians + 1 & 2 Peter + Jude are commentaries and ship
+# via the commentary tab from Project Gutenberg, not from CCEL.
+fetch_ccel_authored "luther" "bondage"          "Luther — Bondage of the Will"
+fetch_ccel_authored "luther" "tabletalk"        "Luther — Table Talk"
+fetch_ccel_authored "luther" "first_prin"       "Luther — 95 Theses + Three Primary Works"
+fetch_ccel_authored "luther" "smalcald"         "Luther — Smalcald Articles"
+fetch_ccel_authored "luther" "smallcat"         "Luther — Small Catechism"
+fetch_ccel_authored "luther" "largecatechism"   "Luther — Large Catechism"
+fetch_ccel_authored "luther" "good_works"       "Luther — Treatise on Good Works"
+fetch_ccel_authored "luther" "sermons"          "Luther — Assorted Sermons"
+fetch_ccel_authored "luther" "translating"      "Luther — Open Letter on Translating"
+# Preface to Romans is intentionally omitted: every div1 in the CCEL file is
+# titled "Preface to..." / "Translator's Note" / "Title Page" / "Indexes",
+# all of which ThMLParser's editorial-title filter strips, leaving no works.
+# Calvin — Institutes (whole, not the prayer/Christian-life extracts which
+# duplicate sections of Bk III), Sermons, Treatise on Relics. The biblical
+# commentaries are already ingested via the SWORD CalvinCommentaries module.
+fetch_ccel_authored "calvin" "institutes"       "Calvin — Institutes of the Christian Religion"
+fetch_ccel_authored "calvin" "sermons"          "Calvin — Three Volumes of Sermons"
+fetch_ccel_authored "calvin" "treatise_relics"  "Calvin — Treatise on Relics"
+
 # -----------------------------------------------------------------------------
 # Bible commentaries — all PD-by-age, sourced from licensing-clean digital
 # editions. See data/sources/COMMENTARIES.md for the licensing rationale and
@@ -238,5 +280,26 @@ extract_sword_module CalvinCommentaries calvin.json
 extract_sword_module JFB jfb.json
 extract_sword_module Wesley wesley.json
 extract_sword_module Clarke clarke.json
+
+# Luther's biblical commentaries — four PG eBooks merged into one verse-keyed
+# luther.json by tools/luther-pg-extract. CCEL has these too but the commentary
+# tab is held to a stricter source standard (see COMMENTARIES.md) so we route
+# through Project Gutenberg instead.
+LUTHER_PG_DIR="${SRC_DIR}/.pg-staging"
+LUTHER_JSON="${COMM_DIR}/luther.json"
+if [[ ! -f "${LUTHER_JSON}" ]]; then
+    mkdir -p "${LUTHER_PG_DIR}"
+    for pg in 1549 27978 29678 48193; do
+        if [[ ! -f "${LUTHER_PG_DIR}/pg${pg}.txt" ]]; then
+            note "Downloading PG #${pg} (Luther)…"
+            curl -sSL "https://www.gutenberg.org/cache/epub/${pg}/pg${pg}.txt" \
+                -o "${LUTHER_PG_DIR}/pg${pg}.txt"
+        fi
+    done
+    note "Extracting Luther commentaries → luther.json…"
+    python3 "${ROOT_DIR}/tools/luther-pg-extract/extract.py" \
+        --input-dir "${LUTHER_PG_DIR}" \
+        --out "${LUTHER_JSON}"
+fi
 
 note "Done. Next: \`cd tools/ingest && swift run aletheia-ingest -s ../../data/sources -o ../../data/Aletheia.sqlite\`"

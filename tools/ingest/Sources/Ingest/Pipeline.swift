@@ -158,7 +158,7 @@ public struct Pipeline {
             // Ante-Nicene Fathers (10 volumes, Roberts & Donaldson 1885 PD).
             // Each volume's stage runs the ThML discovery pass and emits
             // one `work` per non-editorial div1 inside that volume.
-        ] + anfNpnfStages(writer: writer) + [
+        ] + anfNpnfStages(writer: writer) + reformerStages(writer: writer) + [
             // Commentaries — each writes one `work` row plus per-book/chapter/comment
             // `section` rows. Language tag "en" is shared by all current commentaries;
             // it does NOT match any of the Bible-side `en_*` tags, so a `--languages en_bsb`
@@ -195,7 +195,18 @@ public struct Pipeline {
                       jsonName: "clarke.json",
                       workSlug: "clarke",
                       workTitle: "Adam Clarke's Commentary on the Bible",
-                      author: "Adam Clarke") })
+                      author: "Adam Clarke") }),
+            // Luther covers Galatians, Genesis (1–9), 1 & 2 Peter, and Jude.
+            // Built from Project Gutenberg plain text (PG #1549, #29678, #48193,
+            // #27978) via tools/luther-pg-extract — non-CCEL per the commentary
+            // section's strict licensing policy.
+            Stage(name: "Commentary — Luther", group: "commentary", languages: ["en"], bookScoped: false,
+                  run: { try ingestSwordCommentary(
+                      writer: writer,
+                      jsonName: "luther.json",
+                      workSlug: "luther",
+                      workTitle: "Luther's Biblical Commentaries",
+                      author: "Martin Luther") })
         ]
     }
 
@@ -223,6 +234,44 @@ public struct Pipeline {
             stages.append(Stage(
                 name: "NPNF — \(slug)",
                 group: "npnf",
+                languages: ["en"],
+                bookScoped: false,
+                run: { try self.ingestThMLVolume(writer: writer, file: "patristics/\(slug).xml", volumeSlug: slug) }
+            ))
+        }
+        return stages
+    }
+
+    /// One ingest stage per Reformer ThML file dropped into `patristics/`. Same
+    /// pipeline as ANF/NPNF — ThMLParser's discoverWorks enumerates each file's
+    /// top-level divs as individual works under the listed author. The slugs
+    /// match the CCEL filenames fetched by scripts/fetch_sources.sh.
+    private func reformerStages(writer: CorpusWriter) -> [Stage] {
+        let luther = [
+            "luther_bondage", "luther_tabletalk", "luther_first_prin",
+            "luther_smalcald", "luther_smallcat", "luther_largecatechism",
+            "luther_good_works", "luther_sermons", "luther_translating",
+            // luther_prefacetoromans is omitted: ThMLParser's editorial-title
+            // filter strips every div1 because they all start with "Preface" /
+            // "Translator's Note" / "Title Page" / "Indexes", leaving zero
+            // discoverable works. Fixing this needs a parser-side change.
+        ]
+        let calvin = ["calvin_institutes", "calvin_sermons", "calvin_treatise_relics"]
+
+        var stages: [Stage] = []
+        for slug in luther {
+            stages.append(Stage(
+                name: "Luther — \(slug.replacingOccurrences(of: "luther_", with: ""))",
+                group: "reformers",
+                languages: ["en"],
+                bookScoped: false,
+                run: { try self.ingestThMLVolume(writer: writer, file: "patristics/\(slug).xml", volumeSlug: slug) }
+            ))
+        }
+        for slug in calvin {
+            stages.append(Stage(
+                name: "Calvin — \(slug.replacingOccurrences(of: "calvin_", with: ""))",
+                group: "reformers",
                 languages: ["en"],
                 bookScoped: false,
                 run: { try self.ingestThMLVolume(writer: writer, file: "patristics/\(slug).xml", volumeSlug: slug) }

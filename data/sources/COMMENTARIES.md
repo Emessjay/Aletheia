@@ -1,14 +1,16 @@
 # Bible commentary sources
 
 Vetted PD-redistributable digital editions for the Aletheia "Commentaries" tab.
-All five sources below meet the CLAUDE.md "no strings" goal — the digital
-edition itself is in the public domain, not merely the underlying author.
-CCEL is explicitly **avoided** despite hosting most of these works: CCEL's
-terms restrict use to "personal, educational, or non-profit" and require
-contacting them to republish, which puts their XML files in CLAUDE.md rank 5
-(never bundle). SWORD/CrossWire modules are downstream of the same source
-texts but are tagged `License=Public Domain` and distributed under explicit
-"Copy Freely" terms; legally this is the cleanest form of the same text.
+All sources below meet the CLAUDE.md "no strings" goal — the digital edition
+itself is in the public domain, not merely the underlying author. CCEL is
+explicitly **avoided** despite hosting most of these works: CCEL's terms
+restrict use to "personal, educational, or non-profit" and require contacting
+them to republish, which puts their XML files in CLAUDE.md rank 5 (never
+bundle). SWORD/CrossWire modules are downstream of the same source texts but
+are tagged `License=Public Domain` and distributed under explicit "Copy
+Freely" terms; legally this is the cleanest form of the same text. Project
+Gutenberg's plain-text editions are an equivalent fallback when no SWORD
+module exists.
 
 ## Selected sources
 
@@ -19,6 +21,7 @@ texts but are tagged `License=Public Domain` and distributed under explicit
 | JFB              | CrossWire SWORD `JFB`                 | SWORD rawcom/zcom  | Public Domain      |
 | Wesley's Notes   | CrossWire SWORD `Wesley`              | SWORD rawcom/zcom  | Public Domain      |
 | Adam Clarke      | CrossWire SWORD `Clarke`              | SWORD rawcom/zcom  | Public Domain      |
+| Luther           | Project Gutenberg #1549/29678/48193/27978 | Plain text     | Public Domain (US) |
 
 ## Status
 
@@ -29,9 +32,41 @@ texts but are tagged `License=Public Domain` and distributed under explicit
 | JFB              | ✓      | ✓          | 24,813          | 66    |
 | Wesley's Notes   | ✓      | ✓          | 18,124          | 64    |
 | Adam Clarke      | ✓      | ✓          | 21,052          | 66    |
+| Luther           | ✓      | ✓          | 511             |  5    |
 
-Bundled corpus grew from 203 MB → 447 MB after adding all five commentaries
-(244 MB net commentary footprint).
+### Luther coverage
+
+Luther's biblical commentary is partial by design — his Pelikan-era *Lectures
+on Genesis* (later chapters), *Lectures on Romans*, *Sermons on John*, and
+most of his post-1525 OT exposition (Psalms, Isaiah, Minor Prophets, Hebrews)
+survive only in copyrighted 20th-century English translations. The five-book
+coverage here is everything reliably available as PD plain text:
+
+| Book        | PG #          | Translator                         | License basis                  |
+| ----------- | ------------- | ---------------------------------- | ------------------------------ |
+| Galatians   | 1549          | Theodore Graebner (1937)           | US-PD by copyright non-renewal |
+| 1 Peter     | 29678         | E. H. Gillett, ed. Lenker (1904)   | PD by age                      |
+| 2 Peter     | 29678         | "                                  | "                              |
+| Jude        | 29678         | "                                  | "                              |
+| Genesis 1–9 | 48193 + 27978 | John Nicholas Lenker (1904, 1910)  | PD by age                      |
+
+The Graebner Galatians is the only entry not PD-by-age — Project Gutenberg
+distributes it under non-renewal status (verified against the Stanford
+Copyright Renewal Database). It is unambiguously PD inside the US; non-US
+distribution may still be restricted, which matches the standard PG applies
+to its entire catalog and so falls within Aletheia's licensing policy. If a
+stricter PD-by-age requirement ever becomes binding, swap in Erasmus
+Middleton's 1850 translation (also PD, but archaic English).
+
+The PG plain text is parsed by [`tools/luther-pg-extract/extract.py`](../../tools/luther-pg-extract/extract.py),
+which detects three different verse-marker dialects (`  VERSE N.` in
+Galatians, `V. N.` in Peter/Jude/Genesis, with sub-verse `Na`/`Nb` letters
+in Genesis) and emits a single `luther.json` in the same shape the SWORD
+extractor produces. The pipeline's existing `SwordCommentaryParser` ingests
+it without modification.
+
+Bundled corpus grew from 203 MB → 447 MB after adding the first five
+commentaries (244 MB net); Luther adds ~2.5 MB on top.
 
 ## Tooling
 
@@ -64,6 +99,15 @@ gitignored. Only the source vetting note (this file) is checked in.
   parser ignores those repeats in favor of the parsed verse range. If a
   future feature wants the pericope title, it'll need to be added back —
   probably by introducing a `pericope` section kind above the comment rows.
+- Luther's verse-range markers (`V. 1, 2.`, `V. 1-6.`) are flattened onto
+  their *first* verse, with the range header preserved verbatim inside the
+  body so the user still sees "V. 1-6." as the opening line. A future
+  improvement would teach the verse-panel lookup to match each verse in a
+  range — but for the current chapter-grid display the flattening is fine.
+- Luther sometimes covers the same verse in two passes (a summary pass and
+  a detailed pass). Both land as separate "Verse N" comment rows under the
+  chapter view, in the order Luther wrote them. This mirrors how Calvin's
+  multi-pass entries already appear and needs no special handling.
 
 ## Tooling
 
