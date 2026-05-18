@@ -8,6 +8,7 @@ import { useCommandPaletteStore } from "@/stores/useCommandPaletteStore";
 import { isMacDesktopTauri, isWindowsTauri } from "@/lib/platform";
 import { useViewportWidth } from "@/lib/useViewportWidth";
 import { useGlobalShortcuts } from "@/lib/useGlobalShortcuts";
+import { MAIN_TABS, isTabActive } from "@/tabs/registry";
 
 // titleBarStyle "Overlay" leaves the native window controls floating on top of
 // our header. Pad to clear them where applicable.
@@ -24,7 +25,8 @@ const WORKTREE_LABEL = import.meta.env.VITE_ALETHEIA_WORKTREE as string | undefi
 
 export function AppShell() {
   const loc = useLocation();
-  const showSidebarRoute = loc.pathname.startsWith("/reader");
+  const activeTab = MAIN_TABS.find((t) => isTabActive(t, loc.pathname));
+  const showSidebarRoute = activeTab?.shellFeatures?.readerSidebar === true;
   const togglePalette = useCommandPaletteStore((s) => s.toggle);
   const setPaletteOpen = useCommandPaletteStore((s) => s.setOpen);
 
@@ -103,40 +105,17 @@ export function AppShell() {
           >
             Aletheia
           </Link>
-          {!compact ? (
-            <>
-              <TopBarLink to="/reader/bible/john/1" active={loc.pathname.startsWith("/reader")}>
-                Read
-              </TopBarLink>
-              <TopBarLink
-                to="/commentaries"
-                active={loc.pathname.startsWith("/commentaries")}
-              >
-                Commentaries
-              </TopBarLink>
-              <TopBarLink
-                to="/patristics"
-                active={loc.pathname.startsWith("/patristics")}
-              >
-                Patristics
-              </TopBarLink>
-              <TopBarLink to="/libraries" active={loc.pathname.startsWith("/libraries")}>
-                Notes
-              </TopBarLink>
-              <TopBarLink to="/settings" active={loc.pathname.startsWith("/settings")}>
-                Settings
-              </TopBarLink>
-              <TopBarLink to="/design" active={loc.pathname.startsWith("/design")}>
-                Design
-              </TopBarLink>
-              <TopBarLink
-                to="/attributions"
-                active={loc.pathname.startsWith("/attributions")}
-              >
-                Attributions
-              </TopBarLink>
-            </>
-          ) : null}
+          {!compact
+            ? MAIN_TABS.map((tab) => (
+                <TopBarLink
+                  key={tab.id}
+                  to={tab.navTo}
+                  active={isTabActive(tab, loc.pathname)}
+                >
+                  {tab.label}
+                </TopBarLink>
+              ))
+            : null}
         </nav>
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
           {WORKTREE_LABEL ? (
