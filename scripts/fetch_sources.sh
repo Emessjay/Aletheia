@@ -181,6 +181,23 @@ for n in 01 02 03 04 05 06 07 08 09 10 11 12 13 14; do
     fetch_ccel_volume "npnf2${n}" "NPNF Series 2 Vol. ${n#0}"
 done
 
+# Schaff's Creeds of Christendom (1877-82, PD by age). Three volumes:
+#   1 — History of Creeds
+#   2 — Greek and Latin Creeds (Apostles, Nicene, Athanasian, Trent, etc.)
+#   3 — Evangelical Protestant Creeds (Augsburg, Heidelberg, Belgic, Helvetic,
+#       Westminster, 39 Articles, Canons of Dort, etc.)
+# Vol 3 alone is the single canonical PD source for every major Protestant
+# confession; bundling vols 1 and 2 adds the patristic/Roman creeds the
+# Reformers were responding to plus Schaff's editorial framing.
+fetch_ccel_volume "creeds1" "Schaff Creeds of Christendom, Vol. 1 (History)"
+fetch_ccel_volume "creeds2" "Schaff Creeds of Christendom, Vol. 2 (Greek + Latin)"
+fetch_ccel_volume "creeds3" "Schaff Creeds of Christendom, Vol. 3 (Protestant)"
+# Schaff/CCEL filed every individual Protestant confession as a <div2> under
+# four "Part" wrappers, which the ThMLParser treats as one work-row each.
+# tools/schaff-creeds-fixup promotes them so Augsburg/Heidelberg/Belgic/
+# Westminster/Dort/etc. show up as first-class works. Idempotent.
+python3 "${ROOT_DIR}/tools/schaff-creeds-fixup/fixup.py" "${PAT_DIR}/creeds3.xml"
+
 # Reformers — non-commentary works land in patristics/ alongside ANF/NPNF.
 # CCEL ThML is acceptable here for the same reason it's acceptable for the
 # Schaff editions: it's how the existing patristics pipeline is fed. The
@@ -222,6 +239,15 @@ fetch_ccel_authored "luther" "translating"      "Luther — Open Letter on Trans
 fetch_ccel_authored "calvin" "institutes"       "Calvin — Institutes of the Christian Religion"
 fetch_ccel_authored "calvin" "sermons"          "Calvin — Three Volumes of Sermons"
 fetch_ccel_authored "calvin" "treatise_relics"  "Calvin — Treatise on Relics"
+# Knox — three short standalone works plus vol 1 of his Laing-edited Works.
+# Vols 2–6 of the Works are not on CCEL; if we ever want them they need a
+# different source (Internet Archive scan + OCR cleanup).
+fetch_ccel_authored "knox"   "blast"            "Knox — First Blast of the Trumpet"
+fetch_ccel_authored "knox"   "history_reformation" "Knox — History of the Reformation in Scotland"
+fetch_ccel_authored "knox"   "prayer"           "Knox — Treatise on Prayer"
+fetch_ccel_authored "knox"   "works1"           "Knox — Works, Vol. 1"
+# Latimer — Sermons (Parker Society edition, the single CCEL volume).
+fetch_ccel_authored "latimer" "sermons"         "Latimer — Sermons"
 
 # -----------------------------------------------------------------------------
 # Bible commentaries — all PD-by-age, sourced from licensing-clean digital
