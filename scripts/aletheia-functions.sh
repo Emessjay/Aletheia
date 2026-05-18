@@ -162,12 +162,14 @@ $queued"
 
     # Build the claude command. Quote the prompt only if non-empty; an
     # empty prompt would leave the worker idle at its previous state,
-    # which is fine.
+    # which is fine. Prepend ALETHEIA_ROLE=worker so the worker-side
+    # PreToolUse hooks (worker-no-orchestration-bash.sh) fire.
     local cmd
+    local env_prefix="ALETHEIA_ROLE=worker ALETHEIA_WORKER_SLUG=$(printf '%q' "$slug")"
     if [[ -n "$prompt" ]]; then
-        cmd="claude --resume $(printf '%q' "$session_id") --effort $(printf '%q' "$effort") --name $(printf '%q' "worker:$slug") $(printf '%q' "$prompt")"
+        cmd="$env_prefix claude --resume $(printf '%q' "$session_id") --effort $(printf '%q' "$effort") --name $(printf '%q' "worker:$slug") $(printf '%q' "$prompt")"
     else
-        cmd="claude --resume $(printf '%q' "$session_id") --effort $(printf '%q' "$effort") --name $(printf '%q' "worker:$slug")"
+        cmd="$env_prefix claude --resume $(printf '%q' "$session_id") --effort $(printf '%q' "$effort") --name $(printf '%q' "worker:$slug")"
     fi
 
     if tmux has-session -t "$tmux_session" 2>/dev/null; then

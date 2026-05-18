@@ -90,6 +90,15 @@ repo_root="$(git rev-parse --show-toplevel)"
 state_dir="$repo_root/.auditor-state"
 mkdir -p "$state_dir"
 
+# Preflight: refuse if main has uncommitted changes. Otherwise the
+# eventual merge-worker.sh would have to refuse, leaving the worker
+# stranded. Better to fail fast.
+if ! git -C "$repo_root" diff --quiet || ! git -C "$repo_root" diff --cached --quiet; then
+    echo "error: main worktree has uncommitted changes; commit, stash, or revert before spawning a worker" >&2
+    git -C "$repo_root" status --short >&2
+    exit 1
+fi
+
 # Enforce the 5-worker cap.
 active=0
 shopt -s nullglob

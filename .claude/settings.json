@@ -14,6 +14,28 @@
             "command": "./.claude/hooks/auditor-no-code.sh"
           }
         ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./.claude/hooks/auditor-no-mutating-bash.sh"
+          },
+          {
+            "type": "command",
+            "command": "./.claude/hooks/worker-no-orchestration-bash.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./.claude/hooks/auditor-no-editing-subagents.sh"
+          }
+        ]
       }
     ]
   }

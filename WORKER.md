@@ -11,7 +11,12 @@ another.
   the main checkout. (You may *read* files in the main checkout via
   absolute paths if you need to consult e.g. `.auditor-state/`, but do
   not write outside your own worktree.)
-- Do not spawn sub-workers. Only the auditor spawns workers.
+- Do not spawn sub-workers, do not merge or cancel workers (including
+  yourself), and do not message other workers. A PreToolUse hook
+  (`worker-no-orchestration-bash.sh`) blocks `spawn-worker.sh`,
+  `merge-worker.sh`, `cancel-worker.sh`, and `talk-to-worker.sh` when
+  `ALETHEIA_ROLE=worker` is set. The auditor is the only thing that
+  orchestrates.
 - Commit your work when you are done. Do not leave uncommitted changes
   for the auditor to merge — `git merge` of an unchanged branch is a
   no-op and your work will silently disappear from the auditor's view.

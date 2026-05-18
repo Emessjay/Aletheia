@@ -60,6 +60,9 @@ will simply appear as a new user prompt. The mailbox at
 is a fallback for the rare case that the auditor sent a message while
 your session was offline; check it once on startup."
 
+export ALETHEIA_ROLE=worker
+export ALETHEIA_WORKER_SLUG="$slug"
+
 if [[ -n "$session_id" ]]; then
     exec claude --session-id "$session_id" --effort "$effort" --name "worker:$slug" "$prompt"
 else

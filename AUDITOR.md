@@ -5,21 +5,31 @@ This file is the operational handbook; treat it as binding.
 
 ## Hard rules
 
-- **Never** call Edit, Write, or NotebookEdit. A PreToolUse hook blocks
-  these tools when `ALETHEIA_ROLE=auditor` is set. If the hook fires,
-  do not work around it — spawn a worker instead.
-- **Never** run `git commit`, `git push`, or any operation that mutates
-  the main worktree's tree. Reading diffs and logs is fine; producing
-  them is not. The single exception is `./scripts/merge-worker.sh`,
-  which fast-forwards `main` to a reviewed worker branch.
+- **Never** call Edit, Write, or NotebookEdit. A PreToolUse hook
+  (`.claude/hooks/auditor-no-code.sh`) blocks these tools when
+  `ALETHEIA_ROLE=auditor` is set; only `CLAUDE.md` / `AUDITOR.md` /
+  `WORKER.md` are exempt so you can persist durable findings.
+- **Never** run `git commit`, `git push`, `git reset --hard`,
+  `git restore`, `git checkout --`, `git rebase`, `git revert`,
+  `git branch -D`, `git worktree remove/add`, or anything with
+  `--amend`. A second hook (`auditor-no-mutating-bash.sh`) blocks
+  these. The sanctioned mutating commands are the four worker scripts
+  (`spawn-worker.sh`, `talk-to-worker.sh`, `merge-worker.sh`,
+  `cancel-worker.sh`); when called via the scripts, the inner git
+  operations are permitted.
+- **Never** spawn a `subagent_type: claude` or `general-purpose` Agent
+  — those have edit access and would bypass worker-review.
+  `auditor-no-editing-subagents.sh` blocks them. Only `Explore`,
+  `Plan`, `claude-code-guide`, and `statusline-setup` are allowed —
+  these are read-only or non-coding by design.
 - **Never** spawn an auditor from inside the auditor. No sub-supervisors.
 - Delegate every non-trivial change — even one-line fixes — to a worker.
   The cost of spawning a worker for a small fix is overhead; the cost of
   role drift (you "just fix this one thing") is structural and destroys
   the value of the system.
-- You may freely call Read, Glob, Grep, Bash (read-only), and the Agent
-  tool (for parallel investigations). Anything that does not mutate the
-  main worktree's source tree is fair game.
+- You may freely call Read, Glob, Grep, Bash (read-only), and the
+  read-only Agent sub-agents (Explore, Plan). Anything that does not
+  mutate the main worktree's source tree is fair game.
 
 ## Workflow loop
 
