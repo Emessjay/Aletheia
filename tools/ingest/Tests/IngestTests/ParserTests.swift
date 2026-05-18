@@ -342,6 +342,147 @@ final class ThMLHeadingTests: XCTestCase {
         let snippet = ThMLParser.headingSnippet(from: body)
         XCTAssertEqual(snippet, "Great art Thou, O Lord, and greatly to be praised")
     }
+
+    func testHeadingSnippetHandlesSectAbbreviation() {
+        // Luther's Bondage of the Will: section bodies open with "Sect. XLI.—" fused
+        // to the first sentence. The earlier snippet extractor stopped at the
+        // period after "Sect" and synthesised the useless label "Section XLI. — Sect".
+        let body = "Sect. XLI. — AND, first of all, let us begin regularly with your definition."
+        let snippet = ThMLParser.headingSnippet(from: body)
+        XCTAssertEqual(snippet, "AND, first of all, let us begin regularly with your definition")
+    }
+
+    func testHeadingSnippetDoesNotTruncateAtCitationAbbreviation() {
+        // Body of Sect. XLIII opens with "as Paul shews, out of Isaiah, (1 Cor. 2:9), …".
+        // The period after "Cor" is an abbreviation, not a sentence boundary —
+        // the snippet must read past it. (Total length is also capped at the
+        // firstSentence `maxChars` limit, so very-long opening sentences are
+        // truncated with an ellipsis rather than spilling 500+ chars into the
+        // synthesized label.)
+        let body = "Sect. XLIII. — BUT this life or salvation is an eternal matter, as Paul shews out of Isaiah (1 Cor. 2:9), which we cannot understand."
+        let snippet = ThMLParser.headingSnippet(from: body)
+        XCTAssertNotNil(snippet)
+        XCTAssertTrue(snippet?.contains("1 Cor. 2:9") == true, "snippet should retain the abbreviation; got: \(snippet ?? "nil")")
+        XCTAssertTrue(snippet!.count <= 110, "snippet should be clamped to ~100 chars; got \(snippet!.count)")
+    }
+
+    func testHeadingSnippetStripsScripRefTokens() {
+        // The ThML parser inlines {ref:PASSAGE} tokens; they don't belong in
+        // synthesized labels (and could otherwise be truncated mid-token).
+        let body = "Sect. XLVI. — FIRST of all, we have that of {ref:Ecclesiasticus xv. 14-17}Ecclesiasticus 15:14-17, where it is written."
+        let snippet = ThMLParser.headingSnippet(from: body)
+        XCTAssertTrue(snippet?.contains("{ref") == false, "snippet should not contain ref token; got: \(snippet ?? "nil")")
+        XCTAssertTrue(snippet?.hasPrefix("FIRST of all, we have that of") == true, "got: \(snippet ?? "nil")")
+    }
+
+    func testStripLeadingRubricRemovesFusedSectPrefix() {
+        let body = "Sect. XLI. — AND, first of all, let us begin regularly with your definition."
+        let stripped = ThMLParser.stripLeadingRubric(from: body)
+        XCTAssertEqual(stripped, "AND, first of all, let us begin regularly with your definition.")
+    }
+
+    func testStripLeadingRubricLeavesPlainProseAlone() {
+        let body = "Great art Thou, O Lord, and greatly to be praised."
+        let stripped = ThMLParser.stripLeadingRubric(from: body)
+        XCTAssertEqual(stripped, body)
+    }
+
+    func testStripLeadingRubricLeavesMigneNumeralsAlone() {
+        // "1. Great art Thou, O Lord" — bare numbered Migne marker, not a
+        // structural rubric, must be preserved (it's how the body is
+        // partitioned in Augustine, Athanasius, Chrysostom, …).
+        let body = "1. Great art Thou, O Lord, and greatly to be praised."
+        let stripped = ThMLParser.stripLeadingRubric(from: body)
+        XCTAssertEqual(stripped, body)
+    }
+
+    func testHeadingSnippetSkipsStandaloneRomanNumeralParagraph() {
+        // Tertullian's Apologeticum: the body opens with a standalone "I."
+        // paragraph (Maurist section marker), then the prose. The earlier
+        // snippet extractor read the "I." as a one-letter sentence and
+        // produced labels like "Chapter I. — I.".
+        let body = "I.\n\nWhat are we to think of it, that most people so blindly knock their heads."
+        let snippet = ThMLParser.headingSnippet(from: body)
+        XCTAssertEqual(snippet, "What are we to think of it, that most people so blindly knock their heads")
+    }
+
+    func testStripLeadingHeadingParagraphsMatchesLabelCaseInsensitively() {
+        // ANF series-cover pages: label is "CLEMENT OF ROME" (all caps); the
+        // body opens with the same words in title case. Without case-folding,
+        // the duplicated heading paragraph isn't stripped. (The "Introductory
+        // Note…" sub-heading is also a single-sentence title and is stripped
+        // by the title heuristic — only the prose paragraph is meant to
+        // survive.)
+        let body = "Clement of Rome\n\nIntroductory Note.\n\n[a.d. 30–100.] Clement was probably a Gentile and a Roman."
+        let stripped = ThMLParser.stripLeadingHeadingParagraphs(from: body, label: "CLEMENT OF ROME")
+        XCTAssertEqual(stripped, "[a.d. 30–100.] Clement was probably a Gentile and a Roman.")
+    }
+
+    func testStripsETextColophon() {
+        // Luther sermon front-matter: a byline plus a publication-history
+        // paragraph the volunteer transcriber pasted in. Real prose follows.
+        let body = "by Martin Luther (1483-1546)\n\nThe following short sermon is taken from volume II of The Sermons of Martin Luther, published by Baker Book House (Grand Rapids, MI). This e-text was scanned and edited by Shane Rosenthal; it is in the public domain and may be copied and distributed without restriction.\n\n1. The Saviour himself explained this parable."
+        let stripped = ThMLParser.stripLeadingHeadingParagraphs(from: body, label: nil)
+        XCTAssertEqual(stripped, "1. The Saviour himself explained this parable.")
+    }
+
+    func testKeepsProseEvenWhenItMentionsOneColophonKeyword() {
+        // "public domain" appears in running prose — must not strip.
+        let body = "He spoke of those things which belong to the public domain of every Christian, things that all may learn and use."
+        let stripped = ThMLParser.stripLeadingHeadingParagraphs(from: body, label: nil)
+        XCTAssertEqual(stripped, body)
+    }
+
+    func testStripsAllCapsFragmentTitle() {
+        // Luther sermons open with an ALL-CAPS pericope title above the Scripture
+        // quotation. No comma/colon/period — pure fragment heading.
+        let body = "THE DISCIPLES & THE FRUITS OF GOD\u{2019}S WORD\n\nAnd when much people were gathered, he spake by a parable."
+        let stripped = ThMLParser.stripLeadingHeadingParagraphs(from: body, label: "The Parable of the Sower")
+        XCTAssertEqual(stripped, "And when much people were gathered, he spake by a parable.")
+    }
+
+    func testStripsColonTerminatedSermonTitle() {
+        let body = "The Twofold Use of the Law & Gospel:\n\nby Martin Luther (1483-1546)\n\n2 Corinthians 3:4-11. And such confidence have we through Christ to Godward."
+        let stripped = ThMLParser.stripLeadingHeadingParagraphs(from: body, label: "The Twofold Use of the Law and Gospel")
+        XCTAssertEqual(stripped, "2 Corinthians 3:4-11. And such confidence have we through Christ to Godward.")
+    }
+
+    func testStripsLeadingHorizontalRuleInOrigenIntro() {
+        // ANF Origen intro: body opens with a horizontal rule, then a
+        // bracketed-dates paragraph that continues into prose.
+        let body = "————————————\n\n[a.d. 185–230–254.]  The reader will remember the rise and rapid development of the great Alexandrian school."
+        let stripped = ThMLParser.stripLeadingHeadingParagraphs(from: body, label: "Origen.")
+        XCTAssertTrue(stripped.hasPrefix("[a.d."), "expected to keep the bracket-prefixed prose; got: \(stripped)")
+    }
+
+    func testStripsAllCapsTitleWithInternalComma() {
+        let body = "ON FAITH AND COMING TO CHRIST, AND THE TRUE BREAD OF HEAVEN:\n\nNo man can come to me, except the Father which hath sent me draw him."
+        let stripped = ThMLParser.stripLeadingHeadingParagraphs(from: body, label: nil)
+        XCTAssertEqual(stripped, "No man can come to me, except the Father which hath sent me draw him.")
+    }
+
+    func testStripsTranslatorCreditLine() {
+        // Augustine City of God opens with a translator credit line then a
+        // "Translator's Preface." header, then a horizontal rule, then prose.
+        let body = "Rev. Marcus Dods, D.D.\n\nTranslator’s Preface.\n\n————————————\n\n“Rome having been stormed and sacked by the Goths under Alaric their king, the worshippers of false gods…"
+        let stripped = ThMLParser.stripLeadingHeadingParagraphs(from: body, label: "City of God")
+        XCTAssertTrue(stripped.hasPrefix("“Rome having been stormed"), "got: \(stripped.prefix(80))")
+    }
+
+    func testCreditLineRequiresBothHonorificAndDegree() {
+        // "Dr." alone in dialogue must not strip a real prose paragraph.
+        let para = "Dr. Smith said that the truth would prevail, and we believe him."
+        XCTAssertFalse(ThMLParser.isCreditLine(para))
+    }
+
+    func testStripsLutherSermonFullPreambleStack() {
+        // Real Luther sermon body shape: byline → preamble → pericope heading →
+        // scripture quotation. The first two should strip; the heading should
+        // also strip; the scripture line stays.
+        let body = "by Martin Luther (1483-1546)\n\nThe following short sermon is taken from volume II of The Sermons of Martin Luther, published by Baker Book House (Grand Rapids, MI). This e-text was scanned and edited by Shane Rosenthal; it is in the public domain and may be copied and distributed without restriction.\n\nTHE DISCIPLES & THE FRUITS OF GOD\u{2019}S WORD\n\nLUKE 8:4-15: And when much people were gathered, he spake by a parable."
+        let stripped = ThMLParser.stripLeadingHeadingParagraphs(from: body, label: "The Parable of the Sower")
+        XCTAssertEqual(stripped, "LUKE 8:4-15: And when much people were gathered, he spake by a parable.")
+    }
 }
 
 final class SummaSubsectionTests: XCTestCase {
