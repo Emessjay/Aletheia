@@ -12,6 +12,11 @@ import type {
   WorkRow,
   XrefRow,
 } from "./types";
+import {
+  getMTSegments,
+  isLXXVersified,
+  type MTSegment,
+} from "@/domain/versification";
 
 // ── Commentaries (work/section) ───────────────────────────────────────────
 //
@@ -395,11 +400,22 @@ export async function findBook(
   );
 }
 
+export type VersificationMode = "native" | "mt";
+
 export async function getChapter(
   language: CorpusLanguage,
   bookSlug: string,
   chapterNumber: number,
+  options: { versification?: VersificationMode } = {},
 ): Promise<ChapterPayload | null> {
+  const segments =
+    options.versification === "mt" && isLXXVersified(language)
+      ? getMTSegments(bookSlug, chapterNumber)
+      : null;
+  if (segments !== null) {
+    return getRemappedChapter(language, bookSlug, chapterNumber, segments);
+  }
+
   const book = await findBook(language, bookSlug);
   if (!book) return null;
 
@@ -439,6 +455,97 @@ export async function getChapter(
     book,
     chapter,
     verses,
+    wordsByVerse,
+    chapterNumbers: chapterNumbersRows.map((r) => r.number),
+  };
+}
+
+/**
+ * Fetch an MT-numbered chapter from an LXX-versified language by stitching
+ * verses from one or more LXX source chapters according to the segment map.
+ * Verses are renumbered to their MT positions via `dstVerseOffset` and the
+ * synthetic ChapterRow reports the requested MT chapter number.
+ *
+ * Word rows (for `gk`) are remapped too — same verse_id mapping rule so the
+ * interlinear/Strong's overlays still resolve correctly even though the
+ * verse.number a consumer sees has been rewritten.
+ */
+async function getRemappedChapter(
+  language: CorpusLanguage,
+  bookSlug: string,
+  mtChapter: number,
+  segments: MTSegment[],
+): Promise<ChapterPayload | null> {
+  const book = await findBook(language, bookSlug);
+  if (!book) return null;
+
+  const srcChapterNumbers = Array.from(
+    new Set(segments.map((s) => s.srcChapter)),
+  );
+  const srcChapters = await corpusSelect<ChapterRow>(
+    `SELECT * FROM chapter
+       WHERE book_id = $1 AND number IN (${srcChapterNumbers.map((_, i) => `$${i + 2}`).join(", ")})`,
+    [book.id, ...srcChapterNumbers],
+  );
+  const srcChapterByNumber = new Map(srcChapters.map((c) => [c.number, c]));
+
+  const collectedVerses: VerseRow[] = [];
+  const collectedChapterIds: number[] = [];
+  for (const seg of segments) {
+    const srcChapter = srcChapterByNumber.get(seg.srcChapter);
+    if (!srcChapter) continue;
+    collectedChapterIds.push(srcChapter.id);
+    const end = Number.isFinite(seg.srcVerseEnd) ? seg.srcVerseEnd : 1_000_000;
+    const segVerses = await corpusSelect<VerseRow>(
+      `SELECT * FROM verse
+         WHERE chapter_id = $1 AND number >= $2 AND number <= $3
+         ORDER BY number`,
+      [srcChapter.id, seg.srcVerseStart, end],
+    );
+    for (const v of segVerses) {
+      collectedVerses.push({ ...v, number: v.number + seg.dstVerseOffset });
+    }
+  }
+  collectedVerses.sort((a, b) => a.number - b.number);
+
+  let wordsByVerse: Record<number, WordRow[]> = {};
+  if ((language === "he" || language === "gk") && collectedChapterIds.length > 0) {
+    const placeholders = collectedChapterIds.map((_, i) => `$${i + 1}`).join(", ");
+    const words = await corpusSelect<WordRow>(
+      `SELECT w.* FROM word w
+         JOIN verse v ON v.id = w.verse_id
+        WHERE v.chapter_id IN (${placeholders})
+        ORDER BY w.verse_id, w.position`,
+      collectedChapterIds,
+    );
+    for (const w of words) {
+      (wordsByVerse[w.verse_id] ||= []).push(w);
+    }
+  }
+
+  // The MT chapter number list for a divergent book is the full MT range, not
+  // the native chapter table. For Jeremiah both happen to be 1-52 so we can
+  // safely reuse the native list; revisit if Psalms/Daniel/Esther are added.
+  const chapterNumbersRows = await corpusSelect<{ number: number }>(
+    `SELECT number FROM chapter WHERE book_id = $1 ORDER BY number`,
+    [book.id],
+  );
+
+  // Synthesize a ChapterRow stamped with the MT chapter number. `id` is set to
+  // the primary (first) segment's source chapter id so callers that key off
+  // chapter.id (e.g. legacy cache code) still see a real row reference.
+  const primarySrcId = srcChapterByNumber.get(segments[0].srcChapter)?.id ?? 0;
+  const synthChapter: ChapterRow = {
+    id: primarySrcId,
+    book_id: book.id,
+    number: mtChapter,
+    verse_count: collectedVerses.length,
+  };
+
+  return {
+    book,
+    chapter: synthChapter,
+    verses: collectedVerses,
     wordsByVerse,
     chapterNumbers: chapterNumbersRows.map((r) => r.number),
   };
