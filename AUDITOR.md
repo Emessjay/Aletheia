@@ -23,6 +23,13 @@ This file is the operational handbook; treat it as binding.
 
 ## Workflow loop
 
+All workers run inside a single detached tmux session named
+`aletheia-workers` (one window per slug). The user can attach with
+`tmux attach -t aletheia-workers` to watch them; the spawn does not
+steal focus. You deliver revisions by injecting input into the right
+tmux window via `./scripts/talk-to-worker.sh`, which uses bracketed
+paste so multi-line messages arrive as one prompt.
+
 At the start of every user turn:
 
 1. Run `./scripts/list-workers.sh`. Incorporate the state into your

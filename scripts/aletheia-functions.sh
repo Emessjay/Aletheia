@@ -53,70 +53,17 @@ aletheia-audit-resume() {
 }
 
 # -- worker mode --------------------------------------------------------
-
-# Invoked by spawn-worker.sh inside a newly-opened Terminal window.
-# Reads the task and pre-assigned session ID from the state file at
-# <main-repo>/.auditor-state/<slug>.state, then boots Claude in the
-# current (worker) worktree.
 #
-#   aletheia-worker <slug>
-aletheia-worker() {
-    local slug="$1"
-    if [[ -z "$slug" ]]; then
-        echo "usage: aletheia-worker <slug>" >&2
-        return 1
-    fi
-
-    local main_repo
-    main_repo=$(git worktree list --porcelain 2>/dev/null | awk '/^worktree / { print $2; exit }')
-    if [[ -z "$main_repo" ]]; then
-        echo "error: not inside a git repo" >&2
-        return 1
-    fi
-
-    local state_file="$main_repo/.auditor-state/$slug.state"
-    local task_file="$main_repo/.auditor-state/$slug.task"
-
-    if [[ ! -f "$state_file" ]]; then
-        echo "error: no state for $slug at $state_file" >&2
-        return 1
-    fi
-
-    local task=""
-    [[ -f "$task_file" ]] && task=$(cat "$task_file")
-
-    local session_id
-    session_id=$(grep '^session_id=' "$state_file" | head -1 | cut -d= -f2-)
-
-    local prompt="**read CLAUDE.md and WORKER.md before you start**
-
-Your slug: $slug
-Your task:
-
-$task
-
-When done, commit your work and run:
-    ./scripts/worker-done.sh \"<one-line summary>\"
-If you are blocked on a top-level decision, run:
-    ./scripts/worker-blocked.sh \"<reason>\"
-
-The auditor sends revisions via your mailbox at
-    $main_repo/.auditor-state/$slug.mailbox
-Check it at the start of each turn; delete after acting on it."
-
-    if [[ -n "$session_id" ]]; then
-        claude --session-id "$session_id" --effort medium --name "worker:$slug" "$prompt"
-    else
-        claude --effort medium --name "worker:$slug" "$prompt"
-    fi
-}
-
-# Resume an existing worker session, optionally delivering a message as
-# the next user prompt. Useful if the Terminal window was closed or the
-# session exited and the auditor needs to send revisions.
+# Workers are spawned by scripts/spawn-worker.sh, which boots them in a
+# detached tmux session named "aletheia-workers" (one window per slug).
+# The boot itself is handled by scripts/aletheia-worker.sh — it does not
+# need to be a shell function because tmux can exec it directly.
 #
-#   aletheia-worker-resume <slug>
-#   aletheia-worker-resume <slug> "the revision message"
+# Attach to see all live workers:   tmux attach -t aletheia-workers
+#
+# `aletheia-worker-resume` (below) revives a worker whose tmux window
+# has closed, optionally delivering the auditor's queued mailbox content
+# and any inline message as its first prompt of the new session.
 aletheia-worker-resume() {
     local slug="$1"
     shift
@@ -127,13 +74,14 @@ aletheia-worker-resume() {
         return 1
     fi
 
+    if ! command -v tmux >/dev/null 2>&1; then
+        echo "error: tmux is not installed. Install with: brew install tmux" >&2
+        return 1
+    fi
+
     local main_repo
     main_repo=$(git worktree list --porcelain 2>/dev/null | awk '/^worktree / { print $2; exit }')
-    if [[ -z "$main_repo" ]]; then
-        # If we are not currently inside a worktree, infer from
-        # the standard main path. Best effort.
-        main_repo="$HOME/Programs/Aletheia"
-    fi
+    [[ -z "$main_repo" ]] && main_repo="$HOME/Programs/Aletheia"
 
     local state_file="$main_repo/.auditor-state/$slug.state"
     if [[ ! -f "$state_file" ]]; then
@@ -141,9 +89,10 @@ aletheia-worker-resume() {
         return 1
     fi
 
-    local worktree_path session_id
+    local worktree_path session_id mailbox queued
     worktree_path=$(grep '^worktree_path=' "$state_file" | head -1 | cut -d= -f2-)
     session_id=$(grep '^session_id=' "$state_file" | head -1 | cut -d= -f2-)
+    mailbox="$main_repo/.auditor-state/$slug.mailbox"
 
     if [[ -z "$session_id" ]]; then
         echo "error: no session_id recorded for $slug; cannot resume" >&2
@@ -154,11 +103,56 @@ aletheia-worker-resume() {
         return 1
     fi
 
-    cd "$worktree_path" || return
-
-    if [[ -n "$msg" ]]; then
-        claude --resume "$session_id" --effort medium --name "worker:$slug" "$msg"
-    else
-        claude --resume "$session_id" --effort medium --name "worker:$slug"
+    # Drain mailbox; if non-empty, prepend it to the resume prompt.
+    queued=""
+    if [[ -s "$mailbox" ]]; then
+        queued=$(cat "$mailbox")
+        rm -f "$mailbox"
     fi
+
+    local prompt=""
+    if [[ -n "$queued" && -n "$msg" ]]; then
+        prompt="(queued mailbox)
+
+$queued
+
+(new message)
+
+$msg"
+    elif [[ -n "$queued" ]]; then
+        prompt="(queued mailbox)
+
+$queued"
+    elif [[ -n "$msg" ]]; then
+        prompt="$msg"
+    fi
+
+    # If a tmux window for this slug already exists (rare — usually the
+    # caller checked first), refuse rather than collide.
+    local tmux_session="aletheia-workers"
+    if tmux list-windows -t "$tmux_session" -F "#{window_name}" 2>/dev/null \
+         | grep -qx "$slug"; then
+        echo "error: tmux window $tmux_session:$slug already exists" >&2
+        echo "       attach with: tmux attach -t $tmux_session"        >&2
+        return 1
+    fi
+
+    # Build the claude command. Quote the prompt only if non-empty; an
+    # empty prompt would leave the worker idle at its previous state,
+    # which is fine.
+    local cmd
+    if [[ -n "$prompt" ]]; then
+        cmd="claude --resume $(printf '%q' "$session_id") --effort medium --name $(printf '%q' "worker:$slug") $(printf '%q' "$prompt")"
+    else
+        cmd="claude --resume $(printf '%q' "$session_id") --effort medium --name $(printf '%q' "worker:$slug")"
+    fi
+
+    if tmux has-session -t "$tmux_session" 2>/dev/null; then
+        tmux new-window -t "$tmux_session:" -n "$slug" -c "$worktree_path" "$cmd"
+    else
+        tmux new-session -d -s "$tmux_session" -n "$slug" -c "$worktree_path" "$cmd"
+    fi
+
+    echo "resumed worker $slug in tmux."
+    echo "attach with: tmux attach -t $tmux_session"
 }

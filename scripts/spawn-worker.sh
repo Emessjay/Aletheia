@@ -29,6 +29,11 @@ if [[ ! "$slug" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
     exit 1
 fi
 
+if ! command -v tmux >/dev/null 2>&1; then
+    echo "error: tmux is not installed. Install with: brew install tmux" >&2
+    exit 1
+fi
+
 repo_root="$(git rev-parse --show-toplevel)"
 state_dir="$repo_root/.auditor-state"
 mkdir -p "$state_dir"
@@ -86,19 +91,29 @@ EOF
 # Make sure any stale mailbox from a previous worker with this slug is gone.
 rm -f "$state_dir/$slug.mailbox"
 
-# Open a new Terminal.app window running aletheia-worker.
-# The function is defined in scripts/aletheia-functions.sh, which the
-# user must source from ~/.zshrc. If it is not sourced, the new
-# Terminal window will print "command not found: aletheia-worker".
-osascript <<APPLESCRIPT >/dev/null
-tell application "Terminal"
-    activate
-    do script "cd '$worktree_path' && aletheia-worker '$slug'"
-end tell
-APPLESCRIPT
+# Boot the worker inside a tmux window. All workers share a single
+# detached session named "aletheia-workers"; each worker gets its own
+# window named after its slug. Attach to see them: `tmux attach -t
+# aletheia-workers`. The session auto-vanishes when the last window
+# closes.
+tmux_session="aletheia-workers"
+worker_cmd="$repo_root/scripts/aletheia-worker.sh $slug"
+
+# Kill any stale window from a previous worker with this slug.
+if tmux list-windows -t "$tmux_session" -F "#{window_name}" 2>/dev/null | grep -qx "$slug"; then
+    tmux kill-window -t "$tmux_session:$slug" 2>/dev/null || true
+fi
+
+if tmux has-session -t "$tmux_session" 2>/dev/null; then
+    tmux new-window -t "$tmux_session:" -n "$slug" -c "$worktree_path" "$worker_cmd"
+else
+    tmux new-session -d -s "$tmux_session" -n "$slug" -c "$worktree_path" "$worker_cmd"
+fi
 
 echo "spawned worker: $slug"
 echo "  worktree:   $worktree_path"
 echo "  branch:     $branch"
 echo "  session_id: $session_id"
 echo "  task:       $task"
+echo
+echo "attach with: tmux attach -t $tmux_session"

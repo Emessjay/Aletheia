@@ -27,6 +27,14 @@ if [[ ${#state_files[@]} -eq 0 ]]; then
     exit 0
 fi
 
+# Headline the tmux attach command if any workers are alive in tmux.
+if command -v tmux >/dev/null 2>&1 \
+   && tmux has-session -t aletheia-workers 2>/dev/null; then
+    live_count=$(tmux list-windows -t aletheia-workers 2>/dev/null | wc -l | tr -d ' ')
+    echo "tmux: aletheia-workers session has $live_count window(s) — attach with: tmux attach -t aletheia-workers"
+    echo
+fi
+
 printf "%-32s %-9s %-40s %-7s %-8s\n" "SLUG" "STATE" "BRANCH" "AHEAD" "AGE"
 
 blocked_slugs=()

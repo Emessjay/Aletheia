@@ -40,15 +40,25 @@ You have three verbs for telling the auditor where you are:
 
 ## Receiving feedback
 
-The auditor sends revisions via your mailbox at
-`<main-repo>/.auditor-state/<your-slug>.mailbox`. **At the start of
-every user turn, check this file.** If a message is waiting, treat it
-as if the auditor had typed it as your next user prompt — address it,
-then delete the file so the same message does not re-trigger:
+You run inside a tmux window (named after your slug, in the
+`aletheia-workers` session). When the auditor sends revisions, they
+arrive via `tmux send-keys` and appear in your terminal as the next
+user prompt — you do not need to poll or watch any file. Just respond
+as if the user typed them.
 
-    rm "$(git worktree list --porcelain | awk '/^worktree / { print $2; exit }')/.auditor-state/<your-slug>.mailbox"
+There is a fallback mailbox at
+`<main-repo>/.auditor-state/<your-slug>.mailbox` for the rare case
+that the auditor sent a message while your session was offline
+(typically because you had exited and were being resumed). The wrapper
+that resumes you (`aletheia-worker-resume`) prepends any queued
+mailbox content to the first prompt of the resumed session and clears
+the file, so you do not need to read it yourself — but if you ever
+see "(queued mailbox)" in your first prompt after a resume, that is
+where it came from.
 
-If the file is missing or empty, no new feedback — proceed as normal.
+If you are mid-task and notice that your tmux input is appearing in
+the wrong place (e.g. typed into a closed prompt), surface this via
+`worker-blocked.sh` so the auditor can diagnose.
 
 ## Effort and pacing
 
