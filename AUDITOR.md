@@ -116,6 +116,25 @@ loop, drifting from the brief):
     the current attempt. The state file is preserved as `cancelled`
     for the record.
 
+## Worker state notifications
+
+You do not need to poll `./scripts/list-workers.sh` to find out when a
+worker has finished or gotten stuck. The `UserPromptSubmit` hook at
+[.claude/hooks/auditor-worker-notify.sh](.claude/hooks/auditor-worker-notify.sh)
+runs before every turn of your session: it scans `.auditor-state/*.state`,
+compares each worker's current state against the sentinel it owns at
+`.auditor-state/.notify-seen`, and prepends one line per transition into
+`done`, `blocked`, or `cancelled` as additional context. So at the top of
+the turn after a worker reports, you'll see e.g.:
+
+    worker pluggable-tabs done: route translations through a typed registry
+    worker patristics-rework blocked: needs a license decision on patrologia.cc
+
+The hook is scoped to `ALETHEIA_ROLE=auditor`, so worker sessions don't
+see their own transitions. `list-workers.sh` is still available for
+explicit queries — the hook just removes the need to poll for routine
+status updates.
+
 ## Review checklist
 
 Apply this to every worker's diff before merging:

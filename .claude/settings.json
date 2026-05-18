@@ -38,6 +38,16 @@
         ]
       }
     ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./.claude/hooks/auditor-worker-notify.sh"
+          }
+        ]
+      }
+    ],
     "SessionEnd": [
       {
         "matcher": "logout|prompt_input_exit|bypass_permissions_disabled|other",
