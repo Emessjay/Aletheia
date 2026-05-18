@@ -310,8 +310,10 @@ function TokenRow({
   const override = theme[scheme][token.key];
   // The "effective" value is whatever the cascade actually renders right now.
   // Read it from the live document so users see exactly what they're editing,
-  // including any stylesheet default they haven't overridden yet.
-  const effective = useEffectiveTokenValue(token.key, !override);
+  // including any stylesheet default they haven't overridden yet. The read
+  // re-runs whenever the active theme reference or scheme changes so the
+  // swatch stays in sync with whatever ThemeApplier just wrote.
+  const effective = useEffectiveTokenValue(token.key, theme, scheme);
   const display = override ?? effective ?? "";
   const isCustomised = !!override;
 
@@ -459,13 +461,22 @@ function ColorPopover({
 }
 
 /** Read the live CSS custom-property value off documentElement. Re-resolves
- *  whenever `deps` changes (typically: when the override is cleared so the
- *  stylesheet default takes over again). */
-function useEffectiveTokenValue(key: ColorTokenKey, watch: boolean): string {
+ *  whenever the active theme or scheme changes so the swatch reflects exactly
+ *  what the cascade is rendering. The read is deferred via setTimeout so it
+ *  runs *after* ThemeApplier (a parent component) has finished writing the
+ *  new theme's inline styles — React fires child effects before parent
+ *  effects, so a synchronous read here would catch the *previous* theme's
+ *  values and the swatch would stay stuck on the old palette. */
+function useEffectiveTokenValue(
+  key: ColorTokenKey,
+  theme: Theme,
+  scheme: Scheme,
+): string {
   const [value, setValue] = useState(() => readVar(key));
   useEffect(() => {
-    setValue(readVar(key));
-  }, [key, watch]);
+    const id = setTimeout(() => setValue(readVar(key)), 0);
+    return () => clearTimeout(id);
+  }, [key, theme, scheme]);
   return value;
 }
 
