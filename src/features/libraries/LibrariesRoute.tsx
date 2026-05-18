@@ -8,7 +8,7 @@ import {
   useLibraries,
 } from "@/db/userHooks";
 import type { LibraryRow } from "@/db/types";
-import { isTauri } from "@/lib/tauri";
+import { getPlatform } from "@/platform";
 import { SIDE_LABELS, type SideKey } from "@/domain/sides";
 
 export function LibrariesRoute() {
@@ -16,7 +16,7 @@ export function LibrariesRoute() {
   const createLib = useCreateLibrary();
   const [newName, setNewName] = useState("");
 
-  if (!isTauri()) {
+  if (!getPlatform().info.isDesktop) {
     return (
       <article style={wrap}>
         <p style={{ color: "var(--color-fg-muted)" }}>

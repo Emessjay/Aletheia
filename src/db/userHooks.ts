@@ -20,7 +20,7 @@ import type {
   LibraryRow,
   VerseRef,
 } from "./types";
-import { isTauri } from "@/lib/tauri";
+import { getPlatform } from "@/platform";
 
 const USER_STALE = 30_000;
 
@@ -37,7 +37,7 @@ export function useChapterAnnotations(
     queryKey: userChapterKey(work, book, chapter),
     queryFn: () => listChapterAnnotations(work, book, chapter),
     staleTime: USER_STALE,
-    enabled: isTauri() && !!work && !!book && Number.isFinite(chapter),
+    enabled: getPlatform().info.isDesktop && !!work && !!book && Number.isFinite(chapter),
   });
 }
 
@@ -46,7 +46,7 @@ export function useLibraries() {
     queryKey: ["user", "libraries"],
     queryFn: listLibraries,
     staleTime: USER_STALE,
-    enabled: isTauri(),
+    enabled: getPlatform().info.isDesktop,
   });
 }
 
@@ -55,7 +55,7 @@ export function useBookmarks(libraryId: string | null) {
     queryKey: ["user", "bookmarks", libraryId],
     queryFn: () => (libraryId ? listBookmarks(libraryId) : Promise.resolve([])),
     staleTime: USER_STALE,
-    enabled: isTauri() && libraryId !== null,
+    enabled: getPlatform().info.isDesktop && libraryId !== null,
   });
 }
 

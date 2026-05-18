@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { kvGet } from "@/db/user";
-import { isTauri } from "@/lib/tauri";
+import { getPlatform } from "@/platform";
 
 interface LastPosition {
   work: string;
@@ -14,7 +14,7 @@ export function HomeRoute() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isTauri()) return;
+    if (!getPlatform().info.isDesktop) return;
     (async () => {
       try {
         const raw = await kvGet("reader.last");
@@ -43,7 +43,7 @@ export function HomeRoute() {
       <p style={{ color: "var(--color-fg-muted)", marginBottom: "1em" }}>
         Bible and classics reader.
       </p>
-      {!isTauri() ? (
+      {!getPlatform().info.isDesktop ? (
         <p style={{ color: "var(--color-fg-muted)" }}>
           Run <code>npm run tauri dev</code> to open the reader. Browser-only
           dev mode cannot reach the SQLite plugin.

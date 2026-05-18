@@ -1,58 +1,47 @@
-// Frontend wrapper for the Rust audio commands.
+// Frontend wrapper for the audio source-file API. The raw filesystem and
+// download operations are delegated to the platform's AudioAdapter; the
+// React Query hooks below are platform-agnostic and stay here.
+//
 // Source MP3s live at <app_data>/audio/<translation>/<book>/<filename>. Each
 // chapter resolves to a (filename, startSec, endSec) triple via the audio
 // manifest; multiple "virtual" chapters may share one source file.
 
-import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { getPlatform } from "@/platform";
+import type { AudioSourcePath } from "@/platform";
 import type { AudioTranslation } from "@/domain/audio";
 
-export interface SourcePath {
-  path: string;
-  exists: boolean;
-}
+export type SourcePath = AudioSourcePath;
 
-export async function audioSourcePath(
+export function audioSourcePath(
   translation: AudioTranslation,
   bookSlug: string,
   filename: string,
 ): Promise<SourcePath> {
-  return invoke<SourcePath>("audio_source_path", {
-    translation,
-    bookSlug,
-    filename,
-  });
+  return getPlatform().audio.sourcePath(translation, bookSlug, filename);
 }
 
-export async function audioBookSourcesPresent(
+export function audioBookSourcesPresent(
   translation: AudioTranslation,
   bookSlug: string,
 ): Promise<string[]> {
-  return invoke<string[]>("audio_book_sources_present", {
-    translation,
-    bookSlug,
-  });
+  return getPlatform().audio.bookSourcesPresent(translation, bookSlug);
 }
 
-export async function audioDownloadSource(
+export function audioDownloadSource(
   translation: AudioTranslation,
   bookSlug: string,
   url: string,
   filename: string,
 ): Promise<string> {
-  return invoke<string>("audio_download_source", {
-    translation,
-    bookSlug,
-    url,
-    filename,
-  });
+  return getPlatform().audio.downloadSource(translation, bookSlug, url, filename);
 }
 
-/** Turn an absolute filesystem path into the asset:// URL the webview can
- *  play. Requires `assetProtocol.enable = true` in tauri.conf.json with a
- *  scope that covers the audio dir. */
+/** Turn an absolute filesystem path into a URL the webview can play. The
+ *  exact scheme is platform-specific (Tauri: `asset://`; web will be HTTP
+ *  or blob:) — callers should treat the return value as opaque. */
 export function audioAssetUrl(absolutePath: string): string {
-  return convertFileSrc(absolutePath);
+  return getPlatform().audio.assetUrl(absolutePath);
 }
 
 // ── React Query hooks ───────────────────────────────────────────────────────

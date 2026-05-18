@@ -5,7 +5,7 @@ import { KeyboardHelp } from "@/components/KeyboardHelp";
 import { Sidebar } from "@/features/reader/Sidebar";
 import { CommandPalette } from "@/features/commandPalette/CommandPalette";
 import { useCommandPaletteStore } from "@/stores/useCommandPaletteStore";
-import { isMacDesktopTauri, isWindowsTauri } from "@/lib/platform";
+import { getPlatform } from "@/platform";
 import { useViewportWidth } from "@/lib/useViewportWidth";
 import { useGlobalShortcuts } from "@/lib/useGlobalShortcuts";
 import { MAIN_TABS, isTabActive } from "@/tabs/registry";
@@ -30,8 +30,9 @@ export function AppShell() {
   const togglePalette = useCommandPaletteStore((s) => s.toggle);
   const setPaletteOpen = useCommandPaletteStore((s) => s.setOpen);
 
-  const macDesktop = isMacDesktopTauri();
-  const win = isWindowsTauri();
+  const platformInfo = getPlatform().info;
+  const macDesktop = platformInfo.isMacDesktop;
+  const win = platformInfo.isWindowsDesktop;
   const viewportW = useViewportWidth();
   const compact = viewportW < SIDEBAR_BREAKPOINT;
 
