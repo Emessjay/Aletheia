@@ -139,6 +139,7 @@ now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 echo "$task" > "$state_dir/$slug.task"
 cat > "$state_dir/$slug.state" <<EOF
 slug=$slug
+role=worker
 state=running
 spawned_at=$now
 updated_at=$now
@@ -146,6 +147,7 @@ worktree_path=$worktree_path
 branch=$branch
 session_id=$session_id
 effort=$effort
+pair_mode=solo
 summary=
 blocked_reason=
 EOF
@@ -171,11 +173,16 @@ else
     tmux new-session -d -s "$tmux_session" -n "$slug" -c "$worktree_path" "$worker_cmd"
 fi
 
+spec_file="$state_dir/$slug.spec.md"
+spec_status="none (optional for solo workers; required for pairs)"
+[[ -f "$spec_file" ]] && spec_status="$spec_file"
+
 echo "spawned worker: $slug"
 echo "  worktree:   $worktree_path"
 echo "  branch:     $branch"
 echo "  session_id: $session_id"
 echo "  effort:     $effort"
+echo "  spec:       $spec_status"
 echo "  task:       $(echo "$task" | head -1 | cut -c1-80)$([[ $(echo "$task" | wc -l) -gt 1 ]] && echo ' ...')"
 echo
 echo "attach with: tmux attach -t $tmux_session"
