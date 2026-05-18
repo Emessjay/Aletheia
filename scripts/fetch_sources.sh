@@ -157,39 +157,29 @@ if [[ ! -f "${PAT_DIR}/summa.json" ]]; then
         -o "${PAT_DIR}/summa.json"
 fi
 
-# Summa Theologica Latin — bilingual HTML files from Geremia/AquinasOperaOmnia
-# (mirror of dhspriory.org/thomas/). See CLAUDE.md re: licensing concerns;
-# kept for now but a clean replacement source is still TBD.
-SUMMA_LAT_DIR="${SRC_DIR}/summa-latin"
-if [[ ! -d "${SUMMA_LAT_DIR}/.git" ]]; then
-    note "Cloning Geremia/AquinasOperaOmnia for the Latin Summa…"
-    git clone --depth=1 https://github.com/Geremia/AquinasOperaOmnia.git "${SUMMA_LAT_DIR}" || true
-fi
-
-# CCEL ThML volumes (Schaff PD edition). Each XML bundles a whole NPNF/ANF
-# volume; the ThMLParser scopes per-work at ingest time via div container IDs.
-#
-#   anf01.xml    — Justin Martyr, Dialogue with Trypho (div2 id="viii.iv")
-#   npnf101.xml  — Augustine, The Confessions      (div1 id="vi")
-#   npnf103.xml  — Augustine, The Enchiridion      (div2 id="iv.ii")
-#   npnf204.xml  — Athanasius, On the Incarnation  (div2 id="vii.ii")
-#                  Athanasius, Discourses Against the Arians (div2 id="xxi.ii")
-if [[ ! -f "${PAT_DIR}/anf01.xml" ]]; then
-    note "Downloading ANF Vol. 1 (CCEL ThML)…"
-    curl -sSL "https://ccel.org/ccel/schaff/anf01.xml" -o "${PAT_DIR}/anf01.xml"
-fi
-if [[ ! -f "${PAT_DIR}/npnf101.xml" ]]; then
-    note "Downloading NPNF1 Vol. 1 — Augustine: Prolegomena, Confessions, Letters (CCEL ThML)…"
-    curl -sSL "https://ccel.org/ccel/schaff/npnf101.xml" -o "${PAT_DIR}/npnf101.xml"
-fi
-if [[ ! -f "${PAT_DIR}/npnf103.xml" ]]; then
-    note "Downloading NPNF1 Vol. 3 — Augustine: Doctrinal & Moral Treatises (CCEL ThML)…"
-    curl -sSL "https://ccel.org/ccel/schaff/npnf103.xml" -o "${PAT_DIR}/npnf103.xml"
-fi
-if [[ ! -f "${PAT_DIR}/npnf204.xml" ]]; then
-    note "Downloading NPNF2 Vol. 4 — Athanasius (CCEL ThML)…"
-    curl -sSL "https://ccel.org/ccel/schaff/npnf204.xml" -o "${PAT_DIR}/npnf204.xml"
-fi
+# CCEL ThML — Ante-Nicene Fathers + Nicene and Post-Nicene Fathers (Schaff
+# PD editions). 37 volumes covering virtually every published patristic
+# treatise; the ingest pipeline runs the ThMLParser's discoverWorks pass on
+# each to enumerate individual works. ANF Vol 10 is a bibliographic stub
+# (~67 KB) so we skip it. Total download ~155 MB.
+fetch_ccel_volume() {
+    local slug="$1"
+    local label="$2"
+    local out="${PAT_DIR}/${slug}.xml"
+    if [[ ! -f "${out}" ]]; then
+        note "Downloading ${label} (CCEL ThML)…"
+        curl -sSL "https://ccel.org/ccel/schaff/${slug}.xml" -o "${out}"
+    fi
+}
+for n in 01 02 03 04 05 06 07 08 09; do
+    fetch_ccel_volume "anf${n}" "ANF Vol. ${n#0}"
+done
+for n in 01 02 03 04 05 06 07 08 09 10 11 12 13 14; do
+    fetch_ccel_volume "npnf1${n}" "NPNF Series 1 Vol. ${n#0}"
+done
+for n in 01 02 03 04 05 06 07 08 09 10 11 12 13 14; do
+    fetch_ccel_volume "npnf2${n}" "NPNF Series 2 Vol. ${n#0}"
+done
 
 # -----------------------------------------------------------------------------
 # Bible commentaries — all PD-by-age, sourced from licensing-clean digital

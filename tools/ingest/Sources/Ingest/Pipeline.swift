@@ -15,12 +15,10 @@ import Logging
 ///       openscriptures/HebrewLexicon.xml         # BDB + Strong's H
 ///       openscriptures/StrongsGreek.xml          # Strong's G + Thayer's fragments
 ///       openbibleinfo/cross_references.txt       # OpenBible.info cross-ref TSV
-///       patristics/summa.json                    # Jacob-Gray/summa.json (English)
-///       patristics/summa-latin/                  # Geremia/AquinasOperaOmnia clone
-///       patristics/anf01.xml                     # CCEL ThML — ANF Vol 1 (incl. Trypho)
-///       patristics/npnf101.xml                   # CCEL ThML — Augustine Vol 1 (Confessions)
-///       patristics/npnf103.xml                   # CCEL ThML — Augustine Vol 3 (Doctrinal/Moral, incl. Enchiridion)
-///       patristics/npnf204.xml                   # CCEL ThML — Athanasius (Incarnation, Against the Arians)
+///       patristics/summa.json                    # Jacob-Gray/summa.json (English Summa)
+///       patristics/anf01.xml … anf09.xml         # CCEL ThML — Ante-Nicene Fathers (Roberts & Donaldson)
+///       patristics/npnf101.xml … npnf114.xml     # CCEL ThML — NPNF Series 1 (Augustine + Chrysostom)
+///       patristics/npnf201.xml … npnf214.xml     # CCEL ThML — NPNF Series 2 (post-Nicene Greek + Latin fathers)
 public struct Pipeline {
     public let sourceRoot: URL
     public let outputPath: String
@@ -150,71 +148,17 @@ public struct Pipeline {
             // produce broken xrefs. Marked non-book-scoped so --books skips it.
             Stage(name: "Cross-references", group: "bible", languages: ["en_bsb"], bookScoped: false,
                   run: { try ingestCrossRefs(writer: writer) }),
-            // Patristics — Summa (its own group; the Latin side is bulky enough
-            // to justify being able to skip it on a fast iteration loop).
+            // Summa Theologica (English). The Latin side was previously
+            // sourced from Geremia/AquinasOperaOmnia — a 250 MB git clone
+            // covering the whole Aquinas opera — which has been dropped in
+            // favor of carrying the English alone. Translation can come back
+            // later from a slimmer source if there's demand.
             Stage(name: "Summa Theologica (Eng)", group: "summa", languages: ["en"], bookScoped: false,
                   run: { try ingestSumma(writer: writer) }),
-            Stage(name: "Summa Theologica (Lat)", group: "summa", languages: ["la"], bookScoped: false,
-                  run: { try ingestSummaLatin(writer: writer) }),
-            // Ante-Nicene Fathers (ANF) — pre-325 fathers, Roberts & Donaldson PD edition.
-            // anf01.xml bundles the whole ANF Vol 1; scope to Justin Martyr's
-            // Dialogue with Trypho (div2 id="viii.iv").
-            Stage(name: "ANF — Dialogue with Trypho", group: "anf", languages: ["en"], bookScoped: false,
-                  run: { try ingestThML(
-                      writer: writer,
-                      file: "patristics/anf01.xml",
-                      workSlug: "trypho",
-                      workTitle: "Dialogue with Trypho",
-                      author: "Justin Martyr",
-                      kind: "dialogue",
-                      language: "en",
-                      containerID: "viii.iv") }),
-            // Nicene & Post-Nicene Fathers (NPNF) — Schaff's PD edition.
-            // npnf204.xml bundles the whole Athanasius volume; scope to the two
-            // div2 containers we want — On the Incarnation (vii.ii) and the
-            // Four Discourses Against the Arians (xxi.ii).
-            Stage(name: "NPNF — On the Incarnation", group: "npnf", languages: ["en"], bookScoped: false,
-                  run: { try ingestThML(
-                      writer: writer,
-                      file: "patristics/npnf204.xml",
-                      workSlug: "incarnation",
-                      workTitle: "On the Incarnation of the Word",
-                      author: "Athanasius of Alexandria",
-                      kind: "treatise",
-                      language: "en",
-                      containerID: "vii.ii") }),
-            Stage(name: "NPNF — Discourses Against the Arians", group: "npnf", languages: ["en"], bookScoped: false,
-                  run: { try ingestThML(
-                      writer: writer,
-                      file: "patristics/npnf204.xml",
-                      workSlug: "discourses-against-arians",
-                      workTitle: "Four Discourses Against the Arians",
-                      author: "Athanasius of Alexandria",
-                      kind: "treatise",
-                      language: "en",
-                      containerID: "xxi.ii") }),
-            // Augustine's Confessions: container div1 id="vi" in npnf101.xml.
-            Stage(name: "NPNF — Confessions", group: "npnf", languages: ["en"], bookScoped: false,
-                  run: { try ingestThML(
-                      writer: writer,
-                      file: "patristics/npnf101.xml",
-                      workSlug: "confessions",
-                      workTitle: "The Confessions",
-                      author: "Augustine of Hippo",
-                      kind: "treatise",
-                      language: "en",
-                      containerID: "vi") }),
-            // Augustine's Enchiridion: container div2 id="iv.ii" in npnf103.xml.
-            Stage(name: "NPNF — Enchiridion", group: "npnf", languages: ["en"], bookScoped: false,
-                  run: { try ingestThML(
-                      writer: writer,
-                      file: "patristics/npnf103.xml",
-                      workSlug: "enchiridion",
-                      workTitle: "The Enchiridion",
-                      author: "Augustine of Hippo",
-                      kind: "treatise",
-                      language: "en",
-                      containerID: "iv.ii") }),
+            // Ante-Nicene Fathers (10 volumes, Roberts & Donaldson 1885 PD).
+            // Each volume's stage runs the ThML discovery pass and emits
+            // one `work` per non-editorial div1 inside that volume.
+        ] + anfNpnfStages(writer: writer) + [
             // Commentaries — each writes one `work` row plus per-book/chapter/comment
             // `section` rows. Language tag "en" is shared by all current commentaries;
             // it does NOT match any of the Bible-side `en_*` tags, so a `--languages en_bsb`
@@ -253,6 +197,38 @@ public struct Pipeline {
                       workTitle: "Adam Clarke's Commentary on the Bible",
                       author: "Adam Clarke") })
         ]
+    }
+
+    /// One ingest stage per ANF/NPNF volume on disk. Each stage parses the
+    /// volume's ThML once, enumerates non-editorial top-level divs as
+    /// individual works (Confessions, Letters, On the Incarnation, …) and
+    /// writes one `work` row + section tree per discovery. ANF Vol 10 is
+    /// the bibliographic stub volume (67 KB, no actual text) so it's
+    /// skipped at the manifest level.
+    private func anfNpnfStages(writer: CorpusWriter) -> [Stage] {
+        var stages: [Stage] = []
+        let anf = (1...9).map { String(format: "anf%02d", $0) }
+        let npnf1 = (1...14).map { String(format: "npnf1%02d", $0) }
+        let npnf2 = (1...14).map { String(format: "npnf2%02d", $0) }
+        for slug in anf {
+            stages.append(Stage(
+                name: "ANF — \(slug)",
+                group: "anf",
+                languages: ["en"],
+                bookScoped: false,
+                run: { try self.ingestThMLVolume(writer: writer, file: "patristics/\(slug).xml", volumeSlug: slug) }
+            ))
+        }
+        for slug in (npnf1 + npnf2) {
+            stages.append(Stage(
+                name: "NPNF — \(slug)",
+                group: "npnf",
+                languages: ["en"],
+                bookScoped: false,
+                run: { try self.ingestThMLVolume(writer: writer, file: "patristics/\(slug).xml", volumeSlug: slug) }
+            ))
+        }
+        return stages
     }
 
     // MARK: - Stage implementations
@@ -696,47 +672,240 @@ public struct Pipeline {
         logger.info("    \(sections.count) English sections")
     }
 
-    private func ingestSummaLatin(writer: CorpusWriter) throws {
-        // Geremia/AquinasOperaOmnia clone is laid out as <root>/summa/<PART>/<file>.html
-        let root = sourceRoot.appendingPathComponent("summa-latin/summa")
-        guard FileManager.default.fileExists(atPath: root.path) else {
-            throw IngestError.sourceMissing(root.path)
+    /// Parse one CCEL ThML volume, run the discovery pass to enumerate
+    /// non-editorial top-level works, and write a `work` row + section tree
+    /// for each. `volumeSlug` (e.g. "anf01" / "npnf204") is the source-file
+    /// stem; we prefix it onto work slugs to keep them globally unique
+    /// even when two volumes have a work with the same auto-generated
+    /// slug (e.g. multiple volumes each have a "preface").
+    private func ingestThMLVolume(writer: CorpusWriter, file: String, volumeSlug: String) throws {
+        let url = sourceRoot.appendingPathComponent(file)
+        guard FileManager.default.fileExists(atPath: url.path) else {
+            throw IngestError.sourceMissing(url.path)
         }
-        let parser = SummaLatinParser()
-        let sections = try parser.parse(rootDirectory: root)
-        // Summa Theologica work row may already exist from the English stage —
-        // insertWork is upsert-by-slug so this returns the existing id.
-        let workID = try writer.insertWork(slug: "summa", title: "Summa Theologica",
-                                            author: "Thomas Aquinas", kind: "summa")
-        for (i, s) in sections.enumerated() {
-            _ = try writer.insertSection(workID: workID, parentID: nil,
-                                         ordinalPath: s.ordinalPath, kind: "respondeo",
-                                         label: nil, language: "la", body: s.body, ordering: i)
+        let parser = ThMLParser()
+        let manifest = try parser.discoverWorks(fileURL: url)
+        if manifest.works.isEmpty {
+            logger.info("    no works discovered in \(file)")
+            return
         }
-        logger.info("    \(sections.count) Latin sections")
+        let volumeAuthor = manifest.author.isEmpty ? "Various" : manifest.author
+        let volumeAuthorList = manifest.author.components(separatedBy: " & ")
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+        var totalSections = 0
+        for entry in manifest.works {
+            let workSlug = "\(volumeSlug).\(entry.slug)"
+            let result = try parser.parse(
+                fileURL: url,
+                workSlug: workSlug,
+                containerID: entry.containerID
+            )
+            guard !result.sections.isEmpty else { continue }
+            let normalized = normalizeWorkTitle(entry.title)
+            let author = entry.author ?? resolvePerWorkAuthor(
+                title: normalized,
+                volumeAuthors: volumeAuthorList,
+                volumeAuthor: volumeAuthor
+            )
+            let workID = try writer.insertWork(
+                slug: workSlug,
+                title: normalized,
+                author: author,
+                kind: "treatise"
+            )
+            for (i, s) in result.sections.enumerated() {
+                _ = try writer.insertSection(
+                    workID: workID, parentID: nil,
+                    ordinalPath: s.ordinalPath, kind: s.kind,
+                    label: s.label, language: "en", body: s.body, ordering: i
+                )
+            }
+            totalSections += result.sections.count
+        }
+        logger.info("    \(manifest.works.count) works, \(totalSections) sections")
+    }
+}
+
+/// CCEL's ANF volumes store div1 titles in all-caps (`JUSTIN MARTYR`,
+/// `THE PASTOR OF HERMAS`); NPNF volumes use mixed case with trailing
+/// periods (`The Confessions.`). Normalize:
+///   • drop trailing periods (semantically nothing — it's typographic)
+///   • title-case anything that's predominantly uppercase (treating each
+///     word independently so prepositions / Roman numerals survive)
+///   • rewrite a bare author-name title to "Writings of <Father>" so the
+///     reader doesn't see an entry whose title is just a name
+func normalizeWorkTitle(_ raw: String) -> String {
+    var t = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+    while t.hasSuffix(".") || t.hasSuffix(",") || t.hasSuffix(";") {
+        t.removeLast()
+    }
+    t = t.trimmingCharacters(in: .whitespacesAndNewlines)
+
+    // Predominantly-uppercase test: at least 70% of the letters in the
+    // string are uppercase. Skips strings without lowercase letters at all
+    // (i.e. all-caps source titles).
+    let letters = t.unicodeScalars.filter { CharacterSet.letters.contains($0) }
+    let uppers = letters.filter { CharacterSet.uppercaseLetters.contains($0) }
+    let mostlyUpper = !letters.isEmpty && Double(uppers.count) / Double(letters.count) >= 0.7
+    if mostlyUpper {
+        t = titleCaseEachWord(t)
     }
 
-    /// Parse one CCEL ThML volume, scoped to a single div container (one work
-    /// per volume in the multi-work NPNF files), and write the result under
-    /// `workSlug`. Metadata (`workTitle` / `author` / `kind`) is supplied by
-    /// the caller — the volume-level <title>/<author> in CCEL ThML reflects
-    /// the whole volume, not the individual treatise we're slicing out.
-    private func ingestThML(writer: CorpusWriter, file: String, workSlug: String,
-                            workTitle: String, author: String, kind: String,
-                            language: String, containerID: String? = nil) throws {
-        let url = sourceRoot.appendingPathComponent(file)
-        guard FileManager.default.fileExists(atPath: url.path) else { throw IngestError.sourceMissing(url.path) }
-        let parser = ThMLParser()
-        let result = try parser.parse(fileURL: url, workSlug: workSlug, containerID: containerID)
-        let workID = try writer.insertWork(slug: workSlug, title: workTitle,
-                                            author: author, kind: kind)
-        for (i, s) in result.sections.enumerated() {
-            _ = try writer.insertSection(workID: workID, parentID: nil,
-                                         ordinalPath: s.ordinalPath, kind: s.kind,
-                                         label: s.label, language: language, body: s.body, ordering: i)
-        }
-        logger.info("    \(result.sections.count) sections")
+    // Bare-author-name detection: if the title (after diacritic folding +
+    // case folding) matches a known father display name, retitle as
+    // "Writings of <Father>" — entries like "JUSTIN MARTYR" / "Barnabas"
+    // are then readable as compilations rather than puzzling one-word
+    // works in the index.
+    let folded = foldName(t)
+    if let father = knownFatherByDisplayName(folded) {
+        t = "Writings of \(father)"
     }
+
+    return t
+}
+
+/// Indexes of `ccelAuthorDisplay.values` for substring lookups. We need
+/// two: the full lowercased display name (so "Polycarp of Smyrna" matches)
+/// AND just the personal-name portion before " of " (so "Polycarp" alone
+/// matches "Polycarp of Smyrna"). Both keys are diacritic-and-ligature
+/// folded so "Irenæus" / "Cyprian" / "Lerins" / "Lérins" all line up.
+private let knownFatherIndex: [String: String] = {
+    var map: [String: String] = [:]
+    for name in Set(ccelAuthorDisplay.values) {
+        let key = foldName(name)
+        map[key] = name
+        if let personal = key.components(separatedBy: " of ").first, personal != key {
+            map[personal] = name
+        }
+    }
+    return map
+}()
+
+private func foldName(_ s: String) -> String {
+    s.replacingOccurrences(of: "æ", with: "ae")
+     .replacingOccurrences(of: "Æ", with: "Ae")
+     .replacingOccurrences(of: "œ", with: "oe")
+     .replacingOccurrences(of: "Œ", with: "Oe")
+     .folding(options: .diacriticInsensitive, locale: .current)
+     .lowercased()
+}
+
+private func knownFatherByDisplayName(_ folded: String) -> String? {
+    if let direct = knownFatherIndex[folded] { return direct }
+    // Allow "Polycarp" to match "Polycarp of Smyrna" by trimming a
+    // descriptive suffix.
+    let trimmed = folded
+        .components(separatedBy: " of ").first?
+        .trimmingCharacters(in: .whitespacesAndNewlines)
+        ?? folded
+    if trimmed != folded, let m = knownFatherIndex[trimmed] { return m }
+    return nil
+}
+
+private func titleCaseEachWord(_ s: String) -> String {
+    // Words to keep lowercase when they aren't at the start. Title-case
+    // everything else by uppercasing the first letter only.
+    let lowercaseWords: Set<String> = [
+        "of", "the", "and", "or", "in", "on", "to", "for", "from",
+        "with", "by", "a", "an", "but", "at", "as", "&", "vs",
+    ]
+    let words = s.components(separatedBy: " ")
+    var out: [String] = []
+    for (i, w) in words.enumerated() {
+        if w.isEmpty { out.append(w); continue }
+        // Preserve Roman numerals + words that already contain a mix.
+        let alphaOnly = w.unicodeScalars.allSatisfy { CharacterSet.letters.contains($0) || CharacterSet.punctuationCharacters.contains($0) }
+        if !alphaOnly {
+            out.append(w)
+            continue
+        }
+        let lower = w.lowercased()
+        if i > 0 && lowercaseWords.contains(lower) {
+            out.append(lower)
+        } else {
+            let chars = Array(lower)
+            out.append(String(chars.first!).uppercased() + String(chars.dropFirst()))
+        }
+    }
+    return out.joined(separator: " ")
+}
+
+/// Pick the most specific author for a work. Both single-author and
+/// multi-author volumes can have works that name a different father in
+/// their title — CCEL's ANF Vol 1 declares only Irenaeus as its
+/// DC.Creator-Author even though the volume bundles Clement of Rome,
+/// Mathetes, Polycarp, Ignatius, Barnabas, and Justin Martyr.
+///
+/// Strategy: walk every known father in `ccelAuthorDisplay`, check if the
+/// title contains their personal-name token (the part before "of <Place>").
+/// If exactly one father matches, attribute to them. Otherwise fall back
+/// to the volume-level string.
+private func resolvePerWorkAuthor(
+    title: String,
+    volumeAuthors: [String],
+    volumeAuthor: String
+) -> String {
+    let folded = foldName(title)
+    let fathers = Set(ccelAuthorDisplay.values)
+
+    // Collect every father the title plausibly references — by full
+    // display name, by alias phrase (CCEL slug), or by personal-name (the
+    // part before " of "). All hits go in a single bucket.
+    var candidates = Set<String>()
+    for father in fathers {
+        let foldedFather = foldName(father)
+        if matchesAsPhrase(foldedFather, in: folded) {
+            candidates.insert(father)
+            continue
+        }
+        let personalName: String = {
+            if let beforeOf = foldedFather.components(separatedBy: " of ").first,
+               beforeOf != foldedFather {
+                return beforeOf.trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+            return foldedFather
+                .components(separatedBy: " ").first?
+                .trimmingCharacters(in: .whitespacesAndNewlines) ?? foldedFather
+        }()
+        if personalName.count >= 4, matchesAsPhrase(personalName, in: folded) {
+            candidates.insert(father)
+        }
+    }
+    for (key, canonical) in ccelAuthorDisplay {
+        // CCEL slug as phrase trigger. Only multi-word ("leo_great") or
+        // long single words ("nazianzen", "sulpitius") qualify — shorter
+        // forms like "gregory" / "cyril" / "dionysius" are ambiguous and
+        // would over-match.
+        let phrase = key.replacingOccurrences(of: "_", with: " ")
+        let isMultiWord = phrase.contains(" ")
+        let isLongUnique = key.count >= 8
+        guard isMultiWord || isLongUnique else { continue }
+        if matchesAsPhrase(foldName(phrase), in: folded) {
+            candidates.insert(canonical)
+        }
+    }
+
+    // Disambiguate via the volume's declared author list. If exactly one
+    // of the title-candidates is also declared in the volume, that's the
+    // answer — solves the "Dionysius" problem (ANF6 ships Dionysius of
+    // Alexandria; ANF7 ships Dionysius of Rome) and many like it.
+    let volSet = Set(volumeAuthors)
+    let inVolume = candidates.intersection(volSet)
+    if inVolume.count == 1 { return inVolume.first! }
+    if candidates.count == 1 { return candidates.first! }
+
+    // No clean per-work resolution. Anything with more than one declared
+    // author flattens to "Various" — even the apparently-friendly
+    // "Clement of Rome & Theodotus" pair is misleading on a work that's
+    // actually anonymous apocrypha bundled into the same volume.
+    if volumeAuthors.count > 1 { return "Various" }
+    return volumeAuthor
+}
+
+private func matchesAsPhrase(_ phrase: String, in folded: String) -> Bool {
+    let pattern = "\\b\(NSRegularExpression.escapedPattern(for: phrase))\\b"
+    return folded.range(of: pattern, options: .regularExpression) != nil
 }
 
 import GRDB

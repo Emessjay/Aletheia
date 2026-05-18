@@ -8,6 +8,7 @@ import { LibrariesRoute } from "@/features/libraries/LibrariesRoute";
 import { CommentariesRoute } from "@/features/commentaries/CommentariesRoute";
 import { PatristicsIndexRoute } from "@/features/patristics/PatristicsIndexRoute";
 import { PatristicsRoute } from "@/features/patristics/PatristicsRoute";
+import { PatristicsWorkRedirect } from "@/features/patristics/PatristicsWorkRedirect";
 import { SettingsRoute } from "@/features/settings/SettingsRoute";
 import { AttributionsRoute } from "@/features/attributions/AttributionsRoute";
 
@@ -29,6 +30,7 @@ export const router = createBrowserRouter([
         element: <CommentariesRoute />,
       },
       { path: "patristics", element: <PatristicsIndexRoute /> },
+      { path: "patristics/:work", element: <PatristicsWorkRedirect /> },
       { path: "patristics/:work/:section", element: <PatristicsRoute /> },
       { path: "settings", element: <SettingsRoute /> },
       { path: "attributions", element: <AttributionsRoute /> },
