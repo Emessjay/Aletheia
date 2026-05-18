@@ -97,12 +97,26 @@ function buildPayload(state: {
   };
 }
 
-function persist(state: { themes: Record<string, Theme>; activeThemeId: string }) {
+function persist(
+  state: { themes: Record<string, Theme>; activeThemeId: string },
+  opts?: { immediate?: boolean },
+) {
   const payload = buildPayload(state);
   if (typeof window !== "undefined") {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
   }
-  writeDiskDebounced(payload);
+  // Structural changes (delete, rename, duplicate, switch active theme) skip
+  // the debounce so the on-disk record matches in-memory state immediately —
+  // otherwise an app close within 200ms would lose the change, and the next
+  // launch's `hydrateFromDisk` would clobber localStorage with the stale file.
+  // Only setOverride keeps the debounce, since it can fire 60×/sec during a
+  // color-picker drag.
+  if (opts?.immediate) {
+    writeDiskDebounced.flush();
+    void writePreferencesToDisk(payload);
+  } else {
+    writeDiskDebounced(payload);
+  }
 }
 
 function sanitizeOverrides(
@@ -196,8 +210,7 @@ export const useThemeStore = create<ThemeState>((set, get) => {
     setActiveTheme: (id) => {
       const { themes } = get();
       if (!themes[id]) return;
-      const next = { ...get(), activeThemeId: id };
-      persist(next);
+      persist({ themes, activeThemeId: id }, { immediate: true });
       set({ activeThemeId: id });
     },
 
@@ -222,7 +235,7 @@ export const useThemeStore = create<ThemeState>((set, get) => {
       delete nextScheme[key];
       const updated: Theme = { ...t, [scheme]: nextScheme };
       const nextThemes = { ...themes, [activeThemeId]: updated };
-      persist({ themes: nextThemes, activeThemeId });
+      persist({ themes: nextThemes, activeThemeId }, { immediate: true });
       set({ themes: nextThemes });
     },
 
@@ -232,7 +245,7 @@ export const useThemeStore = create<ThemeState>((set, get) => {
       if (!t || t.builtIn) return;
       const updated: Theme = { ...t, light: {}, dark: {} };
       const nextThemes = { ...themes, [activeThemeId]: updated };
-      persist({ themes: nextThemes, activeThemeId });
+      persist({ themes: nextThemes, activeThemeId }, { immediate: true });
       set({ themes: nextThemes });
     },
 
@@ -248,7 +261,7 @@ export const useThemeStore = create<ThemeState>((set, get) => {
         dark: { ...src.dark },
       };
       const nextThemes = { ...themes, [id]: copy };
-      persist({ themes: nextThemes, activeThemeId: id });
+      persist({ themes: nextThemes, activeThemeId: id }, { immediate: true });
       set({ themes: nextThemes, activeThemeId: id });
       return id;
     },
@@ -261,7 +274,7 @@ export const useThemeStore = create<ThemeState>((set, get) => {
       delete next[id];
       const nextActive =
         activeThemeId === id ? DEFAULT_THEME_ID : activeThemeId;
-      persist({ themes: next, activeThemeId: nextActive });
+      persist({ themes: next, activeThemeId: nextActive }, { immediate: true });
       set({ themes: next, activeThemeId: nextActive });
     },
 
@@ -273,7 +286,7 @@ export const useThemeStore = create<ThemeState>((set, get) => {
       if (!trimmed) return;
       const updated: Theme = { ...t, name: trimmed };
       const nextThemes = { ...themes, [id]: updated };
-      persist({ themes: nextThemes, activeThemeId });
+      persist({ themes: nextThemes, activeThemeId }, { immediate: true });
       set({ themes: nextThemes });
     },
 
@@ -290,7 +303,7 @@ export const useThemeStore = create<ThemeState>((set, get) => {
       // Imports come in as user-owned regardless of any builtIn flag in the file.
       const entry: Theme = { ...sanitized, id: targetId, builtIn: false };
       const nextThemes = { ...themes, [targetId]: entry };
-      persist({ themes: nextThemes, activeThemeId });
+      persist({ themes: nextThemes, activeThemeId }, { immediate: true });
       set({ themes: nextThemes });
       return targetId;
     },
