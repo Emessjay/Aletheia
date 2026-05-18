@@ -3,5 +3,18 @@
     "allow": [
       "Bash(npx tsc:*)"
     ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./.claude/hooks/auditor-no-code.sh"
+          }
+        ]
+      }
+    ]
   }
 }

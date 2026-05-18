@@ -37,3 +37,6 @@ __pycache__/
 # OS
 .DS_Store
 *.log
+
+# Auditor system per-worker state (see scripts/spawn-worker.sh, AUDITOR.md)
+.auditor-state/

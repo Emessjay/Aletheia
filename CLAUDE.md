@@ -1,5 +1,15 @@
 # Aletheia — Claude project notes
 
+## Auditor system
+
+If you were booted by `aletheia-audit` (env `ALETHEIA_ROLE=auditor`),
+read [AUDITOR.md](AUDITOR.md) — you are the supervisor and a PreToolUse
+hook will block you from editing source code. If you were booted by
+`aletheia-worker` inside an `aletheia-<slug>/` worktree, read
+[WORKER.md](WORKER.md) — you are a worker and report status via
+`./scripts/worker-done.sh` and `./scripts/worker-blocked.sh`. Either
+way, the rest of this file still applies.
+
 ## Worktree-per-feature
 
 Before starting work on any non-trivial feature, create a git worktree for it
