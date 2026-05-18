@@ -70,12 +70,18 @@ for state_file in "${state_files[@]}"; do
 
     printf "%-32s %-10s %-40s %-7s %-8s\n" "$slug" "$state" "$branch" "$ahead" "$age"
 
-    # Inline annotation: blocked_reason, summary, or pending mailbox.
+    # Inline annotation: blocked_reason, summary, orphaned hint, or
+    # pending mailbox.
     if [[ "$state" == "blocked" && -n "$blocked_reason" ]]; then
         echo "    blocked: $blocked_reason"
     fi
     if [[ "$state" == "done" && -n "$summary" ]]; then
         echo "    summary: $summary"
+    fi
+    if [[ "$state" == "orphaned" ]]; then
+        echo "    orphaned: auditor exited while this worker was active"
+        echo "      resume: aletheia-worker-resume $slug"
+        echo "      cancel: ./scripts/cancel-worker.sh $slug"
     fi
     mailbox="$state_dir/$slug.mailbox"
     if [[ -s "$mailbox" ]]; then

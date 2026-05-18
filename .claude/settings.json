@@ -37,6 +37,17 @@
           }
         ]
       }
+    ],
+    "SessionEnd": [
+      {
+        "matcher": "logout|prompt_input_exit|bypass_permissions_disabled|other",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./.claude/hooks/auditor-shutdown.sh"
+          }
+        ]
+      }
     ]
   }
 }

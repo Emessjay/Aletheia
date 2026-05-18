@@ -43,8 +43,25 @@ paste so multi-line messages arrive as one prompt.
 At the start of every user turn:
 
 1. Run `./scripts/list-workers.sh`. Incorporate the state into your
-   response. Surface `blocked` workers proactively — they need your input
-   even if the user did not ask about them.
+   response. Surface `blocked` and `orphaned` workers proactively —
+   both need your input even if the user did not ask about them.
+
+When you see `orphaned` workers (state set by the SessionEnd hook
+when a previous auditor session was shut down), this is the first
+turn of a new auditor process. For each orphaned worker, decide and
+propose to the user:
+
+- **Resume.** Run `aletheia-worker-resume <slug>` if the work is
+  still relevant — the worker's worktree, branch, commits, and
+  session ID are preserved; only its claude process was killed. The
+  resume revives it in a fresh tmux window using `--resume` so the
+  conversation continues from where it left off.
+- **Cancel.** Run `./scripts/cancel-worker.sh <slug>` if the task is
+  no longer relevant or the work is unsalvageable.
+
+Surface the decision to the user before acting if any orphaned
+worker has unmerged committed work that represents nontrivial
+effort.
 
 When the user asks for new work:
 
