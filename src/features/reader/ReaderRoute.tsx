@@ -17,7 +17,7 @@ import type {
   WordRow,
 } from "@/db/types";
 import { kvSet } from "@/db/user";
-import { isTauri } from "@/lib/tauri";
+import { getPlatform } from "@/platform";
 import { onAnyScroll } from "@/lib/onScroll";
 import { useSettingsStore } from "@/stores/useSettingsStore";
 import { translationMenuLabel } from "@/domain/translations";
@@ -126,7 +126,7 @@ export function ReaderRoute() {
 
   // Persist last reading position.
   useEffect(() => {
-    if (!valid || !isTauri()) return;
+    if (!valid || !getPlatform().info.isDesktop) return;
     void kvSet(
       "reader.last",
       JSON.stringify({ work, book, chapter: chapterNum }),
@@ -300,7 +300,7 @@ export function ReaderRoute() {
 
   if (!valid) return <Navigate to="/reader/bible/john/1" replace />;
 
-  if (!isTauri()) {
+  if (!getPlatform().info.isDesktop) {
     return (
       <article style={readerWrap}>
         <p style={{ color: "var(--color-fg-muted)" }}>

@@ -7,7 +7,7 @@ import {
   useWorkSections,
 } from "@/db/hooks";
 import type { SectionRow, WorkRow } from "@/db/types";
-import { isTauri } from "@/lib/tauri";
+import { getPlatform } from "@/platform";
 import { SectionBody } from "./SectionBody";
 
 const LANG_ATTR: Record<string, string> = { en: "en", la: "la", gr: "grc" };
@@ -31,7 +31,7 @@ export function PatristicsRoute() {
 
   if (!valid) return <Navigate to="/patristics" replace />;
 
-  if (!isTauri()) {
+  if (!getPlatform().info.isDesktop) {
     return (
       <article style={wrap}>
         <p style={{ color: "var(--color-fg-muted)" }}>

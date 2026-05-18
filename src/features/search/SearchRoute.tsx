@@ -1,14 +1,14 @@
 import { Link, useSearchParams } from "react-router-dom";
 import { useSearch } from "@/db/hooks";
 import { SEARCH_MARK_CLOSE, SEARCH_MARK_OPEN } from "@/db/queries";
-import { isTauri } from "@/lib/tauri";
+import { getPlatform } from "@/platform";
 
 export function SearchRoute() {
   const [params] = useSearchParams();
   const q = params.get("q") ?? "";
   const search = useSearch(q, "en_bsb", 100);
 
-  if (!isTauri()) {
+  if (!getPlatform().info.isDesktop) {
     return (
       <article style={wrap}>
         <p style={{ color: "var(--color-fg-muted)" }}>

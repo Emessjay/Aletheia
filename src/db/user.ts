@@ -1,4 +1,7 @@
-import Database from "@tauri-apps/plugin-sql";
+// User-data CRUD helpers. Persistence is delegated to the platform's
+// UserDataAdapter; this module owns the SQL strings and row-shape contracts.
+
+import { getPlatform } from "@/platform";
 import { nowMs } from "@/lib/time";
 import { newId } from "@/lib/ulid";
 import type {
@@ -15,31 +18,18 @@ export interface ChapterAnnotations {
   notes: NoteRow[];
 }
 
-const USER_DB_URL = "sqlite:aletheia_user.db";
-
-let userPromise: Promise<Database> | null = null;
-
-export function user(): Promise<Database> {
-  if (!userPromise) {
-    userPromise = Database.load(USER_DB_URL);
-  }
-  return userPromise;
-}
-
-export async function userSelect<T>(
+export function userSelect<T>(
   sql: string,
   params: unknown[] = [],
 ): Promise<T[]> {
-  const db = await user();
-  return db.select<T[]>(sql, params);
+  return getPlatform().userData.select<T>(sql, params);
 }
 
-export async function userExecute(
+export function userExecute(
   sql: string,
   params: unknown[] = [],
 ): Promise<void> {
-  const db = await user();
-  await db.execute(sql, params);
+  return getPlatform().userData.execute(sql, params);
 }
 
 // ── Library ──────────────────────────────────────────────────────────────────

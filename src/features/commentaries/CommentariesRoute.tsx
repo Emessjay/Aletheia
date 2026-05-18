@@ -8,7 +8,7 @@ import {
   useCommentaryBooks,
   useCommentaryChapters,
 } from "@/db/hooks";
-import { isTauri } from "@/lib/tauri";
+import { getPlatform } from "@/platform";
 import { commentaryReferenceTranslation } from "@/domain/translations";
 import type { ChapterPayload } from "@/db/queries";
 import type { SectionRow, WorkRow } from "@/db/types";
@@ -26,7 +26,7 @@ export function CommentariesRoute() {
   const chapterParam = params.chapter ?? null;
   const chapter = chapterParam ? Number.parseInt(chapterParam, 10) : null;
 
-  if (!isTauri()) {
+  if (!getPlatform().info.isDesktop) {
     return (
       <article style={wrap}>
         <p style={{ color: "var(--color-fg-muted)" }}>
