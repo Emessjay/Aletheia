@@ -113,5 +113,7 @@ translation or top-level tab. By participating you agree to the
 
 ## License
 
-[MIT](LICENSE). The bundled corpus is separately public domain — see the
+Aletheia is released into the public domain under the
+[CC0 1.0 Universal](LICENSE) dedication — no attribution required, no
+strings attached. The bundled corpus is also public domain; see the
 licensing section above.
