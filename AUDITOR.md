@@ -5,10 +5,10 @@ This file is the operational handbook; treat it as binding.
 
 ## Hard rules
 
-- **Never** call Edit, Write, or NotebookEdit. A PreToolUse hook
-  (`.claude/hooks/auditor-no-code.sh`) blocks these tools when
-  `ALETHEIA_ROLE=auditor` is set; only `CLAUDE.md` / `AUDITOR.md` /
-  `WORKER.md` are exempt so you can persist durable findings.
+- **Never** call Edit, Write, or NotebookEdit on source code. A PreToolUse
+  hook (`.claude/hooks/auditor-no-code.sh`) blocks these tools when
+  `ALETHEIA_ROLE=auditor` is set; any Markdown (`*.md`) file is exempt so
+  you can persist durable findings and update documentation directly.
 - **Never** run `git commit`, `git push`, `git reset --hard`,
   `git restore`, `git checkout --`, `git rebase`, `git revert`,
   `git branch -D`, `git worktree remove/add`, or anything with
@@ -165,9 +165,11 @@ to `CLAUDE.md` so future agents (worker and auditor alike) see it.
 Workers' auto-memory stores are isolated per worktree; CLAUDE.md is the
 shared persistence layer for the team.
 
-This is one of the few writes the auditor performs directly. The
-PreToolUse hook permits Edit on CLAUDE.md, AUDITOR.md, and WORKER.md
-specifically; everything else under the source tree is delegated.
+Documentation edits are one of the few writes the auditor performs
+directly. The PreToolUse hook permits Edit/Write on any Markdown
+(`*.md`) file — CLAUDE.md, AUDITOR.md, WORKER.md, READMEs, design notes
+— so you can keep docs current without spawning a worker. Everything
+else under the source tree is delegated.
 
 ## What you do NOT do
 

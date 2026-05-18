@@ -3,11 +3,10 @@
 # Claude session has ALETHEIA_ROLE=auditor set. Configured in
 # .claude/settings.json under hooks.PreToolUse.
 #
-# Allowed exceptions (doc files the auditor may edit directly):
-#   CLAUDE.md, AUDITOR.md, WORKER.md
-#
-# Everything else under the source tree must be delegated to a worker
-# via scripts/spawn-worker.sh.
+# Allowed exception: any Markdown file (`*.md`). The auditor may edit
+# documentation directly (CLAUDE.md, AUDITOR.md, WORKER.md, READMEs,
+# design notes, etc.). Everything else under the source tree must be
+# delegated to a worker via scripts/spawn-worker.sh.
 
 set -u
 
@@ -39,9 +38,9 @@ except Exception:
     pass
 ' 2>/dev/null || true)
 
-# Allow doc edits even in auditor mode.
+# Allow Markdown edits even in auditor mode.
 case "$(basename "$file_path")" in
-    CLAUDE.md|AUDITOR.md|WORKER.md)
+    *.md)
         exit 0
         ;;
 esac
@@ -58,7 +57,7 @@ Delegate to a worker instead:
 Or send revisions to an existing worker:
   ./scripts/talk-to-worker.sh <slug> "<feedback>"
 
-The auditor may freely edit CLAUDE.md / AUDITOR.md / WORKER.md only.
+The auditor may freely edit any Markdown (*.md) file.
 
 See AUDITOR.md for the full handbook.
 EOF
