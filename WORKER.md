@@ -67,7 +67,7 @@ the wrong place (e.g. typed into a closed prompt), surface this via
 
 ## Effort and pacing
 
-You operate at `medium` effort by default. The auditor's `xhigh` budget
+You operate at `medium` effort by default. The auditor's `high` budget
 is reserved for orchestration and review; yours is reserved for actually
 shipping the work. Don't try to second-guess the split.
 

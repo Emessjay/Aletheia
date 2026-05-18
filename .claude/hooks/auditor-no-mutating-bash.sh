@@ -27,7 +27,7 @@ except Exception:
 # Commands invoked through our sanctioned scripts are always allowed —
 # the scripts internally call git commit / git worktree remove / etc.
 # but they implement the auditor's mandate, not a bypass of it.
-if [[ "$cmd" =~ scripts/(merge|cancel)-worker\.sh ]]; then
+if [[ "$cmd" =~ scripts/(spawn-worker|spawn-pair|spawn-lightweight|merge-worker|merge-lightweight|cancel-worker|talk-to-worker|talk-to-debugger)\.sh ]]; then
     exit 0
 fi
 
@@ -58,13 +58,17 @@ BLOCKED: auditor cannot run mutating git/repo commands directly.
   matched:        $pat
 
 The auditor's sanctioned mutating commands are:
-  ./scripts/spawn-worker.sh    start a worker
-  ./scripts/talk-to-worker.sh  send revisions
-  ./scripts/merge-worker.sh    land a worker's commits onto main
-  ./scripts/cancel-worker.sh   abort a worker
+  ./scripts/spawn-worker.sh        start a worker
+  ./scripts/spawn-pair.sh          start a worker + debugger pair
+  ./scripts/spawn-lightweight.sh   start a lightweight (trivial fix, no worktree)
+  ./scripts/talk-to-worker.sh      send revisions to a worker
+  ./scripts/talk-to-debugger.sh    send a note to a paired debugger
+  ./scripts/merge-worker.sh        land a worker's commits onto main
+  ./scripts/merge-lightweight.sh   fast-forward a lightweight onto main
+  ./scripts/cancel-worker.sh       abort any kind of agent
 
-If you need to change code, spawn a worker. If you need to land
-work onto main, use merge-worker.sh. See AUDITOR.md.
+If you need to change code, spawn an agent. If you need to land work
+onto main, use the appropriate merge script. See AUDITOR.md.
 EOF
         exit 2
     fi

@@ -51,29 +51,50 @@ for state_file in "$state_dir"/*.state; do
     state=""
     summary=""
     blocked_reason=""
+    role="worker"
+    pair_state=""
     while IFS='=' read -r k v; do
         case "$k" in
             slug)           slug="$v" ;;
             state)          state="$v" ;;
             summary)        summary="$v" ;;
             blocked_reason) blocked_reason="$v" ;;
+            role)           role="$v" ;;
+            pair_state)     pair_state="$v" ;;
         esac
     done < "$state_file"
     [[ -z "$slug" || -z "$state" ]] && continue
 
-    printf '%s=%s\n' "$slug" "$state" >> "$new_sentinel"
+    # Sentinel tracks both state and pair_state so an `awaiting-review`
+    # → `escalated` transition is reported even when the outer state
+    # stayed `running` for a moment.
+    printf '%s=%s|%s\n' "$slug" "$state" "$pair_state" >> "$new_sentinel"
 
-    prev=""
+    prev_line=""
+    prev_state=""
+    prev_pair=""
     if [[ -f "$sentinel" ]]; then
-        prev=$(grep "^${slug}=" "$sentinel" 2>/dev/null | head -1 | cut -d= -f2-)
+        prev_line=$(grep "^${slug}=" "$sentinel" 2>/dev/null | head -1 | cut -d= -f2-)
+        prev_state="${prev_line%%|*}"
+        prev_pair="${prev_line#*|}"
     fi
-    if [[ "$state" == "$prev" ]]; then
+    if [[ "$state" == "$prev_state" && "$pair_state" == "$prev_pair" ]]; then
         continue
     fi
+
+    label="$role"
+    [[ -z "$label" || "$label" == "worker" ]] && label="worker"
+
+    # Pair-specific transitions take precedence over the generic state.
+    if [[ "$pair_state" == "escalated" && "$prev_pair" != "escalated" ]]; then
+        printf 'pair %s escalated: %s\n' "$slug" "${blocked_reason:-(no reason)}"
+        continue
+    fi
+
     case "$state" in
-        done)      printf 'worker %s done: %s\n' "$slug" "${summary:-(no summary)}" ;;
-        blocked)   printf 'worker %s blocked: %s\n' "$slug" "${blocked_reason:-(no reason)}" ;;
-        cancelled) printf 'worker %s cancelled\n' "$slug" ;;
+        done)      printf '%s %s done: %s\n' "$label" "$slug" "${summary:-(no summary)}" ;;
+        blocked)   printf '%s %s blocked: %s\n' "$label" "$slug" "${blocked_reason:-(no reason)}" ;;
+        cancelled) printf '%s %s cancelled\n' "$label" "$slug" ;;
         # running / merged / orphaned: not reported here.
     esac
 done

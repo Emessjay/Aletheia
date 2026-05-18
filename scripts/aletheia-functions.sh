@@ -58,19 +58,29 @@ aletheia-dashboard() {
 aletheia-audit() {
     cd ~/Programs/Aletheia || return
     local task="$*"
-    local prompt="**read AUDITOR.md before you act — you orchestrate other agents, you do not code yourself**"
+    local prompt="**read AUDITOR.md before you act — you orchestrate other agents, you do not code yourself**
+
+On your first turn, invoke the \`loop\` skill with no interval (self-paced
+mode). The loop's task: \"Check ./scripts/list-workers.sh, react to any
+done / blocked / orphaned / pair-escalated workers, then ScheduleWakeup
+sized to the next thing you're waiting on (60s if a worker is mid-review,
+1200–1800s if everything is idle). Do not chat with the user when
+there is no orchestration work to do — schedule the next wake and stop.\""
     if [[ -n "$task" ]]; then
         prompt="$prompt
 
 Initial task: $task"
     fi
-    ALETHEIA_ROLE=auditor claude --effort xhigh --name auditor "$prompt"
+    ALETHEIA_ROLE=auditor claude --effort high --name auditor "$prompt"
 }
 
 # Resume the most recent auditor session in the main worktree.
+# The /loop is part of the prior session's state, so --continue inherits
+# it. If the loop was somehow lost, the auditor's recent message history
+# will tell them; they can re-invoke /loop themselves.
 aletheia-audit-resume() {
     cd ~/Programs/Aletheia || return
-    ALETHEIA_ROLE=auditor claude --effort xhigh --name auditor --continue
+    ALETHEIA_ROLE=auditor claude --effort high --name auditor --continue
 }
 
 # -- worker mode --------------------------------------------------------

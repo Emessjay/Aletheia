@@ -34,24 +34,47 @@ fi
 worktree_path=$(grep '^worktree_path=' "$state_file" | head -1 | cut -d= -f2-)
 branch=$(grep '^branch=' "$state_file" | head -1 | cut -d= -f2-)
 state=$(grep '^state=' "$state_file" | head -1 | cut -d= -f2-)
+role=$(grep '^role=' "$state_file" | head -1 | cut -d= -f2-)
+role="${role:-worker}"
+pair_mode=$(grep '^pair_mode=' "$state_file" | head -1 | cut -d= -f2-)
 
 if [[ "$state" == "merged" ]]; then
-    echo "error: worker $slug was already merged; nothing to cancel" >&2
+    echo "error: $role $slug was already merged; nothing to cancel" >&2
     exit 1
 fi
 
-# Kill the tmux window if it's alive.
+# Kill the agent's tmux window(s) if alive. Workers use the bare slug;
+# lightweights add -light; debuggers in a pair add -dbg.
 if command -v tmux >/dev/null 2>&1; then
-    tmux kill-window -t "aletheia-workers:$slug" 2>/dev/null || true
+    case "$role" in
+        lightweight)
+            tmux kill-window -t "aletheia-workers:${slug}-light" 2>/dev/null || true
+            ;;
+        *)
+            tmux kill-window -t "aletheia-workers:$slug" 2>/dev/null || true
+            if [[ "$pair_mode" == "paired" ]]; then
+                tmux kill-window -t "aletheia-workers:${slug}-dbg" 2>/dev/null || true
+            fi
+            ;;
+    esac
 fi
 
-# Force-remove the worktree (uncommitted changes are discarded).
-if [[ -d "$worktree_path" ]]; then
-    git -C "$repo_root" worktree remove --force "$worktree_path" 2>/dev/null || true
+if [[ "$role" == "lightweight" ]]; then
+    # Lightweight has no worktree — its "worktree_path" is the main
+    # checkout. Switch back to main and delete the branch.
+    current=$(git -C "$repo_root" branch --show-current)
+    if [[ "$current" == "$branch" ]]; then
+        git -C "$repo_root" checkout main 2>/dev/null || true
+    fi
+    git -C "$repo_root" branch -D "$branch" 2>/dev/null || true
+else
+    # Force-remove the worktree (uncommitted changes are discarded).
+    if [[ -d "$worktree_path" ]]; then
+        git -C "$repo_root" worktree remove --force "$worktree_path" 2>/dev/null || true
+    fi
+    # Force-delete the branch.
+    git -C "$repo_root" branch -D "$branch" 2>/dev/null || true
 fi
-
-# Force-delete the branch.
-git -C "$repo_root" branch -D "$branch" 2>/dev/null || true
 
 # Mark state cancelled.
 now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
@@ -68,10 +91,19 @@ mv "$tmp" "$state_file"
 # Drop the mailbox.
 rm -f "$state_dir/$slug.mailbox"
 
-echo "cancelled $slug:"
-echo "  - killed tmux window aletheia-workers:$slug"
-echo "  - force-removed worktree $worktree_path"
+echo "cancelled $role $slug:"
+if [[ "$role" == "lightweight" ]]; then
+    echo "  - killed tmux window aletheia-workers:${slug}-light"
+    echo "  - restored main checkout to 'main'"
+else
+    echo "  - killed tmux window aletheia-workers:$slug"
+    [[ "$pair_mode" == "paired" ]] && echo "  - killed tmux window aletheia-workers:${slug}-dbg"
+    echo "  - force-removed worktree $worktree_path"
+fi
 echo "  - force-deleted branch $branch"
 echo "  - mailbox cleared, state set to cancelled"
 echo
-echo "respawn with: ./scripts/spawn-worker.sh $slug \"<reformulated task>\""
+case "$role" in
+    lightweight) echo "respawn with: ./scripts/spawn-lightweight.sh $slug \"<reformulated task>\"" ;;
+    *) echo "respawn with: ./scripts/spawn-worker.sh $slug \"<reformulated task>\"" ;;
+esac

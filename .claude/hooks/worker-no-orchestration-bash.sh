@@ -25,12 +25,16 @@ except Exception:
     pass
 ' 2>/dev/null || true)
 
-# Workers must not invoke any of these.
+# Workers must not invoke any of these. Note: worker-handoff.sh IS
+# allowed for paired workers — it's the worker-side counterpart of
+# debugger-handoff.sh, not an orchestration command.
 block_patterns=(
-    'scripts/spawn-worker\.sh'
-    'scripts/merge-worker\.sh'
+    'scripts/spawn-[a-z]+\.sh'
+    'scripts/merge-[a-z]+\.sh'
     'scripts/cancel-worker\.sh'
-    'scripts/talk-to-worker\.sh'
+    'scripts/talk-to-[a-z]+\.sh'
+    'scripts/debugger-(handoff|approve|blocked)\.sh'
+    'scripts/lightweight-(done|blocked)\.sh'
 )
 
 for pat in "${block_patterns[@]}"; do
@@ -41,8 +45,9 @@ BLOCKED: workers cannot run orchestration scripts.
   matched: $pat
 
 Workers communicate state with:
-  ./scripts/worker-done.sh "<summary>"     mark task complete
-  ./scripts/worker-blocked.sh "<reason>"   ask the auditor to decide
+  ./scripts/worker-done.sh "<summary>"      mark task complete (solo)
+  ./scripts/worker-handoff.sh "<summary>"   hand off to debugger (paired)
+  ./scripts/worker-blocked.sh "<reason>"    ask the auditor to decide
 
 The auditor decides what to merge, cancel, or spawn next.
 See WORKER.md.

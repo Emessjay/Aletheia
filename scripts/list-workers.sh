@@ -35,7 +35,7 @@ if command -v tmux >/dev/null 2>&1 \
     echo
 fi
 
-printf "%-32s %-10s %-40s %-7s %-8s\n" "SLUG" "STATE" "BRANCH" "AHEAD" "AGE"
+printf "%-28s %-12s %-10s %-32s %-7s %-7s %-8s\n" "SLUG" "KIND" "STATE" "BRANCH" "AHEAD" "ROUNDS" "AGE"
 
 for state_file in "${state_files[@]}"; do
     slug=$(grep '^slug=' "$state_file" | head -1 | cut -d= -f2-)
@@ -44,9 +44,26 @@ for state_file in "${state_files[@]}"; do
     spawned=$(grep '^spawned_at=' "$state_file" | head -1 | cut -d= -f2-)
     summary=$(grep '^summary=' "$state_file" | head -1 | cut -d= -f2-)
     blocked_reason=$(grep '^blocked_reason=' "$state_file" | head -1 | cut -d= -f2-)
+    # New per-tier fields may be absent on older or simpler state files;
+    # tolerate via `|| true` so set -e / pipefail doesn't kill the loop.
+    role=$(grep '^role=' "$state_file" | head -1 | cut -d= -f2- || true)
+    pair_mode=$(grep '^pair_mode=' "$state_file" | head -1 | cut -d= -f2- || true)
+    pair_state=$(grep '^pair_state=' "$state_file" | head -1 | cut -d= -f2- || true)
+    review_rounds=$(grep '^review_rounds=' "$state_file" | head -1 | cut -d= -f2- || true)
+    review_cap=$(grep '^review_cap=' "$state_file" | head -1 | cut -d= -f2- || true)
 
     if [[ "$show_all" -eq 0 && ( "$state" == "merged" || "$state" == "cancelled" ) ]]; then
         continue
+    fi
+
+    # Pretty kind: worker | pair | lightweight.
+    kind="${role:-worker}"
+    [[ "$pair_mode" == "paired" ]] && kind="pair"
+
+    # Rounds column: "-" for solo workers/lightweights, "N/M" for pairs.
+    rounds="-"
+    if [[ "$pair_mode" == "paired" ]]; then
+        rounds="${review_rounds:-0}/${review_cap:-?}"
     fi
 
     # Count commits ahead of main.
@@ -68,7 +85,7 @@ for state_file in "${state_files[@]}"; do
         fi
     fi
 
-    printf "%-32s %-10s %-40s %-7s %-8s\n" "$slug" "$state" "$branch" "$ahead" "$age"
+    printf "%-28s %-12s %-10s %-32s %-7s %-7s %-8s\n" "$slug" "$kind" "$state" "$branch" "$ahead" "$rounds" "$age"
 
     # Inline annotation: blocked_reason, summary, orphaned hint, or
     # pending mailbox.
@@ -78,10 +95,18 @@ for state_file in "${state_files[@]}"; do
     if [[ "$state" == "done" && -n "$summary" ]]; then
         echo "    summary: $summary"
     fi
+    if [[ "$pair_mode" == "paired" && -n "$pair_state" && "$state" == "running" ]]; then
+        echo "    pair: $pair_state (rounds $rounds)"
+    fi
     if [[ "$state" == "orphaned" ]]; then
-        echo "    orphaned: auditor exited while this worker was active"
-        echo "      resume: aletheia-worker-resume $slug"
-        echo "      cancel: ./scripts/cancel-worker.sh $slug"
+        echo "    orphaned: auditor exited while this $kind was active"
+        if [[ "$role" == "lightweight" ]]; then
+            echo "      lightweights are not resume-friendly; cancel and respawn:"
+            echo "      cancel: ./scripts/cancel-worker.sh $slug"
+        else
+            echo "      resume: aletheia-worker-resume $slug"
+            echo "      cancel: ./scripts/cancel-worker.sh $slug"
+        fi
     fi
     mailbox="$state_dir/$slug.mailbox"
     if [[ -s "$mailbox" ]]; then

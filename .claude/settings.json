@@ -12,6 +12,10 @@
           {
             "type": "command",
             "command": "./.claude/hooks/auditor-no-code.sh"
+          },
+          {
+            "type": "command",
+            "command": "./.claude/hooks/debugger-no-code.sh"
           }
         ]
       },
@@ -25,6 +29,14 @@
           {
             "type": "command",
             "command": "./.claude/hooks/worker-no-orchestration-bash.sh"
+          },
+          {
+            "type": "command",
+            "command": "./.claude/hooks/lightweight-no-orchestration-bash.sh"
+          },
+          {
+            "type": "command",
+            "command": "./.claude/hooks/debugger-no-orchestration-bash.sh"
           }
         ]
       },
@@ -34,6 +46,14 @@
           {
             "type": "command",
             "command": "./.claude/hooks/auditor-no-editing-subagents.sh"
+          },
+          {
+            "type": "command",
+            "command": "./.claude/hooks/lightweight-no-editing-subagents.sh"
+          },
+          {
+            "type": "command",
+            "command": "./.claude/hooks/debugger-no-editing-subagents.sh"
           }
         ]
       }
