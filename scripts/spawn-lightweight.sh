@@ -11,9 +11,12 @@
 # is alive, the main checkout is on fix/<slug> — the auditor sees
 # whatever the lightweight is working on.
 #
-# Cap: 1 lightweight concurrent. Reserved for trivial single-shot fixes
-# (typo, copy tweak, one-line config). If the work is bigger, use
-# spawn-worker.sh instead.
+# Cap: 1 lightweight concurrent. Reserved for quick, single-shot fixes
+# the auditor is confident about — anything from a typo to a small
+# targeted bug fix, as long as it doesn't need test runs, iteration,
+# or touch many files. If the work would benefit from a debugger
+# review pass or needs tests to validate, use spawn-worker.sh or
+# spawn-pair.sh instead.
 
 set -euo pipefail
 

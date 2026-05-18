@@ -24,11 +24,11 @@ This file is the operational handbook; treat it as binding.
   `Plan`, `claude-code-guide`, and `statusline-setup` are allowed —
   these are read-only or non-coding by design.
 - **Never** spawn an auditor from inside the auditor. No sub-supervisors.
-- Delegate every change — even trivial typo fixes — to an agent. For
-  truly small tasks, the lightweight tier exists so you don't pay
-  worktree + npm-install overhead (see "Choosing the right tier"
-  below). The cost of role drift ("I'll just fix this one thing") is
-  structural and destroys the value of the system.
+- Delegate every change to an agent. For quick fixes you're confident
+  about, the lightweight tier exists so you don't pay worktree +
+  npm-install overhead (see "Choosing the right tier" below). The cost
+  of role drift ("I'll just fix this one thing") is structural and
+  destroys the value of the system.
 - You may freely call Read, Glob, Grep, Bash (read-only), and the
   read-only Agent sub-agents (Explore, Plan). Anything that does not
   mutate the main worktree's source tree is fair game.
@@ -58,18 +58,23 @@ The loop is the backup for transitions surfaced but not yet acted on.
 
 You have three spawn options. Pick the cheapest that fits:
 
-| tier         | when                                              | spawn script                            |
-| ------------ | ------------------------------------------------- | --------------------------------------- |
-| lightweight  | Trivial fix: typo, copy tweak, one-line config    | `./scripts/spawn-lightweight.sh`        |
-| worker       | Modest change where one auditor review suffices   | `./scripts/spawn-worker.sh`             |
-| pair         | Iterative work, UI, refactor with many touchpoints| `./scripts/spawn-pair.sh`               |
+| tier         | when                                                                | spawn script                            |
+| ------------ | ------------------------------------------------------------------- | --------------------------------------- |
+| lightweight  | Quick fix you're confident about — no iteration, no tests needed    | `./scripts/spawn-lightweight.sh`        |
+| worker       | Modest change where one auditor review suffices                     | `./scripts/spawn-worker.sh`             |
+| pair         | Iterative work, UI, refactor with many touchpoints, real test suite | `./scripts/spawn-pair.sh`               |
 
 - **lightweight** runs in the main checkout on `fix/<slug>` (no
-  worktree), at Sonnet + medium effort. The main checkout switches
-  branches while the lightweight is alive; `merge-lightweight.sh`
-  restores it. Cap: 1 concurrent. If a lightweight's brief turns out to
-  be non-trivial, it will escalate via `lightweight-blocked.sh` rather
-  than turn into a worker by stealth.
+  worktree), at Sonnet + medium effort. Use it for *any* quick fix
+  you're confident in the framing of — typos, copy tweaks, config
+  one-liners, small targeted bug fixes, missing imports, constants,
+  CSS-color changes. The disqualifiers are needing test runs, needing
+  iteration, or touching many files — those become workers. The main
+  checkout switches branches while the lightweight is alive;
+  `merge-lightweight.sh` restores it. Cap: 1 concurrent. If a
+  lightweight discovers the task is bigger than it looked, it escalates
+  via `lightweight-blocked.sh` rather than silently turning into a
+  worker.
 - **worker** is the existing tier: dedicated worktree at
   `../aletheia-<slug>/`, Opus, medium effort by default, single
   auditor review at the end. Cap: 5 concurrent (pairs count as one).
@@ -144,7 +149,8 @@ When the user (or your own loop tick) prompts new work:
    merge order matters and concurrent edits will fight.
 3. **Pick a tier.** Use the table above. Default to **worker** when in
    doubt; bump to **pair** if you can predict iteration; drop to
-   **lightweight** if it's genuinely a one-line change.
+   **lightweight** if the change is small, scoped, and won't need
+   tests or a back-and-forth.
 4. **Spec (pairs only, optional for workers).** Write
    `.auditor-state/<slug>.spec.md` first. Without it `spawn-pair.sh`
    refuses.
@@ -282,7 +288,8 @@ else under the source tree is delegated.
 ## What you do NOT do
 
 - You do not write production code, even one line. Spawn a lightweight
-  if it's a typo; spawn a worker otherwise.
+  for a quick scoped fix; spawn a worker (or pair) for anything that
+  needs review, tests, or iteration.
 - You do not run `npm test`, `npm run build`, or `cargo check` in the
   main worktree. Workers run them in their worktrees; debuggers run
   them in their pair's shared worktree.
