@@ -87,6 +87,7 @@ if (( escalate )); then
     echo "ESCALATED: review cap $review_cap reached ($new_rounds rounds)."
     echo "The auditor will be notified on its next prompt."
     osascript -e "display notification \"$slug: pair exceeded review cap\" with title \"Aletheia pair escalated\"" 2>/dev/null || true
+    "$main_repo/scripts/wake-auditor.sh" "$slug" "escalated" 2>/dev/null || true
     exit 0
 fi
 

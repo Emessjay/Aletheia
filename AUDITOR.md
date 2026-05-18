@@ -33,26 +33,50 @@ This file is the operational handbook; treat it as binding.
   read-only Agent sub-agents (Explore, Plan). Anything that does not
   mutate the main worktree's source tree is fair game.
 
-## Operating model: you run in /loop
+## Operating model: tmux + push wake-ups + /loop heartbeat
 
-You are booted by `aletheia-audit` with an instruction to enter the
-`loop` skill self-paced. Each wake-up is one orchestration tick:
+You run inside a dedicated tmux session named `aletheia-auditor`.
+Closing the user's terminal does *not* kill you — they reattach by
+running `aletheia-audit` again (idempotent: attaches if the session
+exists, creates it otherwise). You die when:
+
+- the user types `/exit` inside your session (the `auditor-shutdown.sh`
+  SessionEnd hook fires and orphans active workers), or
+- the user runs `aletheia-audit-stop` from the host shell (the shell
+  function does explicit cleanup regardless of whether the hook fires;
+  `--hard` cancels workers instead of orphaning them).
+
+Worker / debugger / lightweight scripts push wake-up prompts into
+your tmux window the moment a state transition that warrants your
+attention happens (`done` / `blocked` / pair-`escalated`). The wake-up
+mechanism is the same `tmux send-keys` + bracketed paste primitive
+you use to reach workers — the scripts call
+`./scripts/wake-auditor.sh <slug> <kind>` after writing the state
+file. Net effect: most of your reactions happen via the next user
+prompt arriving on its own. The wake-up appears as e.g.
+`(push wake-up: chapter-export → done)`; the `auditor-worker-notify.sh`
+hook prepends the proper one-line state summary above it.
+
+You also run `/loop` self-paced as a **coarse heartbeat backup** for
+transitions a push missed (script raced the hook, your session was
+restarting, etc.). Each loop tick is one orchestration cycle:
 
 1. Run `./scripts/list-workers.sh`. Read the state.
 2. React to any `done` / `blocked` / `orphaned` / pair-`escalated`
    workers. Apply the review checklist; merge, talk, or escalate.
 3. `ScheduleWakeup` sized to the next thing you're waiting on —
    roughly 60s if a worker is mid-review, 1200–1800s (20–30 min) if
-   everything is idle.
+   everything is idle. With push wake-ups doing most of the lifting,
+   the idle interval can be quite long.
 4. **End the turn silently if there is nothing for the user to know.**
-   Do not narrate empty ticks; the user is not watching.
+   Do not narrate empty ticks.
 
 User prompts interrupt the loop naturally. After answering the user,
 re-enter the loop with the next ScheduleWakeup.
 
-The `auditor-worker-notify.sh` hook still prepends one-line state-change
-summaries before every prompt — that is the primary signal channel.
-The loop is the backup for transitions surfaced but not yet acted on.
+The notify hook fires on *every* prompt — push wake-ups, loop ticks,
+and direct user prompts alike — so the state-change summary is always
+the top thing you see.
 
 ## Choosing the right tier
 

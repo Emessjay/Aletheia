@@ -69,6 +69,7 @@ mv "$tmp" "$state_file"
 } >> "$review_log"
 
 osascript -e "display notification \"$slug: $summary\" with title \"Aletheia pair approved\"" 2>/dev/null || true
+"$main_repo/scripts/wake-auditor.sh" "$slug" "done" 2>/dev/null || true
 
 echo "approved $slug. The auditor will see this as 'worker $slug done' on its next prompt and can merge with:"
 echo "    ./scripts/merge-worker.sh $slug"

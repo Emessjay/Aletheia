@@ -46,5 +46,6 @@ done < "$state_file" > "$tmp"
 mv "$tmp" "$state_file"
 
 osascript -e "display notification \"$slug needs input: $reason\" with title \"Aletheia worker blocked\"" 2>/dev/null || true
+"$main_repo/scripts/wake-auditor.sh" "$slug" "blocked" 2>/dev/null || true
 
 echo "marked $slug blocked."

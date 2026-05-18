@@ -60,5 +60,6 @@ done < "$state_file" > "$tmp"
 mv "$tmp" "$state_file"
 
 osascript -e "display notification \"$slug: $summary\" with title \"Aletheia lightweight done\"" 2>/dev/null || true
+"$main_repo/scripts/wake-auditor.sh" "$slug" "done" 2>/dev/null || true
 
 echo "marked $slug done."

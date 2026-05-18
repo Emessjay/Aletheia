@@ -54,5 +54,6 @@ mv "$tmp" "$state_file"
 } >> "$review_log"
 
 osascript -e "display notification \"$slug: $reason\" with title \"Aletheia debugger blocked\"" 2>/dev/null || true
+"$main_repo/scripts/wake-auditor.sh" "$slug" "blocked" 2>/dev/null || true
 
 echo "blocked $slug for auditor decision: $reason"
