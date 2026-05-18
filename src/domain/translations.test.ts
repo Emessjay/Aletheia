@@ -42,11 +42,13 @@ describe("translations registry", () => {
   });
 });
 
-// Parity test: the Rust audio validator hardcodes its allow-list as
-// `matches!(t, "en_bsb" | "en_kjv" | "en_web")`. We could codegen a JSON file
-// to feed Rust at startup, but a static test is dramatically simpler and the
-// allow-list changes rarely. If you flip hasAudio in the registry, update the
-// matches!() arm in audio.rs to keep this passing.
+// Parity tests: the audio allow-list lives in three places — TypeScript
+// (the `hasAudio` flag here), Rust (`matches!()` in src-tauri/src/audio.rs),
+// and Node (`ALLOWED_TRANSLATIONS` in server/src/routes/audio.ts). All three
+// must agree or the web build serves URLs the desktop side rejects (or vice
+// versa). Codegen would be cleaner but a static read+regex parse is far
+// simpler for a list that changes once a year, so we just verify the
+// invariant.
 describe("audio.rs ↔ translations registry parity", () => {
   it("Rust validate_translation matches audioTranslations()", () => {
     const here = dirname(fileURLToPath(import.meta.url));
@@ -60,6 +62,29 @@ describe("audio.rs ↔ translations registry parity", () => {
     expect(
       m,
       "expected `matches!(t, \"...\" | \"...\")` in src-tauri/src/audio.rs",
+    ).not.toBeNull();
+
+    const ids = (m![1].match(/"[a-z0-9_]+"/g) ?? []).map((s) => s.slice(1, -1));
+    const tsIds = audioTranslations()
+      .map((t) => t.id)
+      .sort();
+    expect([...ids].sort()).toEqual(tsIds);
+  });
+});
+
+describe("server audio.ts ↔ translations registry parity", () => {
+  it("Node ALLOWED_TRANSLATIONS matches audioTranslations()", () => {
+    const here = dirname(fileURLToPath(import.meta.url));
+    const audioTsPath = resolve(here, "../../server/src/routes/audio.ts");
+    const source = readFileSync(audioTsPath, "utf8");
+
+    // Find: `const ALLOWED_TRANSLATIONS = new Set(["en_bsb", "en_kjv", "en_web"]);`
+    const m = source.match(
+      /ALLOWED_TRANSLATIONS\s*=\s*new Set\(\s*\[\s*((?:"[a-z0-9_]+"\s*,?\s*)+)\]/,
+    );
+    expect(
+      m,
+      "expected `ALLOWED_TRANSLATIONS = new Set([...])` in server/src/routes/audio.ts",
     ).not.toBeNull();
 
     const ids = (m![1].match(/"[a-z0-9_]+"/g) ?? []).map((s) => s.slice(1, -1));
