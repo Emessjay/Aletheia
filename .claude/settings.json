@@ -11,11 +11,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "./.claude/hooks/auditor-no-code.sh"
+            "command": "../../Nimbus-workspace/Nimbus/.claude/hooks/auditor-no-code.sh aletheia"
           },
           {
             "type": "command",
-            "command": "./.claude/hooks/debugger-no-code.sh"
+            "command": "../../Nimbus-workspace/Nimbus/.claude/hooks/debugger-no-code.sh aletheia"
           }
         ]
       },
@@ -24,19 +24,19 @@
         "hooks": [
           {
             "type": "command",
-            "command": "./.claude/hooks/auditor-no-mutating-bash.sh"
+            "command": "../../Nimbus-workspace/Nimbus/.claude/hooks/auditor-no-mutating-bash.sh aletheia"
           },
           {
             "type": "command",
-            "command": "./.claude/hooks/worker-no-orchestration-bash.sh"
+            "command": "../../Nimbus-workspace/Nimbus/.claude/hooks/worker-no-orchestration-bash.sh aletheia"
           },
           {
             "type": "command",
-            "command": "./.claude/hooks/lightweight-no-orchestration-bash.sh"
+            "command": "../../Nimbus-workspace/Nimbus/.claude/hooks/lightweight-no-orchestration-bash.sh aletheia"
           },
           {
             "type": "command",
-            "command": "./.claude/hooks/debugger-no-orchestration-bash.sh"
+            "command": "../../Nimbus-workspace/Nimbus/.claude/hooks/debugger-no-orchestration-bash.sh aletheia"
           }
         ]
       },
@@ -45,15 +45,15 @@
         "hooks": [
           {
             "type": "command",
-            "command": "./.claude/hooks/auditor-no-editing-subagents.sh"
+            "command": "../../Nimbus-workspace/Nimbus/.claude/hooks/auditor-no-editing-subagents.sh aletheia"
           },
           {
             "type": "command",
-            "command": "./.claude/hooks/lightweight-no-editing-subagents.sh"
+            "command": "../../Nimbus-workspace/Nimbus/.claude/hooks/lightweight-no-editing-subagents.sh aletheia"
           },
           {
             "type": "command",
-            "command": "./.claude/hooks/debugger-no-editing-subagents.sh"
+            "command": "../../Nimbus-workspace/Nimbus/.claude/hooks/debugger-no-editing-subagents.sh aletheia"
           }
         ]
       }
@@ -63,7 +63,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "./.claude/hooks/auditor-worker-notify.sh"
+            "command": "../../Nimbus-workspace/Nimbus/.claude/hooks/auditor-worker-notify.sh aletheia"
           }
         ]
       }
@@ -74,7 +74,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "./.claude/hooks/auditor-shutdown.sh"
+            "command": "../../Nimbus-workspace/Nimbus/.claude/hooks/auditor-shutdown.sh aletheia"
           }
         ]
       }

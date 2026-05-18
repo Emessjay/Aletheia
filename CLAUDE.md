@@ -2,13 +2,23 @@
 
 ## Auditor system
 
+The agent role handbooks (`AUDITOR.md`, `WORKER.md`, `DEBUGGER.md`,
+`LIGHTWEIGHT.md`) live in the **Nimbus orchestration repo**, not in
+this repo. From Aletheia's root, they are at:
+
+    ../../Nimbus-workspace/Nimbus/
+
 If you were booted by `aletheia-audit` (env `ALETHEIA_ROLE=auditor`),
-read [AUDITOR.md](AUDITOR.md) — you are the supervisor and a PreToolUse
-hook will block you from editing source code. If you were booted by
-`aletheia-worker` inside an `aletheia-<slug>/` worktree, read
-[WORKER.md](WORKER.md) — you are a worker and report status via
-`./scripts/worker-done.sh` and `./scripts/worker-blocked.sh`. Either
-way, the rest of this file still applies.
+read [../../Nimbus-workspace/Nimbus/AUDITOR.md](../../Nimbus-workspace/Nimbus/AUDITOR.md)
+— you are the supervisor and a PreToolUse hook will block you from
+editing source code. If you were booted by `aletheia-worker` inside an
+`aletheia-<slug>/` worktree, read
+[../../Nimbus-workspace/Nimbus/WORKER.md](../../Nimbus-workspace/Nimbus/WORKER.md)
+— you are a worker and report status via `./scripts/worker-done.sh`
+and `./scripts/worker-blocked.sh`. The Nimbus handbooks are written
+for a generic "home repo" — this repo (Aletheia) is the home repo;
+project-specific hygiene lives in the rest of this file. Either way,
+the rest of this file still applies.
 
 ## Project conventions (single source of truth)
 
