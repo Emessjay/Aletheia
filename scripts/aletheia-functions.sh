@@ -2,7 +2,7 @@
 #
 # Source this from your ~/.zshrc:
 #
-#     source ~/Programs/Aletheia/scripts/aletheia-functions.sh
+#     source ~/Programs/Aletheia-workspace/Aletheia/scripts/aletheia-functions.sh
 #
 # The existing `aletheia` / `aletheia-continue` / `aletheia-resume`
 # helpers from the old setup are preserved here so you can replace any
@@ -15,14 +15,14 @@
 #   aletheia                    # just the hygiene prompt
 #   aletheia "implement X"      # hygiene + task
 aletheia() {
-    cd ~/Programs/Aletheia || return
+    cd ~/Programs/Aletheia-workspace/Aletheia || return
     claude "**read CLAUDE.md before you code for essential hygiene instructions**
 
 $*"
 }
 
-aletheia-continue() { cd ~/Programs/Aletheia && claude --continue; }
-aletheia-resume()   { cd ~/Programs/Aletheia && claude --resume;   }
+aletheia-continue() { cd ~/Programs/Aletheia-workspace/Aletheia && claude --continue; }
+aletheia-resume()   { cd ~/Programs/Aletheia-workspace/Aletheia && claude --resume;   }
 
 # -- dashboard ----------------------------------------------------------
 
@@ -40,7 +40,7 @@ aletheia-dashboard() {
     if tmux has-session -t "$session" 2>/dev/null; then
         tmux attach -t "$session"
     else
-        local script='cd ~/Programs/Aletheia && while true; do clear; ./scripts/list-workers.sh --all; sleep 2; done'
+        local script='cd ~/Programs/Aletheia-workspace/Aletheia && while true; do clear; ./scripts/list-workers.sh --all; sleep 2; done'
         tmux new-session -s "$session" "bash -c $(printf '%q' "$script")"
     fi
 }
@@ -59,7 +59,7 @@ aletheia-dashboard() {
 # If the tmux session already exists, the initial task argument is
 # ignored — you can pass any task message via the live claude prompt.
 aletheia-audit() {
-    cd ~/Programs/Aletheia || return
+    cd ~/Programs/Aletheia-workspace/Aletheia || return
     if ! command -v tmux >/dev/null 2>&1; then
         echo "error: tmux is not installed. Install with: brew install tmux" >&2
         return 1
@@ -99,7 +99,7 @@ Initial task: $task"
 # you want to continue the prior conversation. /loop state is part of
 # the resumed session.
 aletheia-audit-resume() {
-    cd ~/Programs/Aletheia || return
+    cd ~/Programs/Aletheia-workspace/Aletheia || return
     if ! command -v tmux >/dev/null 2>&1; then
         echo "error: tmux is not installed. Install with: brew install tmux" >&2
         return 1
@@ -124,7 +124,7 @@ aletheia-audit-resume() {
 #   aletheia-audit-stop           soft: orphan active workers, kill tmux
 #   aletheia-audit-stop --hard    hard: cancel everyone, then kill tmux
 aletheia-audit-stop() {
-    cd ~/Programs/Aletheia || return
+    cd ~/Programs/Aletheia-workspace/Aletheia || return
     local hard=0
     [[ "${1:-}" == "--hard" ]] && hard=1
 
@@ -198,7 +198,7 @@ aletheia-worker-resume() {
 
     local main_repo
     main_repo=$(git worktree list --porcelain 2>/dev/null | awk '/^worktree / { print $2; exit }')
-    [[ -z "$main_repo" ]] && main_repo="$HOME/Programs/Aletheia"
+    [[ -z "$main_repo" ]] && main_repo="$HOME/Programs/Aletheia-workspace/Aletheia"
 
     local state_file="$main_repo/.auditor-state/$slug.state"
     if [[ ! -f "$state_file" ]]; then

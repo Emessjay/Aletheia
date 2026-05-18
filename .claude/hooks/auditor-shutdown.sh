@@ -35,7 +35,7 @@ except Exception:
 ' 2>/dev/null || true)
 fi
 if [[ -z "$repo_root" || ! -d "$repo_root/.auditor-state" ]]; then
-    repo_root="$HOME/Programs/Aletheia"
+    repo_root="$HOME/Programs/Aletheia-workspace/Aletheia"
 fi
 
 state_dir="$repo_root/.auditor-state"

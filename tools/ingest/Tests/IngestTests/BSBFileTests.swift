@@ -4,7 +4,7 @@ import XCTest
 final class BSBFileTests: XCTestCase {
     /// Run only when the actual bsb.txt is present locally; CI may not have it.
     func testParsesRealFile() throws {
-        let url = URL(fileURLWithPath: "/Users/jackporter/Programs/Aletheia/data/sources/bsb/bsb.txt")
+        let url = URL(fileURLWithPath: "/Users/jackporter/Programs/Aletheia-workspace/Aletheia/data/sources/bsb/bsb.txt")
         guard FileManager.default.fileExists(atPath: url.path) else {
             throw XCTSkip("bsb.txt not present at expected path")
         }
