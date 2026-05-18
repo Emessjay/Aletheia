@@ -35,17 +35,17 @@ if command -v tmux >/dev/null 2>&1 \
     echo
 fi
 
-printf "%-32s %-9s %-40s %-7s %-8s\n" "SLUG" "STATE" "BRANCH" "AHEAD" "AGE"
-
-blocked_slugs=()
+printf "%-32s %-10s %-40s %-7s %-8s\n" "SLUG" "STATE" "BRANCH" "AHEAD" "AGE"
 
 for state_file in "${state_files[@]}"; do
     slug=$(grep '^slug=' "$state_file" | head -1 | cut -d= -f2-)
     state=$(grep '^state=' "$state_file" | head -1 | cut -d= -f2-)
     branch=$(grep '^branch=' "$state_file" | head -1 | cut -d= -f2-)
     spawned=$(grep '^spawned_at=' "$state_file" | head -1 | cut -d= -f2-)
+    summary=$(grep '^summary=' "$state_file" | head -1 | cut -d= -f2-)
+    blocked_reason=$(grep '^blocked_reason=' "$state_file" | head -1 | cut -d= -f2-)
 
-    if [[ "$show_all" -eq 0 && "$state" == "merged" ]]; then
+    if [[ "$show_all" -eq 0 && ( "$state" == "merged" || "$state" == "cancelled" ) ]]; then
         continue
     fi
 
@@ -68,18 +68,21 @@ for state_file in "${state_files[@]}"; do
         fi
     fi
 
-    printf "%-32s %-9s %-40s %-7s %-8s\n" "$slug" "$state" "$branch" "$ahead" "$age"
+    printf "%-32s %-10s %-40s %-7s %-8s\n" "$slug" "$state" "$branch" "$ahead" "$age"
 
-    if [[ "$state" == "blocked" ]]; then
-        blocked_slugs+=("$slug")
+    # Inline annotation: blocked_reason, summary, or pending mailbox.
+    if [[ "$state" == "blocked" && -n "$blocked_reason" ]]; then
+        echo "    blocked: $blocked_reason"
+    fi
+    if [[ "$state" == "done" && -n "$summary" ]]; then
+        echo "    summary: $summary"
+    fi
+    mailbox="$state_dir/$slug.mailbox"
+    if [[ -s "$mailbox" ]]; then
+        # Messages are separated by lines containing only `---`; count
+        # separators and add one.
+        msg_count=$(grep -c '^---$' "$mailbox" 2>/dev/null || echo 0)
+        msg_count=$((msg_count + 1))
+        echo "    mailbox: $msg_count message(s) queued (worker is offline)"
     fi
 done
-
-if [[ ${#blocked_slugs[@]} -gt 0 ]]; then
-    echo
-    echo "BLOCKED workers need attention:"
-    for slug in "${blocked_slugs[@]}"; do
-        reason=$(grep '^blocked_reason=' "$state_dir/$slug.state" | head -1 | cut -d= -f2-)
-        echo "  $slug: $reason"
-    done
-fi

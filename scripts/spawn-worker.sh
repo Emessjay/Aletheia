@@ -2,21 +2,58 @@
 # Spawn a worker Claude in a new git worktree.
 #
 # Usage:
-#   ./scripts/spawn-worker.sh <slug> "<task description>"
+#   ./scripts/spawn-worker.sh [--effort LEVEL] <slug> <task>
 #
-# Run by the auditor. Refuses if 5 workers are already active
-# (states `running` or `blocked`).
+#   <task> may be either an inline string, or `@path/to/file.md`
+#   to load the brief from a file. The file form is useful for
+#   structured briefs longer than a comfortable shell argument.
 #
-# Creates ../aletheia-<slug>/ (via scripts/new-worktree.sh) if it does
-# not exist, writes state files under .auditor-state/, then opens a new
-# Terminal.app window that boots `aletheia-worker <slug>`. The shell
-# function lives in scripts/aletheia-functions.sh and must be sourced
-# from your ~/.zshrc for the spawn to succeed.
+#   --effort LEVEL  one of low|medium|high|xhigh|max (default: medium)
+#                   Workers default to medium because the auditor's
+#                   xhigh budget is reserved for orchestration; bump
+#                   to high for tasks that need deep reasoning.
+#
+# Run by the auditor. Refuses if 5 workers are already active (states
+# `running` or `blocked`). Creates ../aletheia-<slug>/ via
+# scripts/new-worktree.sh if it does not exist, writes state files
+# under .auditor-state/, then boots the worker in a tmux window in the
+# shared `aletheia-workers` session.
 
 set -euo pipefail
 
+effort="medium"
+
+# Parse leading --effort flag.
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --effort)
+            effort="${2:-}"
+            shift 2
+            ;;
+        --effort=*)
+            effort="${1#--effort=}"
+            shift
+            ;;
+        -*)
+            echo "error: unknown flag $1" >&2
+            exit 1
+            ;;
+        *)
+            break
+            ;;
+    esac
+done
+
+case "$effort" in
+    low|medium|high|xhigh|max) ;;
+    *)
+        echo "error: invalid --effort '$effort' (must be low|medium|high|xhigh|max)" >&2
+        exit 1
+        ;;
+esac
+
 if [[ $# -lt 2 ]]; then
-    echo "usage: $0 <slug> \"<task>\"" >&2
+    echo "usage: $0 [--effort LEVEL] <slug> <task | @path/to/file>" >&2
     exit 1
 fi
 
@@ -26,6 +63,21 @@ task="$*"
 
 if [[ ! "$slug" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
     echo "error: slug must be lowercase alphanumeric with dashes, got: $slug" >&2
+    exit 1
+fi
+
+# Resolve @file briefs into inline text.
+if [[ "$task" == @* ]]; then
+    task_path="${task#@}"
+    if [[ ! -f "$task_path" ]]; then
+        echo "error: task file $task_path does not exist" >&2
+        exit 1
+    fi
+    task=$(cat "$task_path")
+fi
+
+if [[ -z "$task" ]]; then
+    echo "error: task is empty" >&2
     exit 1
 fi
 
@@ -50,7 +102,7 @@ done
 shopt -u nullglob
 if [[ "$active" -ge 5 ]]; then
     echo "error: $active workers already active (cap is 5)" >&2
-    echo "       merge or fail an existing worker before spawning another." >&2
+    echo "       merge, cancel, or fail an existing worker before spawning another." >&2
     exit 1
 fi
 
@@ -84,6 +136,7 @@ updated_at=$now
 worktree_path=$worktree_path
 branch=$branch
 session_id=$session_id
+effort=$effort
 summary=
 blocked_reason=
 EOF
@@ -93,9 +146,8 @@ rm -f "$state_dir/$slug.mailbox"
 
 # Boot the worker inside a tmux window. All workers share a single
 # detached session named "aletheia-workers"; each worker gets its own
-# window named after its slug. Attach to see them: `tmux attach -t
-# aletheia-workers`. The session auto-vanishes when the last window
-# closes.
+# window named after its slug. The session auto-vanishes when the last
+# window closes.
 tmux_session="aletheia-workers"
 worker_cmd="$repo_root/scripts/aletheia-worker.sh $slug"
 
@@ -114,6 +166,7 @@ echo "spawned worker: $slug"
 echo "  worktree:   $worktree_path"
 echo "  branch:     $branch"
 echo "  session_id: $session_id"
-echo "  task:       $task"
+echo "  effort:     $effort"
+echo "  task:       $(echo "$task" | head -1 | cut -c1-80)$([[ $(echo "$task" | wc -l) -gt 1 ]] && echo ' ...')"
 echo
 echo "attach with: tmux attach -t $tmux_session"

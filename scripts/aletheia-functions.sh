@@ -24,6 +24,27 @@ $*"
 aletheia-continue() { cd ~/Programs/Aletheia && claude --continue; }
 aletheia-resume()   { cd ~/Programs/Aletheia && claude --resume;   }
 
+# -- dashboard ----------------------------------------------------------
+
+# Open a live dashboard of worker state in its own tmux session.
+# Re-runs list-workers.sh every 2 seconds via `watch`. Detach with
+# Ctrl-b d; the session keeps running in the background.
+#
+#   aletheia-dashboard
+aletheia-dashboard() {
+    if ! command -v tmux >/dev/null 2>&1; then
+        echo "error: tmux is not installed. Install with: brew install tmux" >&2
+        return 1
+    fi
+    local session="aletheia-dashboard"
+    if tmux has-session -t "$session" 2>/dev/null; then
+        tmux attach -t "$session"
+    else
+        local script='cd ~/Programs/Aletheia && while true; do clear; ./scripts/list-workers.sh --all; sleep 2; done'
+        tmux new-session -s "$session" "bash -c $(printf '%q' "$script")"
+    fi
+}
+
 # -- auditor mode -------------------------------------------------------
 
 # Boot the auditor in the main worktree. The auditor is the supervisor;
@@ -89,9 +110,11 @@ aletheia-worker-resume() {
         return 1
     fi
 
-    local worktree_path session_id mailbox queued
+    local worktree_path session_id mailbox queued effort
     worktree_path=$(grep '^worktree_path=' "$state_file" | head -1 | cut -d= -f2-)
     session_id=$(grep '^session_id=' "$state_file" | head -1 | cut -d= -f2-)
+    effort=$(grep '^effort=' "$state_file" | head -1 | cut -d= -f2-)
+    effort="${effort:-medium}"
     mailbox="$main_repo/.auditor-state/$slug.mailbox"
 
     if [[ -z "$session_id" ]]; then
@@ -142,9 +165,9 @@ $queued"
     # which is fine.
     local cmd
     if [[ -n "$prompt" ]]; then
-        cmd="claude --resume $(printf '%q' "$session_id") --effort medium --name $(printf '%q' "worker:$slug") $(printf '%q' "$prompt")"
+        cmd="claude --resume $(printf '%q' "$session_id") --effort $(printf '%q' "$effort") --name $(printf '%q' "worker:$slug") $(printf '%q' "$prompt")"
     else
-        cmd="claude --resume $(printf '%q' "$session_id") --effort medium --name $(printf '%q' "worker:$slug")"
+        cmd="claude --resume $(printf '%q' "$session_id") --effort $(printf '%q' "$effort") --name $(printf '%q' "worker:$slug")"
     fi
 
     if tmux has-session -t "$tmux_session" 2>/dev/null; then

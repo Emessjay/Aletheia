@@ -51,6 +51,11 @@ When the user asks for new work:
 5. **Spawn.** Run `./scripts/spawn-worker.sh <slug> "<task>"`.
    The cap is 5 concurrent workers (states `running` + `blocked`); the
    script will refuse if you are at the cap.
+   - Long briefs: write the task to a tempfile and pass `@path/to/file`
+     instead of inline text.
+   - Hard tasks: add `--effort high` (or `xhigh`) before the slug to
+     bump the worker above the medium default. Reserve `xhigh` for
+     genuinely difficult work — the budget is finite.
 
 When a worker reports `done`:
 
@@ -69,6 +74,20 @@ When a worker reports `blocked`:
    user-visible behavior, feature scope), or just *your* judgment
    (architecture, naming, internal API)? Workers tend to over-block on
    things the auditor can decide alone.
+
+When a worker is going off the rails (producing wrong code, stuck in a
+loop, drifting from the brief):
+
+9. **Peek first.** Run `./scripts/worker-output.sh <slug>` to see the
+   worker's current tmux pane buffer. This shows what they are doing
+   right now, including in-progress responses — useful before deciding
+   whether to redirect or abort.
+10. **Abort.** Run `./scripts/cancel-worker.sh <slug>` to kill the tmux
+    window, force-remove the worktree, and delete the branch. Any
+    uncommitted work is lost; committed work on the feature branch is
+    also lost. Use when reframing the task is cheaper than salvaging
+    the current attempt. The state file is preserved as `cancelled`
+    for the record.
 
 ## Review checklist
 

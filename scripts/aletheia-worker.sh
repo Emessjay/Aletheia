@@ -38,6 +38,8 @@ fi
 task=""
 [[ -f "$task_file" ]] && task=$(cat "$task_file")
 session_id=$(grep '^session_id=' "$state_file" | head -1 | cut -d= -f2-)
+effort=$(grep '^effort=' "$state_file" | head -1 | cut -d= -f2-)
+effort="${effort:-medium}"
 
 prompt="**read CLAUDE.md and WORKER.md before you start**
 
@@ -59,7 +61,7 @@ is a fallback for the rare case that the auditor sent a message while
 your session was offline; check it once on startup."
 
 if [[ -n "$session_id" ]]; then
-    exec claude --session-id "$session_id" --effort medium --name "worker:$slug" "$prompt"
+    exec claude --session-id "$session_id" --effort "$effort" --name "worker:$slug" "$prompt"
 else
-    exec claude --effort medium --name "worker:$slug" "$prompt"
+    exec claude --effort "$effort" --name "worker:$slug" "$prompt"
 fi
