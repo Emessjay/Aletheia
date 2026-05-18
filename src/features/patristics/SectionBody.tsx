@@ -26,27 +26,63 @@ interface Props {
 const REF_TOKEN_RE = /\{ref:[^}]*\}/g;
 const PARAGRAPH_BREAK_RE = /\n{2,}/g;
 const INTERNAL_WS_RE = /\s+/g;
+// Migne / Maurist section markers embedded mid-paragraph: "…doctrine. 2. Still,
+// as you nevertheless…". CCEL inherits these from the printed editions but
+// rarely surrounds them with paragraph breaks, so the whole numbered run
+// collapses into one wall of text. Split before the marker when it follows
+// sentence-end punctuation and precedes a capital letter; the number stays as
+// the lead of the new paragraph.
+const MIGNE_MARKER_SPLIT_RE =
+  /(?<=[.!?…”’")\]])\s+(?=\d{1,3}\.\s+[A-Z“"‘'])/g;
+// Luther / Calvin block quotes are sometimes delimited by lone em-dash lines
+// in the source: a paragraph starts with "— …quoted text…" and ends with
+// "…quoted text… —". Lift those into a real <blockquote> and drop the dashes
+// so they don't read like the writer talking to himself.
+const BLOCKQUOTE_DELIM_RE = /^[—–]\s+([\s\S]*?)\s*[—–]$/;
 
 const paraStyle: React.CSSProperties = {
   margin: "0 0 0.9em",
   lineHeight: 1.55,
 };
+const blockquoteStyle: React.CSSProperties = {
+  margin: "0.4em 0 1.1em",
+  padding: "0 0 0 1em",
+  borderLeft: "2px solid var(--color-rule)",
+  color: "var(--color-fg)",
+  fontStyle: "italic",
+  lineHeight: 1.55,
+};
+
+function splitParagraphs(text: string): string[] {
+  return text
+    .split(PARAGRAPH_BREAK_RE)
+    .flatMap((p) => p.split(MIGNE_MARKER_SPLIT_RE))
+    .map((p) => p.replace(INTERNAL_WS_RE, " ").trim())
+    .filter((p) => p.length > 0);
+}
 
 export function SectionBody({ body, citations, lang }: Props) {
   const stripped = body.replace(REF_TOKEN_RE, "");
 
   if (citations.length === 0) {
-    const paragraphs = stripped
-      .split(PARAGRAPH_BREAK_RE)
-      .map((p) => p.replace(INTERNAL_WS_RE, " ").trim())
-      .filter((p) => p.length > 0);
+    const paragraphs = splitParagraphs(stripped);
     return (
       <div lang={lang}>
-        {paragraphs.map((p, i) => (
-          <p key={i} style={paraStyle}>
-            {p}
-          </p>
-        ))}
+        {paragraphs.map((p, i) => {
+          const quoted = p.match(BLOCKQUOTE_DELIM_RE);
+          if (quoted) {
+            return (
+              <blockquote key={i} style={blockquoteStyle}>
+                {quoted[1]}
+              </blockquote>
+            );
+          }
+          return (
+            <p key={i} style={paraStyle}>
+              {p}
+            </p>
+          );
+        })}
       </div>
     );
   }

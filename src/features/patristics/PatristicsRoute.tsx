@@ -1,6 +1,12 @@
 import { Link, Navigate, useParams } from "react-router-dom";
-import { useChildSections, useSection, useSectionCitations, useWorkSections } from "@/db/hooks";
-import type { SectionRow } from "@/db/types";
+import {
+  useChildSections,
+  usePatristicWorks,
+  useSection,
+  useSectionCitations,
+  useWorkSections,
+} from "@/db/hooks";
+import type { SectionRow, WorkRow } from "@/db/types";
 import { isTauri } from "@/lib/tauri";
 import { SectionBody } from "./SectionBody";
 
@@ -58,6 +64,8 @@ function SectionView({
   const childrenLa = useChildSections(workSlug, ordinalPath, "la");
   const citations = useSectionCitations(section.data?.id ?? null);
   const allSections = useWorkSections(workSlug, "en");
+  const allWorks = usePatristicWorks();
+  const work = (allWorks.data ?? []).find((w) => w.slug === workSlug) ?? null;
 
   if (section.isPending) {
     return (
@@ -99,22 +107,38 @@ function SectionView({
   const prev = idx > 0 ? list[idx - 1] : null;
   const next = idx >= 0 && idx < list.length - 1 ? list[idx + 1] : null;
 
+  const heading = parseHeadingLabel(s.label);
+
   return (
     <article style={wrap}>
       <header style={{ marginBottom: "1.75rem" }}>
-        <p className="al-eyebrow">
-          {workSlug.charAt(0).toUpperCase() + workSlug.slice(1)} · {s.kind}
-        </p>
-        {s.label ? (
+        <p className="al-eyebrow">{eyebrowLine(work, workSlug)}</p>
+        {heading ? (
           <h1
             style={{
               fontSize: 24,
-              fontStyle: "italic",
+              fontWeight: 600,
               marginTop: 4,
               color: "var(--color-fg)",
+              lineHeight: 1.25,
             }}
           >
-            {s.label}
+            {heading.lead}
+            {heading.rest ? (
+              <span
+                style={{
+                  display: "block",
+                  fontSize: 18,
+                  fontWeight: 400,
+                  fontStyle: "italic",
+                  color: "var(--color-fg-muted)",
+                  marginTop: 6,
+                  lineHeight: 1.35,
+                }}
+              >
+                {heading.rest}
+              </span>
+            ) : null}
           </h1>
         ) : (
           <p
@@ -306,9 +330,96 @@ function hasMeaningfulBody(s: SectionRow): boolean {
   if (!s.body) return false;
   const trimmed = s.body.trim();
   if (trimmed.length === 0) return false;
-  // Container sections often store only the label in body — don't re-render it.
-  if (s.label && trimmed === s.label.trim()) return false;
+  if (!s.label) return true;
+  const labelKey = normalizeForCompare(s.label);
+  if (labelKey.length === 0) return true;
+  // Container sections often store only the label (or an all-caps / line-wrapped
+  // variant of it) in the body — don't re-render the same words as a paragraph.
+  if (normalizeForCompare(trimmed) === labelKey) return false;
   return true;
+}
+
+function normalizeForCompare(s: string): string {
+  return s.replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+/** Format the workSlug + work title as a small-caps eyebrow. CCEL series slugs
+ *  like "anf01.justin-martyr" are cosmetically ugly; prefer the work's title
+ *  with the series prefix promoted to a short label ("ANF I · Writings of …"). */
+function eyebrowLine(work: WorkRow | null, fallbackSlug: string): string {
+  if (work) {
+    const series = seriesLabel(work.slug);
+    return series ? `${series} · ${work.title}` : work.title;
+  }
+  // Fallback while the works list is loading — strip series prefix at least.
+  const m = fallbackSlug.match(/^(anf\d{2}|npnf[12]\d{2})\.(.+)$/);
+  if (m) {
+    return `${m[1].toUpperCase()} · ${m[2].replace(/-/g, " ")}`;
+  }
+  return fallbackSlug;
+}
+
+/** Map CCEL series slugs ("anf01", "npnf204") to a readable series tag. */
+function seriesLabel(slug: string): string | null {
+  const anf = slug.match(/^anf(\d{2})\./);
+  if (anf) return `ANF ${toRoman(parseInt(anf[1], 10))}`;
+  const npnf = slug.match(/^npnf([12])(\d{2})\./);
+  if (npnf) {
+    const ser = npnf[1] === "1" ? "NPNF¹" : "NPNF²";
+    return `${ser} ${toRoman(parseInt(npnf[2], 10))}`;
+  }
+  return null;
+}
+
+function toRoman(n: number): string {
+  const pairs: Array<[number, string]> = [
+    [10, "X"], [9, "IX"], [5, "V"], [4, "IV"], [1, "I"],
+  ];
+  let out = "";
+  let rem = n;
+  for (const [v, glyph] of pairs) {
+    while (rem >= v) { out += glyph; rem -= v; }
+  }
+  return out;
+}
+
+/** Patristic chapter labels often combine an ordinal rubric with a descriptive
+ *  caption: "Chapter VI.—Charge of atheism refuted." Render the rubric in
+ *  weighted text and the caption in italic underneath, the way a printed page
+ *  splits a chapter number from its subtitle. Returns `null` if the label is
+ *  too short to bother splitting (or empty).
+ *
+ *  When the caption is a long body-excerpt rather than a tight description
+ *  (as happens in Luther's *Bondage of the Will*, where the parser had to
+ *  synthesize a label from the first sentence), drop the caption — showing it
+ *  italicised right above an opening paragraph that begins with the same
+ *  words just looks like a stutter. The shorter, summary-style captions used
+ *  by ANF/NPNF stay. */
+function parseHeadingLabel(
+  label: string | null | undefined,
+): { lead: string; rest: string | null } | null {
+  const raw = (label ?? "").trim();
+  if (!raw) return null;
+  // Drop the trailing-fragment garbage that the ThML label-synthesizer
+  // sometimes leaves behind ("Section XLI. — Sect"). The opening rubric is
+  // structurally sound; the truncated suffix is not.
+  const cleaned = raw.replace(
+    /\s+[—–-]\s+(Sect|Cap|Ch|Bk|Vol|St|S|Pt)\.?$/i,
+    "",
+  );
+  // Split on the first em-/en-dash that separates rubric from caption.
+  const m = cleaned.match(/^(.+?)\s*[—–]\s+(.+)$/);
+  if (m && m[1].length <= 40) {
+    const rest = m[2].trim();
+    // Caption longer than ~70 chars (or trailing in an ellipsis) is almost
+    // always a synthesized snippet rather than a tight description — the
+    // page heading shouldn't show it twice.
+    if (rest.length > 70 || rest.endsWith("…")) {
+      return { lead: m[1].trim(), rest: null };
+    }
+    return { lead: m[1].trim(), rest };
+  }
+  return { lead: cleaned, rest: null };
 }
 
 function mergeChildren(en: SectionRow[], la: SectionRow[]): SectionRow[] {

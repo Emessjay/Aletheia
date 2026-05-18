@@ -517,7 +517,13 @@ private final class ThMLDelegate: NSObject, XMLParserDelegate {
             }
         }
 
-        let stripped = ThMLParser.stripLeadingHeadingParagraphs(from: normalized, label: current.label)
+        var stripped = ThMLParser.stripLeadingHeadingParagraphs(from: normalized, label: current.label)
+        // Body openers in some volumes (notably Luther's Bondage) fuse the
+        // structural rubric and the first prose sentence into one paragraph:
+        // "Sect. XLI.—AND, first of all, let us begin…". The rubric is purely
+        // presentational — its information lives in the section's label — so
+        // strip it from the body to keep the page from repeating itself.
+        stripped = ThMLParser.stripLeadingRubric(from: stripped)
 
         // Container-only sections (e.g. confessions Books) end up with an empty body once
         // their title-page contents are stripped. Still emit them — the UI navigates by
@@ -563,7 +569,11 @@ extension ThMLParser {
         var paragraphs = body.components(separatedBy: "\n\n")
         let labelNorm = label.map(normalizeWhitespace).flatMap { $0.isEmpty ? nil : $0 }
         var stripped = 0
-        let maxStrip = 6
+        // ANF intro pages can pile up a dozen front-matter paragraphs before
+        // the prose proper (work title, translator note, dated bracket, HR,
+        // section sub-heading, …). A tighter cap leaves the HR and pseudo-
+        // headings on the page.
+        let maxStrip = 12
         // The "looks like a volume title" heuristic — short / no-comma / single-sentence —
         // can false-positive on a body opener (e.g. "Whereas in what precedes we have drawn
         // out a sufficient account."). It only fires before any explicit chapter / § / label
@@ -593,19 +603,66 @@ extension ThMLParser {
     /// with any structural prefix stripped — used to synthesize a label when the
     /// source provides only an ordinal.
     static func headingSnippet(from body: String) -> String? {
-        for raw in body.components(separatedBy: "\n\n").prefix(6) {
-            var para = normalizeWhitespace(raw)
+        // 12 (up from 6) so we can see past the front-matter clusters that
+        // some volumes pile up before the first prose paragraph: bare ordinal
+        // markers, work title, translator note, dated bracket, horizontal
+        // rule, chapter ordinal, …
+        for raw in body.components(separatedBy: "\n\n").prefix(12) {
+            // Strip inline scripRef tokens before any further work — they're
+            // editorial cross-reference annotations, not running prose, and
+            // they leak through to the synthesized label otherwise ("…we have
+            // that of {ref:Ecclesiasticus xv"). The token text format mirrors
+            // the renderer's stripping regex (REF_TOKEN_RE).
+            let cleaned = raw.replacingOccurrences(
+                of: #"\{ref:[^}]*\}"#,
+                with: "",
+                options: .regularExpression
+            )
+            var para = normalizeWhitespace(cleaned)
             if para.isEmpty { continue }
             if para.range(of: #"^[—–\-_·•\s]+$"#, options: .regularExpression) != nil { continue }
-            // Skip bare ordinals ("Discourse IV.", "Book I."); the descriptive
-            // text is in a later paragraph.
+            // Skip bare ordinals ("Discourse IV.", "Book I.", "Sect. IX.");
+            // the descriptive text is in a later paragraph. Accepts both the
+            // long forms (Chapter, Section) and CCEL's common abbreviations
+            // (Sect., Cap., Bk.) followed by a roman or arabic numeral.
             if para.range(
-                of: #"^(?i)(chapter|book|discourse|section|letter|treatise|part|article|homily)\s+[ivxlcdm0-9]+\.?$"#,
+                of: #"^(?i)(chapter|book|discourse|section|letter|treatise|part|article|homily|sect|cap|bk|vol)\b\.?\s+[ivxlcdm0-9]+\.?$"#,
                 options: .regularExpression
             ) != nil { continue }
-            // Pull off a "Chapter X.—" / "§N." / "§§1–5." prefix to get the description.
+            // Also skip a paragraph that is *only* a numeral/ordinal — Maurist
+            // editions sometimes float "I.", "1.", or "§ 1" out as their own
+            // paragraph above the section text. Treating that as a snippet
+            // yields useless labels like "Chapter I. — I.".
+            if para.range(
+                of: #"^(?:[IVXLCDM]+|\d{1,3}|§\s*\d{1,3})\.?$"#,
+                options: .regularExpression
+            ) != nil { continue }
+            // Skip a short single-sentence "title" paragraph (e.g. "Apology.",
+            // "The Apology.", "Introduction.") — these reproduce the work or
+            // chapter title and don't summarise the contents. The same shape
+            // is recognised by the title-strip heuristic in
+            // classifyHeadingParagraph.
+            if para.count <= 80,
+               para.hasSuffix("."),
+               !para.dropLast().contains("."),
+               !para.contains(","),
+               !para.contains(":"),
+               para.contains(where: \.isLetter) {
+                continue
+            }
+            // Editorial bracketed front-matter ("[Translated by …]") should
+            // not become the synthesized label either.
+            if para.hasPrefix("[") && para.hasSuffix("]") &&
+               para.range(of: #"(?i)\b(translated|translation|edited|edition|a\.d\.|b\.c\.|circa|fl\.|copyright)\b"#, options: .regularExpression) != nil {
+                continue
+            }
+            // Pull off a "Chapter X.—" / "Sect. XLI.—" / "§N." / "§§1–5."
+            // prefix to get the description. The structural word may be the
+            // full form ("Section") or an abbreviation followed by a period
+            // ("Sect.", "Cap."), and the connector may be a long dash, hyphen,
+            // or just whitespace.
             para = para.replacingOccurrences(
-                of: #"^(?i)(chapter|book|discourse|section|letter|treatise|part|article|homily)\s+[ivxlcdm0-9]+\.?\s*[—–-]?\s*"#,
+                of: #"^(?i)(chapter|book|discourse|section|letter|treatise|part|article|homily|sect|cap|bk|vol)\b\.?\s*[ivxlcdm0-9]+\.?\s*[—–-]?\s*"#,
                 with: "",
                 options: .regularExpression
             )
@@ -643,8 +700,52 @@ extension ThMLParser {
         if para.range(of: #"^§{1,2}\s*\d"#, options: .regularExpression) != nil {
             return .strip(structural: true)
         }
-        // Body paragraph that exactly reproduces the recorded label (confessions Books).
-        if let lbl = labelNorm, para == lbl { return .strip(structural: true) }
+        // Editorial framing paragraph wholly enclosed in square brackets:
+        // "[Translated by the Rev. S. Thelwall, …]", "[Edited from the original
+        // by …]", "[a.d. 110–165.]". Common in ANF/NPNF chapter openers; reads
+        // as front-matter noise rather than prose, and blocks downstream
+        // stripping when left in place.
+        if para.hasPrefix("[") && para.hasSuffix("]") &&
+           para.range(of: #"(?i)\b(translated|translation|edited|edition|a\.d\.|b\.c\.|circa|fl\.|d\.\s*\d|copyright)\b"#, options: .regularExpression) != nil {
+            return .strip(structural: false)
+        }
+        // Publication / e-text metadata paragraph — "by Martin Luther (1483-1546)",
+        // "This e-text was scanned…", "published by Baker Book House…", "in the
+        // public domain". These are colophon-style frontmatter that some PD
+        // editions paste at the top of every section. Heuristic: short-ish
+        // paragraph (≤ ~600 chars) containing one of a small set of
+        // unmistakable metadata markers AND no Bible-verse-like reference.
+        if isEditorialColophon(para) {
+            return .strip(structural: false)
+        }
+        // Author byline "by Author Name (1483-1546)" — distinct from running
+        // prose because of the leading "by " plus a parenthesised year range.
+        if para.count <= 120,
+           para.range(of: #"(?i)^by\s+\p{Lu}.*\(\d{3,4}\s*[–\-]\s*\d{3,4}\)"#, options: .regularExpression) != nil {
+            return .strip(structural: false)
+        }
+        // Translator / editor credit line: short, contains both an honorific
+        // prefix (Rev., Dr., Prof.) and a degree suffix (D.D., M.A., Ph.D., …).
+        // Common shapes:
+        //   "Rev. Marcus Dods, D.D."
+        //   "Dr. John King, M.A., Of Queen's College, Cambridge"
+        //   "Translated by Rev. S. Thelwall."
+        if para.count <= 120,
+           isCreditLine(para) {
+            return .strip(structural: false)
+        }
+        // Body paragraph that exactly reproduces the recorded label (confessions
+        // Books, ANF series-cover pages where the work title is repeated as
+        // running prose). Case-insensitive so that an all-caps label like
+        // "CLEMENT OF ROME" still matches the body's "Clement of Rome".
+        //
+        // Tagged `structural: false` deliberately — a duplicate-of-label is
+        // still inside the heading area, so we want the title-fragment
+        // heuristic to keep firing on subsequent paragraphs (a pericope title
+        // is another heading, not body prose).
+        if let lbl = labelNorm, para.lowercased() == lbl.lowercased() {
+            return .strip(structural: false)
+        }
         // Stand-alone work / volume title — short, single-sentence, no comma, ends with '.'
         // ("Four Discourses Against the Arians.", "On the Incarnation of the Word."). Gated
         // by `allowTitleHeuristic` because the same shape matches some body openers.
@@ -656,7 +757,78 @@ extension ThMLParser {
            para.contains(where: \.isLetter) {
             return .strip(structural: false)
         }
+        // Same heuristic, but without the trailing period — for fragment-style
+        // titles ("Introduction to the Treatise", "Contra Gentes"). Still gated
+        // by allowTitleHeuristic; still no commas, colons, or sentence-final
+        // punctuation. Real body openers almost always contain at least one of
+        // those within their first 80 chars.
+        if allowTitleHeuristic,
+           para.count <= 80,
+           !para.contains(","),
+           !para.contains(":"),
+           !para.contains("."),
+           !para.contains("?"),
+           !para.contains("!"),
+           para.contains(where: \.isLetter) {
+            return .strip(structural: false)
+        }
+        // Pericope / sermon title that ends with a trailing ':' to introduce
+        // the Scripture passage that follows. "The Twofold Use of the Law &
+        // Gospel:", "On Faith & Coming to Christ:". Stripped only when the
+        // colon is at the end and there's no other sentence punctuation —
+        // running prose with an internal colon (e.g. "He said: come unto me.")
+        // is excluded.
+        if allowTitleHeuristic,
+           para.count <= 120,
+           para.hasSuffix(":"),
+           !para.dropLast().contains(":"),
+           !para.contains("."),
+           !para.contains("?"),
+           !para.contains("!"),
+           para.contains(where: \.isLetter) {
+            return .strip(structural: false)
+        }
+        // ALL-CAPS title fragment — the volunteer transcribers who prepared
+        // some of the CCEL Reformer volumes lay out pericope headings as
+        // shouty headers ("ON FAITH AND COMING TO CHRIST, AND THE TRUE BREAD
+        // OF HEAVEN:"). Recognise these by the fraction of uppercase letters
+        // rather than punctuation, so an internal comma is tolerated.
+        if allowTitleHeuristic,
+           para.count <= 140,
+           !para.contains("."),
+           !para.contains("?"),
+           !para.contains("!"),
+           isMostlyUppercase(para) {
+            return .strip(structural: false)
+        }
         return .keep
+    }
+
+    /// True iff the paragraph looks like a translator / editor credit line.
+    /// Requires both an honorific (Rev., Dr., …) AND a degree (D.D., M.A., …)
+    /// — either alone is too easy to false-match in running prose ("Dr." can
+    /// abbreviate "Doctor" in dialogue, "M.A." can appear in citations).
+    static func isCreditLine(_ para: String) -> Bool {
+        let honorific = #"(?i)\b(rev|dr|mr|mrs|fr|prof|sr|st)\.?\b"#
+        let degree = #"(?i)\b(d\.?d|m\.?a|ph\.?d|s\.?t\.?d|s\.?t\.?l|ll\.?d|d\.?litt|s\.?j|o\.?p|o\.?s\.?b|d\.?phil)\.?\b"#
+        return para.range(of: honorific, options: .regularExpression) != nil
+            && para.range(of: degree, options: .regularExpression) != nil
+    }
+
+    /// True iff the paragraph reads as ALL-CAPS — at least 70% of its
+    /// alphabetic characters are uppercase and there are at least 8 letters
+    /// overall (so single words like "Amen." don't trip the rule).
+    fileprivate static func isMostlyUppercase(_ s: String) -> Bool {
+        var letters = 0
+        var upper = 0
+        for c in s {
+            if c.isLetter {
+                letters += 1
+                if c.isUppercase { upper += 1 }
+            }
+        }
+        guard letters >= 8 else { return false }
+        return Double(upper) / Double(letters) >= 0.7
     }
 
     fileprivate static func firstSentence(of text: String, maxChars: Int) -> String {
@@ -666,17 +838,110 @@ extension ThMLParser {
             if ch == "." || ch == "?" || ch == "!" {
                 let next = text.index(after: idx)
                 if next == text.endIndex || text[next].isWhitespace {
-                    return String(text[..<idx]).trimmingCharacters(in: .whitespacesAndNewlines)
+                    // Don't accept this terminator if it follows an
+                    // abbreviation rather than a complete word — common
+                    // patristic abbreviations like "1 Cor.", "Sect.", "St.",
+                    // "Mr.", "etc.", "viz." would otherwise truncate the
+                    // snippet mid-thought. The heuristic: scan back to the
+                    // previous space (or string start) and treat the
+                    // intervening run as a "word"; if it's shorter than 5
+                    // chars (with at least one letter), assume abbreviation
+                    // and keep scanning.
+                    if !isSentenceEndAfter(text, periodAt: idx) {
+                        idx = text.index(after: idx)
+                        continue
+                    }
+                    let sentence = String(text[..<idx]).trimmingCharacters(in: .whitespacesAndNewlines)
+                    return clampToMaxChars(sentence, maxChars: maxChars)
                 }
             }
             idx = text.index(after: idx)
         }
+        return clampToMaxChars(text, maxChars: maxChars)
+    }
+
+    /// Trim a string to at most `maxChars`, breaking on the last space inside
+    /// the window so we don't cut a word in half. Adds an ellipsis when
+    /// content is truncated. (Used by `firstSentence`, which can otherwise
+    /// emit 500-character "labels" when a section's opening sentence is a
+    /// run-on with no period for many lines.)
+    fileprivate static func clampToMaxChars(_ text: String, maxChars: Int) -> String {
         if text.count <= maxChars { return text }
         let prefix = text.prefix(maxChars)
         if let space = prefix.lastIndex(of: " ") {
             return String(prefix[..<space]).trimmingCharacters(in: .whitespacesAndNewlines) + "…"
         }
         return String(prefix) + "…"
+    }
+
+    /// True iff the paragraph reads like an e-text colophon / publication
+    /// metadata blob (not running prose). Used to strip preambles that
+    /// volunteer transcribers paste at the top of CCEL section bodies.
+    fileprivate static func isEditorialColophon(_ para: String) -> Bool {
+        guard para.count <= 800 else { return false }
+        // Two or more colophon keywords pushes confidence high enough that
+        // we strip regardless. (One keyword would over-match on real prose.)
+        let keywords = [
+            #"public\s+domain"#,
+            #"this\s+e-?text"#,
+            #"originally\s+published"#,
+            #"published\s+by\s+\p{Lu}"#,
+            #"scanned\s+(by|and|from)"#,
+            #"may\s+be\s+(copied|distributed|reproduced)"#,
+            #"all\s+rights\s+reserved"#,
+            #"copyright\s+(©|\(c\)|\d{4})"#,
+            #"original\s+pagination"#,
+            #"electronic\s+(text|edition)"#,
+        ]
+        var hits = 0
+        for kw in keywords {
+            if para.range(of: kw, options: [.regularExpression, .caseInsensitive]) != nil {
+                hits += 1
+                if hits >= 2 { return true }
+            }
+        }
+        return false
+    }
+
+    /// Strip a structural rubric prefix from the start of the body. Same
+    /// shape as the one recognised by `headingSnippet` — the rubric there is
+    /// captured into the label, so leaving it in the body too would just
+    /// echo the heading.
+    static func stripLeadingRubric(from body: String) -> String {
+        guard !body.isEmpty else { return body }
+        let trimmed = body.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return body }
+        // Operate on the first paragraph only — never reach across a \n\n.
+        let parts = trimmed.components(separatedBy: "\n\n")
+        let first = parts[0]
+        let rest = parts.dropFirst()
+        let stripped = first.replacingOccurrences(
+            of: #"^(?i)(chapter|book|discourse|section|letter|treatise|part|article|homily|sect|cap|bk|vol)\b\.?\s*[ivxlcdm0-9]+\.?\s*[—–-]\s*"#,
+            with: "",
+            options: .regularExpression
+        )
+        if stripped == first { return body }
+        let joined = ([stripped] + Array(rest)).joined(separator: "\n\n")
+        return joined.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// True iff the `.` at `periodAt` ends a real sentence (vs. an abbreviation).
+    /// "Sect.", "1 Cor.", "etc.", "St." → false. "definition.", "Christ." → true.
+    fileprivate static func isSentenceEndAfter(_ text: String, periodAt: String.Index) -> Bool {
+        var start = periodAt
+        var letterCount = 0
+        while start > text.startIndex {
+            let prev = text.index(before: start)
+            let c = text[prev]
+            if c.isWhitespace { break }
+            if c == "." { break } // chained abbreviations like "e.g."
+            if c.isLetter { letterCount += 1 }
+            start = prev
+        }
+        // Word with fewer than 5 letters is treated as an abbreviation.
+        // (Real sentences ending in 3-4 letter words like "And." are rare
+        //  enough that the trade-off favors fewer false truncations.)
+        return letterCount >= 5
     }
 
     fileprivate static func normalizeWhitespace(_ s: String) -> String {
