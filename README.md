@@ -1,233 +1,117 @@
 # Aletheia
 
-Bible reading + annotation app for macOS and iOS. Toggle between the Hebrew
-Masoretic Text, the Greek Septuagint and NT (Byzantine), and English (BSB, KJV,
-Brenton). Strong's lookups via BDB and Strong's Greek dictionary. Highlight
-verses, bookmark them into themed libraries, leave notes per verse, and jump
-between cross-references. Ships with parallel English / Greek / Latin readers
-for the *Summa Theologica*, the *Dialogue with Trypho*, and *On the
-Incarnation*.
+A polyglot Bible study app with a bundled, license-clean corpus.
 
-Built with React + Vite + Tauri 2 over a read-only bundled SQLite corpus.
+Read the Hebrew Masoretic Text, the Greek Septuagint and Byzantine New
+Testament, and three English translations side by side. Look up every Hebrew
+and Greek word against Strong's, follow Treasury of Scripture Knowledge
+cross-references, read patristic commentary, and listen to public-domain
+audio narration — all offline, against a SQLite corpus shipped inside the
+app.
 
-## Project layout
+## Screenshots
 
-```
-.
-├── src/                        # React + TypeScript app
-│   ├── db/                     # SQLite handles + queries + hooks
-│   ├── domain/                 # Reference parser, translation metadata
-│   ├── features/               # reader, search, commandPalette, libraries,
-│   │                             lexicon, patristics, design
-│   ├── components/             # Shared UI primitives + ErrorBoundary
-│   ├── stores/                 # Zustand stores (settings, palette)
-│   └── styles/                 # index.css + design tokens + fonts (self-hosted)
-├── src-tauri/                  # Tauri 2 Rust shell
-│   ├── src/lib.rs              # corpus_db_path command + plugin-sql migrations
-│   ├── capabilities/           # Allowed plugin permissions
-│   ├── icons/                  # App icons (placeholder, replace before ship)
-│   └── gen/apple/              # iOS Xcode project (gitignored; regenerate with tauri ios init)
-├── data/
-│   ├── sources/                # Raw upstream data (gitignored; populated by fetch_sources.sh)
-│   └── Aletheia.sqlite         # Built corpus, bundled with the app
-├── scripts/
-│   └── fetch_sources.sh        # One-shot fetch of every raw source
-├── tools/
-│   └── ingest/                 # SPM package: parsers + CLI that builds Aletheia.sqlite
-├── index.html, vite.config.ts, tsconfig.json, package.json
-```
+Screenshots will follow.
 
-## One-time setup — build the corpus
+- `docs/screenshots/reader.png` — primary reader view
+- `docs/screenshots/lexicon.png` — Strong's lookup
+- `docs/screenshots/patristics.png` — patristic commentary alongside the text
+- `docs/screenshots/design.png` — theme editor
+
+## Features
+
+- Parallel reader for BSB, KJV (with Apocrypha), Brenton English LXX,
+  Brenton Greek LXX, WLC Hebrew, and the Robinson-Pierpont Byzantine Greek
+  New Testament.
+- Commentary view with the Schaff ANF/NPNF patristic editions and the
+  *Summa Theologica* (Latin + English).
+- Strong's lookups on the English side, backed by the unabridged BDB
+  Hebrew lexicon and Strong's Greek dictionary.
+- Cross-references from the Treasury of Scripture Knowledge.
+- Audio narration for English translations (Bob Souer BSB, Michael Paul
+  Johnson WEB, LibriVox KJV solos), streamed on first play and cached
+  locally.
+- Highlights, bookmarks into themed libraries, and per-verse notes — all
+  stored locally with ULID keys and tombstones so a sync layer can drop in
+  later.
+- Themeable: every color is a CSS custom property and there is a built-in
+  visual theme editor.
+- Offline-first. The bundled corpus is the source of truth; nothing
+  required at runtime calls the network.
+
+## Quickstart
+
+Requires Node 20+, the Rust toolchain, and (for iOS builds) Xcode 17+.
+Pre-built binaries will be published once releases stabilize; for now,
+build from source.
+
+**Build the corpus once:**
 
 ```sh
-./scripts/fetch_sources.sh                  # Pull every raw text into data/sources/
+./scripts/fetch_sources.sh
 cd tools/ingest
 swift run aletheia-ingest \
     --source-root ../../data/sources \
     --output ../../data/Aletheia.sqlite
 ```
 
-The corpus is read-only at runtime and is bundled with the app as a resource.
-Rebuild it whenever upstream data or the schema changes; users get the new copy
-with the next app release.
-
-## Develop
-
-Requires Node 20+, Rust toolchain, and (for iOS) Xcode 17+.
+**Run the desktop app:**
 
 ```sh
 npm install
-npm run tauri dev               # Mac desktop window with live reload
+./scripts/dev-instance.sh
 ```
 
-On first launch, the Rust side copies `data/Aletheia.sqlite` into the app's
-data directory (so SQLite can open it with proper WAL semantics). Subsequent
-launches reuse it; the file is re-copied only if the source mtime is newer.
+`./scripts/dev-instance.sh` is the canonical launcher — it picks an unused
+Vite port and Tauri instance ID so multiple dev windows can run in parallel
+without colliding. Do not invoke `npm run tauri dev` directly.
 
-In `tauri dev`, the corpus is resolved from the source tree
-(`<repo>/data/Aletheia.sqlite`) when the resource bundle hasn't been built yet.
-Release builds use the resource bundled into the app.
+**Production build (macOS):**
 
 ```sh
-npm test                         # Vitest (unit tests)
-npm run build                    # TypeScript + Vite production build
+npm run tauri build
 ```
 
-## Build for macOS
+On Linux and Windows the same `npm run tauri build` command produces a
+native bundle in `src-tauri/target/release/bundle/`.
 
-```sh
-npm run tauri build              # Produces a notarization-ready .app and .dmg
-```
+## Architecture
 
-Artifacts land in `src-tauri/target/release/bundle/`. Set `TAURI_SIGNING_*`
-env vars (or configure `tauri.conf.json > bundle.macOS.signingIdentity`) for a
-signed build.
+**Desktop app.** A React + TypeScript + Vite frontend wrapped by Tauri 2.
+The Tauri shell exposes a `corpus_db_path` command and copies the bundled
+SQLite corpus into the platform's app-data directory on first launch so
+SQLite can open it with proper WAL semantics. User data (highlights,
+bookmarks, notes) lives in a separate local SQLite (`aletheia_user.db`)
+with ULID keys and soft-delete tombstones.
 
-## Build for iOS
+**Ingest pipeline.** A Swift Package under [tools/ingest/](tools/ingest/)
+ingests every raw upstream source (BSB plain text, eBible.org USFM, byztxt,
+BDB, Strong's, Treasury of Scripture Knowledge, Jacob-Gray *Summa*, and
+the Schaff patristics) into the single bundled `data/Aletheia.sqlite`. The
+corpus is read-only at runtime and rebuilt offline whenever sources or
+schema change.
 
-iOS support uses Tauri 2's mobile pipeline. Required: Xcode 17+, an Apple
-Developer account, and your team ID handy.
+**Web / Railway deployment.** A hosted variant is on the roadmap — the
+goal is to make the same reader available in a browser without the desktop
+install step. The corpus and React frontend are unchanged; only the Tauri
+shell is replaced with a thin server.
 
-### First run — generate the Xcode project
+## Corpus licensing
 
-```sh
-npm run tauri ios init           # Generates src-tauri/gen/apple/
-```
+Everything in `data/Aletheia.sqlite` is public domain or under a no-strings
+permissive license. ShareAlike, NonCommercial, and copyrighted critical
+editions (SBLGNT, NA28, BHS, Rahlfs-Hanhart, Göttingen, CCAT/CATSS) are
+explicitly out of scope. The full policy and the list of vetted vs.
+rejected sources lives in [CLAUDE.md](CLAUDE.md).
 
-The generated project lives in `src-tauri/gen/apple/aletheia.xcodeproj`. It is
-**gitignored** — `tauri ios init` regenerates it deterministically. Modify
-`tauri.conf.json` (not the Xcode project) for app metadata changes.
+## Contributing
 
-### Simulator
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the worktree convention, how to
+run the tests, what we'll accept into the corpus, and how to add a new
+translation or top-level tab. By participating you agree to the
+[Code of Conduct](CODE_OF_CONDUCT.md).
 
-```sh
-npm run tauri ios dev            # Boots a simulator and launches the app
-```
+## License
 
-The simulator can see the dev machine's filesystem, so the source-tree corpus
-fallback works without bundling.
-
-### Real device
-
-```sh
-export APPLE_DEVELOPMENT_TEAM=XXXXXXXXXX     # Your 10-char team ID
-npm run tauri ios build --debug              # Builds for arm64 device
-```
-
-You'll need to install the resulting `.ipa` via Xcode (Window → Devices and
-Simulators → drag the IPA onto your device) or via TestFlight once configured.
-The bundled `Aletheia.sqlite` (~131 MB) is copied into the app's container on
-first launch (iOS Resources/ is read-only — SQLite can't open WAL there).
-
-### Sharp edges
-
-- **iCloud is gone.** The SwiftUI version synced via SwiftData + CloudKit. The
-  React port stores user data locally only; the schema uses ULIDs + tombstones
-  so a sync layer can drop in later without a migration. The previous SwiftUI
-  app is tagged `swiftui-final` if you need to recover user data.
-- **131 MB resource.** App install size is ~150 MB. Over-the-air installs need
-  Wi-Fi but it's well under App Store's 4 GB limit.
-- **Greek tokenization** in the bundled corpus's `word` table is sparse (only
-  variant readings). Hebrew gets full per-word Strong's tagging; Greek shows
-  plain prose for now. Improve via the ingest pipeline if needed.
-
-## Customizing colors
-
-Every color in the app is a CSS custom property declared in
-[src/styles/index.css](src/styles/index.css) — semantic tokens like
-`--color-bg`, `--color-fg-muted`, `--color-accent`, the six highlight pairs,
-and a couple of modal scrims. Components reference these by name, never by
-hex, so two views that share `--color-fg-muted` will continue to share it
-after any tweak.
-
-To edit colors interactively, open the **Design** tab in the app: pick a
-theme (or duplicate a built-in to make an editable one), choose Light or
-Dark, click a swatch, and pick a color. Customised tokens are marked with
-a dot; **Reset** restores the stylesheet default. **Export** writes the
-active theme to a `.aletheia-theme.json` file; **Import** accepts that
-file (or a whole `preferences.json` payload).
-
-Bundled reference themes live in
-[src/theme/builtInThemes.ts](src/theme/builtInThemes.ts); add another to
-that file and it shows up in the Design tab on next launch. The token
-registry in [src/theme/tokens.ts](src/theme/tokens.ts) is the
-single source of truth — a unit test enforces that every registered token
-is declared in both the `:root` and `.dark` blocks of `index.css`.
-
-User-authored themes are persisted to a `preferences.json` file under
-the platform's app config directory (on macOS:
-`~/Library/Application Support/org.jackporter.aletheia/preferences.json`).
-The file is user-readable and hand-editable; it survives app reinstalls
-and is easy to back up or version-control. `localStorage` is kept as a
-synchronous cache so the first paint after a cold start is correct
-without waiting on disk.
-
-## Tests
-
-```sh
-npm test                                    # Vitest (reference parser, ULID, …)
-cd tools/ingest && swift test               # Parser unit tests for the ingest CLI
-```
-
-## Data sources & licenses
-
-All biblical sources bundled into `Aletheia.sqlite` are public domain. See
-[CLAUDE.md](CLAUDE.md) for the corpus licensing policy.
-
-| Source | License |
-|---|---|
-| BSB plain text | Public Domain (2023 dedication) |
-| KJV 1611 + Apocrypha (eBible.org `eng-kjv`) | Public Domain (by age) |
-| Brenton LXX English (eBible.org `eng-Brenton`) | Public Domain (1851) |
-| Brenton LXX Greek (eBible.org `grcbrent`) | Public Domain (1851) |
-| Robinson-Pierpont Byzantine Greek NT (byztxt) | Unlicense / Public Domain |
-| BDB Hebrew lexicon (eliranwong/unabridged-BDB) | Public Domain (1906, by age) |
-| Strong's Greek dictionary (openscriptures/strongs) | Public Domain (Strong, 1890, by age) |
-| Treasury of Scripture Knowledge cross-references | Public Domain (Torrey, 1880s, by age) |
-| Jacob-Gray/summa.json | Unlicense (PD) |
-
-Audio recordings stream from the source on first play and cache to the local
-app data dir under `audio/<translation>/<book>/<NNN>.mp3`:
-
-| Source | Reader | Coverage | License |
-|---|---|---|---|
-| openbible.com BSB audio | Bob Souer | OT + NT | Public Domain (CC0 1.0) |
-| ebible.org WEB British audio | Michael Paul Johnson | OT + NT + Deuterocanon | Public Domain |
-| archive.org LibriVox KJV solos | various volunteers | partial OT (Josh, Judg, 1–2 Sam, 1–2 Kgs, 1 Chr, Prov, Lam) + most of NT and Apocrypha via virtual chapters | Public Domain |
-
-KJV NT books, Judith, Wisdom, 1–2 Maccabees and similar LibriVox recordings
-pack multiple chapters into a single MP3. We compute chapter-boundary
-timestamps offline with [aeneas](https://github.com/readbeyond/aeneas)
-([tools/audio/align_kjv.py](tools/audio/align_kjv.py)) and ship the timings
-as [data/audio/kjv-timing.json](data/audio/kjv-timing.json) — the player then
-downloads the multi-chapter source once per book and seeks into the right
-segment per chapter. Books like KJV James and Jude have no LibriVox solo
-recording and stay silent.
-
-Bundled fonts:
-
-| Font | License | Use |
-|---|---|---|
-| EB Garamond | OFL | Body serif (Latin script) |
-| Ezra SIL | OFL | Biblical Hebrew |
-| GFS Didot | OFL | Polytonic Greek |
-| iA Writer Mono S | OFL | UI affordances (kbd, Strong's IDs) |
-
-Patristic content ships as English-only translations from the PD Schaff
-ANF/NPNF editions (CCEL ThML). Non-English patristic originals (e.g.
-OpenGreekAndLatin First1KGreek, CC BY-SA) are out of scope — see
-[CLAUDE.md](CLAUDE.md).
-
-Sources explicitly avoided: SBLGNT, Tyndale House GNT, NA28, BHS,
-Rahlfs-Hanhart, Göttingen LXX, CCAT/CATSS LXX, and any CC BY-NC / CC BY-SA /
-GPL biblical data. The goal is zero-strings reuse: anyone should be able to
-lift the corpus from `Aletheia.sqlite` and redistribute with no attribution or
-licensing obligations.
-
-## Sync
-
-User data (highlights, bookmarks, libraries, notes) lives in a local SQLite
-database (`aletheia_user.db`) in the app's data directory. There is no backend
-yet. The schema uses ULID primary keys, millisecond `updated_at` timestamps,
-and soft-delete tombstones — a CRDT or server-mediated sync layer can drop in
-later without a migration.
+[MIT](LICENSE). The bundled corpus is separately public domain — see the
+licensing section above.
