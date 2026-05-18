@@ -239,6 +239,17 @@ public struct Pipeline {
                 run: { try self.ingestThMLVolume(writer: writer, file: "patristics/\(slug).xml", volumeSlug: slug) }
             ))
         }
+        // Schaff's Creeds of Christendom (3 vols). Vol 3 in particular is the
+        // single PD-by-age source for every major Protestant confession.
+        for slug in ["creeds1", "creeds2", "creeds3"] {
+            stages.append(Stage(
+                name: "Creeds — \(slug)",
+                group: "creeds",
+                languages: ["en"],
+                bookScoped: false,
+                run: { try self.ingestThMLVolume(writer: writer, file: "patristics/\(slug).xml", volumeSlug: slug) }
+            ))
+        }
         return stages
     }
 
@@ -247,35 +258,41 @@ public struct Pipeline {
     /// top-level divs as individual works under the listed author. The slugs
     /// match the CCEL filenames fetched by scripts/fetch_sources.sh.
     private func reformerStages(writer: CorpusWriter) -> [Stage] {
-        let luther = [
-            "luther_bondage", "luther_tabletalk", "luther_first_prin",
-            "luther_smalcald", "luther_smallcat", "luther_largecatechism",
-            "luther_good_works", "luther_sermons", "luther_translating",
-            // luther_prefacetoromans is omitted: ThMLParser's editorial-title
-            // filter strips every div1 because they all start with "Preface" /
-            // "Translator's Note" / "Title Page" / "Indexes", leaving zero
-            // discoverable works. Fixing this needs a parser-side change.
+        // (display name, prefix, work slugs). The prefix is also the file
+        // basename prefix dropped into data/sources/patristics/.
+        let authors: [(name: String, prefix: String, slugs: [String])] = [
+            ("Luther", "luther", [
+                "bondage", "tabletalk", "first_prin",
+                "smalcald", "smallcat", "largecatechism",
+                "good_works", "sermons", "translating",
+                // prefacetoromans is omitted: ThMLParser's editorial-title
+                // filter strips every div1 because they all start with
+                // "Preface" / "Translator's Note" / "Title Page" / "Indexes",
+                // leaving zero discoverable works. Fixing needs a parser-side
+                // change.
+            ]),
+            ("Calvin", "calvin", ["institutes", "sermons", "treatise_relics"]),
+            // Knox — three standalone works plus vol 1 of the Laing-edited
+            // Works. Vols 2–6 are not on CCEL.
+            ("Knox", "knox", [
+                "blast", "history_reformation", "prayer", "works1",
+            ]),
+            // Latimer — the single Parker Society Sermons volume CCEL carries.
+            ("Latimer", "latimer", ["sermons"]),
         ]
-        let calvin = ["calvin_institutes", "calvin_sermons", "calvin_treatise_relics"]
 
         var stages: [Stage] = []
-        for slug in luther {
-            stages.append(Stage(
-                name: "Luther — \(slug.replacingOccurrences(of: "luther_", with: ""))",
-                group: "reformers",
-                languages: ["en"],
-                bookScoped: false,
-                run: { try self.ingestThMLVolume(writer: writer, file: "patristics/\(slug).xml", volumeSlug: slug) }
-            ))
-        }
-        for slug in calvin {
-            stages.append(Stage(
-                name: "Calvin — \(slug.replacingOccurrences(of: "calvin_", with: ""))",
-                group: "reformers",
-                languages: ["en"],
-                bookScoped: false,
-                run: { try self.ingestThMLVolume(writer: writer, file: "patristics/\(slug).xml", volumeSlug: slug) }
-            ))
+        for (name, prefix, slugs) in authors {
+            for slug in slugs {
+                let file = "\(prefix)_\(slug)"
+                stages.append(Stage(
+                    name: "\(name) — \(slug)",
+                    group: "reformers",
+                    languages: ["en"],
+                    bookScoped: false,
+                    run: { try self.ingestThMLVolume(writer: writer, file: "patristics/\(file).xml", volumeSlug: file) }
+                ))
+            }
         }
         return stages
     }

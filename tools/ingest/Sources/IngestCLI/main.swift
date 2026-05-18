@@ -38,7 +38,8 @@ struct AletheiaIngest: ParsableCommand {
               summa       — Summa Theologica (English + Latin)
               anf         — Ante-Nicene Fathers (Trypho, ...)
               npnf        — Nicene & Post-Nicene Fathers (Athanasius, Augustine, ...)
-              reformers   — Luther + Calvin non-commentary (Bondage, Institutes, ...)
+              reformers   — Luther, Calvin, Knox, Latimer non-commentary works
+              creeds      — Schaff's Creeds of Christendom (3 vols, PD confessions)
             """
     )
 
