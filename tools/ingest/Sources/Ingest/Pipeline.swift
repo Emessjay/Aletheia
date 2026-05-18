@@ -690,6 +690,9 @@ public struct Pipeline {
             return
         }
         let volumeAuthor = manifest.author.isEmpty ? "Various" : manifest.author
+        let volumeAuthorList = manifest.author.components(separatedBy: " & ")
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
         var totalSections = 0
         for entry in manifest.works {
             let workSlug = "\(volumeSlug).\(entry.slug)"
@@ -699,10 +702,16 @@ public struct Pipeline {
                 containerID: entry.containerID
             )
             guard !result.sections.isEmpty else { continue }
+            let normalized = normalizeWorkTitle(entry.title)
+            let author = entry.author ?? resolvePerWorkAuthor(
+                title: normalized,
+                volumeAuthors: volumeAuthorList,
+                volumeAuthor: volumeAuthor
+            )
             let workID = try writer.insertWork(
                 slug: workSlug,
-                title: entry.title,
-                author: entry.author ?? volumeAuthor,
+                title: normalized,
+                author: author,
                 kind: "treatise"
             )
             for (i, s) in result.sections.enumerated() {
@@ -716,6 +725,187 @@ public struct Pipeline {
         }
         logger.info("    \(manifest.works.count) works, \(totalSections) sections")
     }
+}
+
+/// CCEL's ANF volumes store div1 titles in all-caps (`JUSTIN MARTYR`,
+/// `THE PASTOR OF HERMAS`); NPNF volumes use mixed case with trailing
+/// periods (`The Confessions.`). Normalize:
+///   • drop trailing periods (semantically nothing — it's typographic)
+///   • title-case anything that's predominantly uppercase (treating each
+///     word independently so prepositions / Roman numerals survive)
+///   • rewrite a bare author-name title to "Writings of <Father>" so the
+///     reader doesn't see an entry whose title is just a name
+func normalizeWorkTitle(_ raw: String) -> String {
+    var t = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+    while t.hasSuffix(".") || t.hasSuffix(",") || t.hasSuffix(";") {
+        t.removeLast()
+    }
+    t = t.trimmingCharacters(in: .whitespacesAndNewlines)
+
+    // Predominantly-uppercase test: at least 70% of the letters in the
+    // string are uppercase. Skips strings without lowercase letters at all
+    // (i.e. all-caps source titles).
+    let letters = t.unicodeScalars.filter { CharacterSet.letters.contains($0) }
+    let uppers = letters.filter { CharacterSet.uppercaseLetters.contains($0) }
+    let mostlyUpper = !letters.isEmpty && Double(uppers.count) / Double(letters.count) >= 0.7
+    if mostlyUpper {
+        t = titleCaseEachWord(t)
+    }
+
+    // Bare-author-name detection: if the title (after diacritic folding +
+    // case folding) matches a known father display name, retitle as
+    // "Writings of <Father>" — entries like "JUSTIN MARTYR" / "Barnabas"
+    // are then readable as compilations rather than puzzling one-word
+    // works in the index.
+    let folded = foldName(t)
+    if let father = knownFatherByDisplayName(folded) {
+        t = "Writings of \(father)"
+    }
+
+    return t
+}
+
+/// Indexes of `ccelAuthorDisplay.values` for substring lookups. We need
+/// two: the full lowercased display name (so "Polycarp of Smyrna" matches)
+/// AND just the personal-name portion before " of " (so "Polycarp" alone
+/// matches "Polycarp of Smyrna"). Both keys are diacritic-and-ligature
+/// folded so "Irenæus" / "Cyprian" / "Lerins" / "Lérins" all line up.
+private let knownFatherIndex: [String: String] = {
+    var map: [String: String] = [:]
+    for name in Set(ccelAuthorDisplay.values) {
+        let key = foldName(name)
+        map[key] = name
+        if let personal = key.components(separatedBy: " of ").first, personal != key {
+            map[personal] = name
+        }
+    }
+    return map
+}()
+
+private func foldName(_ s: String) -> String {
+    s.replacingOccurrences(of: "æ", with: "ae")
+     .replacingOccurrences(of: "Æ", with: "Ae")
+     .replacingOccurrences(of: "œ", with: "oe")
+     .replacingOccurrences(of: "Œ", with: "Oe")
+     .folding(options: .diacriticInsensitive, locale: .current)
+     .lowercased()
+}
+
+private func knownFatherByDisplayName(_ folded: String) -> String? {
+    if let direct = knownFatherIndex[folded] { return direct }
+    // Allow "Polycarp" to match "Polycarp of Smyrna" by trimming a
+    // descriptive suffix.
+    let trimmed = folded
+        .components(separatedBy: " of ").first?
+        .trimmingCharacters(in: .whitespacesAndNewlines)
+        ?? folded
+    if trimmed != folded, let m = knownFatherIndex[trimmed] { return m }
+    return nil
+}
+
+private func titleCaseEachWord(_ s: String) -> String {
+    // Words to keep lowercase when they aren't at the start. Title-case
+    // everything else by uppercasing the first letter only.
+    let lowercaseWords: Set<String> = [
+        "of", "the", "and", "or", "in", "on", "to", "for", "from",
+        "with", "by", "a", "an", "but", "at", "as", "&", "vs",
+    ]
+    let words = s.components(separatedBy: " ")
+    var out: [String] = []
+    for (i, w) in words.enumerated() {
+        if w.isEmpty { out.append(w); continue }
+        // Preserve Roman numerals + words that already contain a mix.
+        let alphaOnly = w.unicodeScalars.allSatisfy { CharacterSet.letters.contains($0) || CharacterSet.punctuationCharacters.contains($0) }
+        if !alphaOnly {
+            out.append(w)
+            continue
+        }
+        let lower = w.lowercased()
+        if i > 0 && lowercaseWords.contains(lower) {
+            out.append(lower)
+        } else {
+            let chars = Array(lower)
+            out.append(String(chars.first!).uppercased() + String(chars.dropFirst()))
+        }
+    }
+    return out.joined(separator: " ")
+}
+
+/// Pick the most specific author for a work. Both single-author and
+/// multi-author volumes can have works that name a different father in
+/// their title — CCEL's ANF Vol 1 declares only Irenaeus as its
+/// DC.Creator-Author even though the volume bundles Clement of Rome,
+/// Mathetes, Polycarp, Ignatius, Barnabas, and Justin Martyr.
+///
+/// Strategy: walk every known father in `ccelAuthorDisplay`, check if the
+/// title contains their personal-name token (the part before "of <Place>").
+/// If exactly one father matches, attribute to them. Otherwise fall back
+/// to the volume-level string.
+private func resolvePerWorkAuthor(
+    title: String,
+    volumeAuthors: [String],
+    volumeAuthor: String
+) -> String {
+    let folded = foldName(title)
+    let fathers = Set(ccelAuthorDisplay.values)
+
+    // Collect every father the title plausibly references — by full
+    // display name, by alias phrase (CCEL slug), or by personal-name (the
+    // part before " of "). All hits go in a single bucket.
+    var candidates = Set<String>()
+    for father in fathers {
+        let foldedFather = foldName(father)
+        if matchesAsPhrase(foldedFather, in: folded) {
+            candidates.insert(father)
+            continue
+        }
+        let personalName: String = {
+            if let beforeOf = foldedFather.components(separatedBy: " of ").first,
+               beforeOf != foldedFather {
+                return beforeOf.trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+            return foldedFather
+                .components(separatedBy: " ").first?
+                .trimmingCharacters(in: .whitespacesAndNewlines) ?? foldedFather
+        }()
+        if personalName.count >= 4, matchesAsPhrase(personalName, in: folded) {
+            candidates.insert(father)
+        }
+    }
+    for (key, canonical) in ccelAuthorDisplay {
+        // CCEL slug as phrase trigger. Only multi-word ("leo_great") or
+        // long single words ("nazianzen", "sulpitius") qualify — shorter
+        // forms like "gregory" / "cyril" / "dionysius" are ambiguous and
+        // would over-match.
+        let phrase = key.replacingOccurrences(of: "_", with: " ")
+        let isMultiWord = phrase.contains(" ")
+        let isLongUnique = key.count >= 8
+        guard isMultiWord || isLongUnique else { continue }
+        if matchesAsPhrase(foldName(phrase), in: folded) {
+            candidates.insert(canonical)
+        }
+    }
+
+    // Disambiguate via the volume's declared author list. If exactly one
+    // of the title-candidates is also declared in the volume, that's the
+    // answer — solves the "Dionysius" problem (ANF6 ships Dionysius of
+    // Alexandria; ANF7 ships Dionysius of Rome) and many like it.
+    let volSet = Set(volumeAuthors)
+    let inVolume = candidates.intersection(volSet)
+    if inVolume.count == 1 { return inVolume.first! }
+    if candidates.count == 1 { return candidates.first! }
+
+    // No clean per-work resolution. Anything with more than one declared
+    // author flattens to "Various" — even the apparently-friendly
+    // "Clement of Rome & Theodotus" pair is misleading on a work that's
+    // actually anonymous apocrypha bundled into the same volume.
+    if volumeAuthors.count > 1 { return "Various" }
+    return volumeAuthor
+}
+
+private func matchesAsPhrase(_ phrase: String, in folded: String) -> Bool {
+    let pattern = "\\b\(NSRegularExpression.escapedPattern(for: phrase))\\b"
+    return folded.range(of: pattern, options: .regularExpression) != nil
 }
 
 import GRDB

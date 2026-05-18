@@ -113,7 +113,7 @@ public struct ThMLParser {
 /// Friendly names for the CCEL author IDs (lowercase machine slugs) we
 /// expect to encounter in the ANF/NPNF volume headers. Anything not in the
 /// table falls through to a titlecased rendering of the slug itself.
-private let ccelAuthorDisplay: [String: String] = [
+let ccelAuthorDisplay: [String: String] = [
     "augustine": "Augustine of Hippo",
     "chrysostom": "John Chrysostom",
     "athanasius": "Athanasius of Alexandria",
@@ -155,6 +155,7 @@ private let ccelAuthorDisplay: [String: String] = [
     "ephrem": "Ephrem the Syrian",
     "aphrahat": "Aphrahat",
     "minucius": "Minucius Felix",
+    "papias": "Papias of Hierapolis",
     "rufinus": "Rufinus of Aquileia",
     "ignatius": "Ignatius of Antioch",
     "polycarp": "Polycarp of Smyrna",
@@ -185,6 +186,9 @@ private let ccelAuthorDisplay: [String: String] = [
     "cyril_jer": "Cyril of Jerusalem",
     "theodotus": "Theodotus",
     "sulpiciusseverus": "Sulpicius Severus",
+    "sulpitius": "Sulpicius Severus",
+    "nazianzen": "Gregory of Nazianzus",
+    "aristides": "Aristides of Athens",
     "ephraim": "Ephrem the Syrian",
     "ephraem": "Ephrem the Syrian",
     "damascus": "John of Damascus",
@@ -238,6 +242,7 @@ private func slugify(_ s: String) -> String {
 /// `\u{2019}` escapes, so the curly apostrophe is included literally.
 private let editorialTitlePatterns: [String] = [
     #"^(?:Second|Series|Half|Original|Additional|Front)?\s*Title Pages?\b"#,
+    #"^Series Title\b"#,
     #":\s*Index of (?:Subjects|Names|Passages|Scripture|Pages)"#,
     #"^Preface\b(?!s)"#,           // "Preface" / "Preface." but not "Prefaces"
     #"^Contents\b"#,
