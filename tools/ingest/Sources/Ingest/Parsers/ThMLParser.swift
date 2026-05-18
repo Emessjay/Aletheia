@@ -402,7 +402,10 @@ private final class ThMLDelegate: NSObject, XMLParserDelegate {
         let typeAttr = attributes["type"]?.lowercased()
         let structuralTypes: Set<String> = [
             "chapter", "section", "subsection", "article",
-            "book", "discourse", "letter", "treatise", "part", "homily"
+            "book", "discourse", "letter", "letters", "treatise", "part",
+            "homily", "oration", "division", "sermon", "lecture",
+            "tractate", "epistle", "demonstration", "canon", "hymn",
+            "dialogue", "commentary"
         ]
         let recognizedType = typeAttr.map { structuralTypes.contains($0) } ?? false
         // CCEL frequently emits `shorttitle=""` (empty) on real chapter/book
@@ -413,7 +416,9 @@ private final class ThMLDelegate: NSObject, XMLParserDelegate {
         let labelText = nonEmptyShortTitle ?? attributes["title"] ?? ""
         let structuralPrefixes = [
             "Chapter ", "Book ", "Discourse ", "Letter ", "Treatise ",
-            "Section ", "Part ", "Article ", "Homily "
+            "Section ", "Part ", "Article ", "Homily ", "Oration ",
+            "Division ", "Sermon ", "Lecture ", "Tractate ", "Epistle ",
+            "Demonstration ", "Canon ", "Hymn ", "Dialogue ", "Commentary "
         ]
         let prefixMatch = structuralPrefixes.contains(where: { labelText.hasPrefix($0) })
         let isSectionDiv = (lower == "div2" || lower == "div3" || lower == "div4" || lower == "div5")
