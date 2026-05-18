@@ -9,6 +9,7 @@ import {
   useCommentaryChapters,
 } from "@/db/hooks";
 import { isTauri } from "@/lib/tauri";
+import { commentaryReferenceTranslation } from "@/domain/translations";
 import type { ChapterPayload } from "@/db/queries";
 import type { SectionRow, WorkRow } from "@/db/types";
 
@@ -228,7 +229,8 @@ function ChapterView({
   const books = useCommentaryBooks(workSlug);
   const chapters = useCommentaryChapters(workSlug, bookSlug);
   const sections = useChapterCommentary(workSlug, bookSlug, chapter);
-  const kjv = useChapter("en_kjv", bookSlug, chapter);
+  const refTranslation = commentaryReferenceTranslation();
+  const refChapter = useChapter(refTranslation.id, bookSlug, chapter);
 
   const [openCommentId, setOpenCommentId] = useState<number | null>(null);
   // Reset selection when the user navigates between chapters / books / works.
@@ -333,13 +335,14 @@ function ChapterView({
           </div>
         ) : null}
 
-        {sections.isPending || kjv.isPending ? (
+        {sections.isPending || refChapter.isPending ? (
           <p style={{ color: "var(--color-fg-muted)" }}>Loading…</p>
         ) : sections.isError ? (
           <Failure error={sections.error} />
-        ) : kjv.data ? (
-          <KJVChapter
-            chapter={kjv.data}
+        ) : refChapter.data ? (
+          <ReferenceChapter
+            chapter={refChapter.data}
+            langAttr={refTranslation.language}
             commentByVerse={commentByVerse}
             activeVerses={activeVerses}
             onSelectVerse={(v) => {
@@ -349,7 +352,7 @@ function ChapterView({
           />
         ) : (
           <p style={{ color: "var(--color-fg-muted)" }}>
-            KJV text not available for this chapter.
+            {refTranslation.shortLabel} text not available for this chapter.
           </p>
         )}
 
@@ -373,23 +376,25 @@ function ChapterView({
   );
 }
 
-/** Render the KJV chapter inline-prose style. Each verse is one continuous
- *  span; verses that have commentary get a dotted underline and a click
- *  handler. The verse with the currently-open comment renders with a
- *  stronger accent so the reader can see which one is anchored. */
-function KJVChapter({
+/** Render the commentary-reference chapter inline-prose style. Each verse is
+ *  one continuous span; verses that have commentary get a dotted underline
+ *  and a click handler. The verse with the currently-open comment renders
+ *  with a stronger accent so the reader can see which one is anchored. */
+function ReferenceChapter({
   chapter,
+  langAttr,
   commentByVerse,
   activeVerses,
   onSelectVerse,
 }: {
   chapter: ChapterPayload;
+  langAttr: string;
   commentByVerse: Map<number, SectionRow>;
   activeVerses: Set<number>;
   onSelectVerse: (verse: number) => void;
 }) {
   return (
-    <div className="al-chapter-flow" lang="en">
+    <div className="al-chapter-flow" lang={langAttr}>
       {chapter.verses.map((v, i) => {
         const hasComment = commentByVerse.has(v.number);
         const isActive = activeVerses.has(v.number);

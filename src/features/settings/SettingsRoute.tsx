@@ -5,11 +5,11 @@ import {
   useSettingsStore,
   type ThemeMode,
 } from "@/stores/useSettingsStore";
-import { TRANSLATION_LABELS } from "@/domain/translations";
+import {
+  audioTranslations,
+  readerTabTranslations,
+} from "@/domain/translations";
 import { AUDIO_SOURCES, type AudioTranslation } from "@/domain/audio";
-import type { CorpusLanguage } from "@/db/types";
-
-const TRANSLATION_ORDER: CorpusLanguage[] = ["en_bsb", "en_kjv", "gk", "he"];
 
 const THEME_OPTIONS: ThemeMode[] = ["light", "dark", "system"];
 
@@ -84,13 +84,14 @@ export function SettingsRoute() {
 
       <Section title="Translations shown in the reader">
         <div style={{ display: "flex", flexWrap: "wrap", gap: 14 }}>
-          {TRANSLATION_ORDER.map((lang) => {
+          {readerTabTranslations().map((t) => {
+            const lang = t.id;
             const on = tabs.some(
-              (t) =>
-                t.active &&
-                (t.kind === "single"
-                  ? t.lang === lang
-                  : t.primary === lang || t.secondary === lang),
+              (tab) =>
+                tab.active &&
+                (tab.kind === "single"
+                  ? tab.lang === lang
+                  : tab.primary === lang || tab.secondary === lang),
             );
             return (
               <button
@@ -110,7 +111,7 @@ export function SettingsRoute() {
                     : "1px solid transparent",
                 }}
               >
-                {TRANSLATION_LABELS[lang]}
+                {t.menuLabel}
               </button>
             );
           })}
@@ -145,7 +146,8 @@ export function SettingsRoute() {
             onClick={() => setAudioBarEnabled(!audioBarEnabled)}
           />
         </Row>
-        {(["en_bsb", "en_web", "en_kjv"] as AudioTranslation[]).map((t) => {
+        {audioTranslations().map(({ id }) => {
+          const t = id as AudioTranslation;
           const src = AUDIO_SOURCES[t];
           return (
             <div

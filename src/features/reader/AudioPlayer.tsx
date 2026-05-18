@@ -23,7 +23,7 @@ import {
   useAudioSourcePath,
   useDownloadSource,
 } from "@/db/audio";
-import { TRANSLATION_LABELS } from "@/domain/translations";
+import { translationMenuLabel } from "@/domain/translations";
 
 interface Props {
   /** Audio-capable translations active in the reader (in tab order). The user
@@ -361,7 +361,7 @@ export function AudioPlayer({
       >
         {available.map((t) => (
           <option key={t} value={t}>
-            {TRANSLATION_LABELS[t] ?? AUDIO_SOURCES[t].label}
+            {translationMenuLabel(t) ?? AUDIO_SOURCES[t].label}
           </option>
         ))}
       </select>
