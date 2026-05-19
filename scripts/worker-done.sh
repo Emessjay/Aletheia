@@ -19,11 +19,16 @@ summary="$*"
 
 worktree="$(git rev-parse --show-toplevel)"
 worktree_name="${worktree##*/}"
+# Case-insensitive: Nimbus's spawn-worker preserves the home repo's basename
+# casing ("Aletheia-<slug>"), while Aletheia's new-worktree.sh creates lowercase
+# ("aletheia-<slug>"). Accept either so both spawn paths work.
+shopt -s nocasematch
 if [[ "$worktree_name" != aletheia-* ]]; then
     echo "error: not in an aletheia-<slug> worktree (cwd is $worktree)" >&2
     exit 1
 fi
-slug="${worktree_name#aletheia-}"
+slug="${worktree_name:9}"
+shopt -u nocasematch
 
 # Resolve the main repo (the first entry from git worktree list).
 main_repo=$(git worktree list --porcelain | awk '/^worktree / { print $2; exit }')

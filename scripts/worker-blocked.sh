@@ -18,11 +18,14 @@ reason="$*"
 
 worktree="$(git rev-parse --show-toplevel)"
 worktree_name="${worktree##*/}"
+# Case-insensitive: see worker-done.sh for the Nimbus/Aletheia casing mismatch.
+shopt -s nocasematch
 if [[ "$worktree_name" != aletheia-* ]]; then
     echo "error: not in an aletheia-<slug> worktree (cwd is $worktree)" >&2
     exit 1
 fi
-slug="${worktree_name#aletheia-}"
+slug="${worktree_name:9}"
+shopt -u nocasematch
 
 main_repo=$(git worktree list --porcelain | awk '/^worktree / { print $2; exit }')
 state_dir="$main_repo/.auditor-state"
