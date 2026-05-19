@@ -53,13 +53,15 @@ export function openCorpus(corpusPath: string): CorpusHandle {
     db,
     select<T = unknown>(sql: string, params: unknown[] = []): T[] {
       const stmt = prepare(sql);
-      const rows = stmt.all(...(params as never[])) as T[];
+      const bound = bindArgs(sql, params);
+      const rows = stmt.all(...bound) as T[];
       enforceCaps(rows);
       return rows;
     },
     selectOne<T = unknown>(sql: string, params: unknown[] = []): T | null {
       const stmt = prepare(sql);
-      const row = stmt.get(...(params as never[])) as T | undefined;
+      const bound = bindArgs(sql, params);
+      const row = stmt.get(...bound) as T | undefined;
       return row ?? null;
     },
     close() {
@@ -94,6 +96,32 @@ function rejectMultiStatement(sql: string): void {
       400,
     );
   }
+}
+
+// Frontend SQL strings use Postgres-style `$N` placeholders — the dialect
+// the Tauri plugin-sql layer accepts directly. better-sqlite3 treats `$N`
+// as a named binding (the name being the digit), so passing an array of
+// positional values fails with "Too many parameter values were provided".
+// Translate to better-sqlite3's preferred shape: wrap the positional
+// array in a single bind-object keyed by string indices "1","2",… so each
+// `$N` resolves to params[N-1]. Queries that already use anonymous `?`
+// placeholders (audio.ts has none, but other callers might) pass through
+// as a normal positional spread.
+function bindArgs(sql: string, params: unknown[]): unknown[] {
+  if (params.length === 0) return [];
+  // Strip string literals before scanning so a `$1` inside a quoted verse
+  // doesn't trick us into thinking the SQL uses named placeholders.
+  const stripped = sql
+    .replace(/'(?:''|[^'])*'/g, "''")
+    .replace(/"(?:""|[^"])*"/g, '""');
+  if (!/\$\d+/.test(stripped)) {
+    return params;
+  }
+  const obj: Record<string, unknown> = {};
+  for (let i = 0; i < params.length; i++) {
+    obj[String(i + 1)] = params[i];
+  }
+  return [obj];
 }
 
 function enforceCaps(rows: unknown[]): void {

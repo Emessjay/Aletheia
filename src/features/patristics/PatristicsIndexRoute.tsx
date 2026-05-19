@@ -1,21 +1,10 @@
 import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { usePatristicWorks } from "@/db/hooks";
-import { getPlatform } from "@/platform";
 import type { WorkRow } from "@/db/types";
 
 export function PatristicsIndexRoute() {
   const works = usePatristicWorks();
-
-  if (!getPlatform().info.isDesktop) {
-    return (
-      <article style={wrap}>
-        <p style={{ color: "var(--color-fg-muted)" }}>
-          Run <code>npm run tauri dev</code> to read the patristic corpus.
-        </p>
-      </article>
-    );
-  }
 
   return (
     <article style={wrap}>

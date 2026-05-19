@@ -17,7 +17,6 @@ import type {
   WordRow,
 } from "@/db/types";
 import { kvSet } from "@/db/user";
-import { getPlatform } from "@/platform";
 import { onAnyScroll } from "@/lib/onScroll";
 import { useSettingsStore } from "@/stores/useSettingsStore";
 import { translationMenuLabel } from "@/domain/translations";
@@ -126,7 +125,7 @@ export function ReaderRoute() {
 
   // Persist last reading position.
   useEffect(() => {
-    if (!valid || !getPlatform().info.isDesktop) return;
+    if (!valid) return;
     void kvSet(
       "reader.last",
       JSON.stringify({ work, book, chapter: chapterNum }),
@@ -299,17 +298,6 @@ export function ReaderRoute() {
   const primaryBookName = primaryQuery?.data?.book.name ?? null;
 
   if (!valid) return <Navigate to="/reader/bible/john/1" replace />;
-
-  if (!getPlatform().info.isDesktop) {
-    return (
-      <article style={readerWrap}>
-        <p style={{ color: "var(--color-fg-muted)" }}>
-          Run <code>npm run tauri dev</code> to read the corpus. Browser-only
-          dev mode cannot reach the SQLite plugin.
-        </p>
-      </article>
-    );
-  }
 
   const allHighlights = annotations.data?.highlights ?? [];
   const allNotes = annotations.data?.notes ?? [];
