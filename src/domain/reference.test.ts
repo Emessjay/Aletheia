@@ -62,4 +62,26 @@ describe("parseReference", () => {
     expect(r?.chapter).toBe(5);
     expect(r?.verse).toBe(7);
   });
+
+  it("parses space-separated chapter and verse: 'john 3 16'", () => {
+    const r = parseReference("john 3 16");
+    expect(r?.bookSlug).toBe("john");
+    expect(r?.chapter).toBe(3);
+    expect(r?.verse).toBe(16);
+    expect(r?.href).toBe("/reader/bible/john/3#v16");
+  });
+
+  it("parses space-separated with numeric book prefix: '1 cor 13 4'", () => {
+    const r = parseReference("1 cor 13 4");
+    expect(r?.bookSlug).toBe("1cor");
+    expect(r?.chapter).toBe(13);
+    expect(r?.verse).toBe(4);
+  });
+
+  it("keeps single integer as chapter only: 'john 3'", () => {
+    const r = parseReference("john 3");
+    expect(r?.bookSlug).toBe("john");
+    expect(r?.chapter).toBe(3);
+    expect(r?.verse).toBeNull();
+  });
 });

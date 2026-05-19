@@ -147,20 +147,29 @@ export function parseReference(input: string): ParsedReference | null {
   const compact = norm.replace(/\s+/g, "");
 
   let bookSlug: string | null = null;
-  let rest = "";
+  let restNorm = "";
   for (const { alias, slug } of ALIAS_INDEX) {
     if (compact.startsWith(alias)) {
       bookSlug = slug;
-      rest = compact.slice(alias.length);
+      // Advance past alias.length non-space chars in norm so the remainder
+      // keeps its spaces — "3 16" can then be read as chapter 3 verse 16.
+      let consumed = 0;
+      let i = 0;
+      while (i < norm.length && consumed < alias.length) {
+        if (norm[i] !== " ") consumed++;
+        i++;
+      }
+      restNorm = norm.slice(i);
       break;
     }
   }
   if (!bookSlug) return null;
 
-  // Strip any leading non-digit separator (e.g. ".", ":", "-") left over after
-  // the alias match, then read the chapter (and optional verse).
-  const restClean = rest.replace(/^[^\d]+/, "");
-  const m = restClean.match(/^(\d+)(?:[:.](\d+))?/);
+  // Strip any leading non-digit separator (e.g. ".", ":", "-", " ") left over
+  // after the alias match, then read chapter and optional verse.
+  // The separator between chapter and verse may be ":", ".", or " ".
+  const restClean = restNorm.replace(/^[^\d]+/, "");
+  const m = restClean.match(/^(\d+)(?:[:.  ](\d+))?/);
   const chapter = m ? Number(m[1]) : 1;
   const verse = m && m[2] ? Number(m[2]) : null;
 
