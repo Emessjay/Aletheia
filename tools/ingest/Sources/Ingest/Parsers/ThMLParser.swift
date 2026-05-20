@@ -8,6 +8,18 @@ import Foundation
 /// their `<p>` children's text content as the section body. Scripture references appear as
 /// `<scripRef passage="John 3:16">…</scripRef>` and are preserved as inline `{ref:John.3.16}`
 /// tokens so the app's reader can link them.
+///
+/// Structural markup that the Schaff editions carry — italics, block quotes, subheadings,
+/// editor footnotes — survives as a parallel family of inline tokens that the renderer
+/// parses out:
+///   • `{em}…{/em}`   — `<i>` / `<em>`
+///   • `{b}…{/b}`     — `<b>`
+///   • `{q}…{/q}`     — `<q>` (CCEL's block-quote tag)
+///   • `{h2}…{/h2}` / `{h3}…{/h3}` / `{h4}…{/h4}` — sub-headings inside a section
+///   • `{fn:N}…{/fn}` — editor `<note place="end" n="N">` footnotes
+/// The first heading inside a chapter container is the chapter title; it flows as plain
+/// text (no `{h…}` wrapper) so the existing `stripLeadingHeadingParagraphs` cleanup still
+/// drops the duplicate of `label`. Subsequent headings emit `{h…}` tokens.
 public struct ThMLParser {
     public init() {}
 
@@ -328,10 +340,33 @@ private final class ThMLDelegate: NSObject, XMLParserDelegate {
     /// foundCharacters straight into the section body, e.g.
     /// "end of his sentence.Ps. cxlv. 3 And man, ..." — the footnote
     /// reference fused with the surrounding sentence. We track note depth
-    /// and silence character capture (and `</p>` paragraph breaks) while
-    /// inside one, so the body reads as the source prose alone.
+    /// to wrap their content in `{fn:N}…{/fn}` tokens and to suppress
+    /// `</p>` paragraph breaks while inside a note (notes are inline
+    /// even when the source pretty-printer breaks them across lines).
     private var noteDepth: Int = 0
     private var inNote: Bool { noteDepth > 0 }
+
+    /// Count of headings already emitted inside the current section. The
+    /// first heading is the chapter / section title — its text duplicates
+    /// `label` (or is captured into `label` by the synthesizer) and gets
+    /// stripped by `stripLeadingHeadingParagraphs`, so we leave it untokenized.
+    /// Subsequent headings inside the same section are real sub-headings
+    /// (Eusebius's "§ 1. Sources and Literature", etc.) and are wrapped in
+    /// `{h2}…{/h2}` tokens so the renderer can show them visibly.
+    private var headingsSeenInSection: Int = 0
+    /// HTML level of the heading we're currently inside (2/3/4) — captured at the
+    /// start tag so the matching end tag can close the right token.
+    private var headingLevelStack: [Int] = []
+    /// True when we've already emitted the opening `{h…}` token for the heading
+    /// at the top of `headingLevelStack`. Suppressed for the first heading per
+    /// section (which is the chapter title).
+    private var headingTokenOpenStack: [Bool] = []
+    /// Depth inside an untokenised heading (the first heading per section, used
+    /// only to feed `stripLeadingHeadingParagraphs`). Inline em/b/q markup
+    /// inside that heading would defeat the strip-pass's regex on the body
+    /// (e.g. `{em}Chapter I.{/em}—Salutation`), so we suppress nested tokens
+    /// while this is non-zero.
+    private var inUntokenisedHeadingDepth: Int = 0
 
     init(workSlug: String, containerID: String? = nil) {
         self.workSlug = workSlug
@@ -347,15 +382,57 @@ private final class ThMLDelegate: NSObject, XMLParserDelegate {
 
     func parser(_ parser: XMLParser, didStartElement element: String, namespaceURI: String?, qualifiedName: String?, attributes: [String : String] = [:]) {
         let lower = element.lowercased()
-        if !inNote, textBuffer.contains(where: { !$0.isWhitespace }), var section = currentSection {
+        // Flush pending characters into the body before the tag boundary changes
+        // the markup state. Inside a `<note>` the characters still belong to the
+        // note body, so flush them too — the closing `</note>` will wrap the
+        // whole accumulated run.
+        if textBuffer.contains(where: { !$0.isWhitespace }), var section = currentSection {
             section.body += textBuffer
             currentSection = section
         }
         textBuffer.removeAll(keepingCapacity: true)
 
-        if lower == "note" { noteDepth += 1 }
+        let suppressTokens = inUntokenisedHeadingDepth > 0
+        if lower == "note" {
+            noteDepth += 1
+            // Open a footnote token. `n` carries the editor's note number; fall
+            // back to a sequential counter so unnumbered notes still anchor.
+            let n = (attributes["n"]?.trimmingCharacters(in: .whitespacesAndNewlines)).flatMap { $0.isEmpty ? nil : $0 }
+                ?? attributes["id"]
+                ?? ""
+            if !suppressTokens, var section = currentSection {
+                section.body += "{fn:\(sanitizeTokenArg(n))}"
+                currentSection = section
+            }
+        }
         if lower == "title" { inTitle = true }
         if lower == "author" { inAuthor = true }
+
+        // Inline emphasis. `<i>` is by far the most common; `<em>` is the
+        // semantic spelling some CCEL volunteers used; `<b>` is rare but
+        // worth preserving for the few places it appears.
+        if !suppressTokens, lower == "i" || lower == "em" {
+            if var section = currentSection {
+                section.body += "{em}"
+                currentSection = section
+            }
+        }
+        if !suppressTokens, lower == "b" {
+            if var section = currentSection {
+                section.body += "{b}"
+                currentSection = section
+            }
+        }
+        // Block quote — CCEL's `<q>` element wraps both inline-style and
+        // block-style quotations. The renderer decides which presentation
+        // applies based on context (an entire paragraph wrapped in `{q}` is
+        // rendered as `<blockquote>`).
+        if !suppressTokens, lower == "q" || lower == "quote" {
+            if var section = currentSection {
+                section.body += "{q}"
+                currentSection = section
+            }
+        }
 
         // Track entry into the work-scoping container, if one was requested. Every opening
         // `<div…>` pushes onto `divIdStack`; the boolean records whether *this* div was the
@@ -378,6 +455,7 @@ private final class ThMLDelegate: NSObject, XMLParserDelegate {
                         kind: "section",
                         label: (label?.isEmpty == false) ? label : nil
                     )
+                    headingsSeenInSection = 0
                 }
             }
             divIdStack.append(isMatch)
@@ -433,6 +511,10 @@ private final class ThMLDelegate: NSObject, XMLParserDelegate {
                 kind: kind,
                 label: attributes["title"] ?? attributes["shorttitle"] ?? n.map { "Chapter \($0)" }
             )
+            // New section → first heading inside it is the chapter title (which
+            // stays untokenised so the heading-strip pass can drop it as a
+            // duplicate of `label`); reset the counter for that detection.
+            headingsSeenInSection = 0
         }
 
         if !inNote, lower == "scripref", let passage = attributes["passage"] {
@@ -444,6 +526,53 @@ private final class ThMLDelegate: NSObject, XMLParserDelegate {
                 currentSection = s
             }
         }
+
+        // Heading tags inside body content. The first heading per section is the
+        // chapter title (its text duplicates `label` and the heading-strip pass
+        // drops it from the body); emit no token for that one. Subsequent
+        // headings are real sub-divisions — wrap them in `{h2}…{/h2}` etc. so
+        // the renderer can promote them back to visible `<h2>` / `<h3>` headings.
+        if isHeadingTag(lower), let level = headingLevel(lower) {
+            headingLevelStack.append(level)
+            if currentSection != nil, headingsSeenInSection > 0 {
+                if var section = currentSection {
+                    let outLevel = clampHeadingLevel(level)
+                    section.body += "{h\(outLevel)}"
+                    currentSection = section
+                }
+                headingTokenOpenStack.append(true)
+            } else {
+                headingTokenOpenStack.append(false)
+                // Suppress inline tokens inside the chapter title so the
+                // strip-heading regex can still recognise the plain text.
+                inUntokenisedHeadingDepth += 1
+            }
+            headingsSeenInSection += 1
+        }
+    }
+
+    /// Headings in CCEL ThML appear at HTML levels 1-4 for series/work/chapter/
+    /// subheading; we collapse to a {h2…h4} render range so the page's chapter
+    /// `<h1>` keeps its prominence and in-body headings are visibly subordinate.
+    private func clampHeadingLevel(_ raw: Int) -> Int {
+        if raw <= 2 { return 2 }
+        if raw >= 4 { return 4 }
+        return raw
+    }
+
+    private func headingLevel(_ lower: String) -> Int? {
+        guard lower.count == 2, lower.first == "h" else { return nil }
+        return Int(String(lower.last!))
+    }
+
+    /// Curly braces in note `n=` / `id=` values would close our token early.
+    /// Replace any with a benign substitute so the renderer's regex stays simple.
+    private func sanitizeTokenArg(_ s: String) -> String {
+        var out = ""
+        for c in s {
+            if c == "{" || c == "}" { out.append("_") } else { out.append(c) }
+        }
+        return out
     }
 
     func parser(_ parser: XMLParser, foundCharacters string: String) {
@@ -462,13 +591,56 @@ private final class ThMLDelegate: NSObject, XMLParserDelegate {
         if lower == "title" { inTitle = false }
         if lower == "author" { inAuthor = false }
 
-        if !inNote, var section = currentSection {
+        // Flush characters (including any inside a `<note>`) before applying
+        // closing-tag markup so the `{/em}`, `{/q}`, `{/fn}` etc. wrap the text
+        // that actually belongs to the element being closed.
+        if var section = currentSection {
             section.body += text
             currentSection = section
         }
         textBuffer.removeAll(keepingCapacity: true)
 
-        if lower == "note" { noteDepth = max(0, noteDepth - 1) }
+        let suppressTokens = inUntokenisedHeadingDepth > 0
+        if !suppressTokens, lower == "i" || lower == "em" {
+            if var section = currentSection {
+                section.body += "{/em}"
+                currentSection = section
+            }
+        }
+        if !suppressTokens, lower == "b" {
+            if var section = currentSection {
+                section.body += "{/b}"
+                currentSection = section
+            }
+        }
+        if !suppressTokens, lower == "q" || lower == "quote" {
+            if var section = currentSection {
+                section.body += "{/q}"
+                currentSection = section
+            }
+        }
+        if isHeadingTag(lower) {
+            // Pop the matching `{h…}` opening (if one was actually emitted) and
+            // close it with `{/h}`. We use a uniform closer (rather than
+            // `{/hN}`) so the renderer's stack-pop is independent of the
+            // level — the level was carried by the opener.
+            let _ = headingLevelStack.popLast()
+            let wasOpen = headingTokenOpenStack.popLast() ?? false
+            if wasOpen, var section = currentSection {
+                section.body += "{/h}"
+                currentSection = section
+            } else {
+                // We were inside the untokenised chapter title — leave it.
+                inUntokenisedHeadingDepth = max(0, inUntokenisedHeadingDepth - 1)
+            }
+        }
+        if lower == "note" {
+            noteDepth = max(0, noteDepth - 1)
+            if !suppressTokens, var section = currentSection {
+                section.body += "{/fn}"
+                currentSection = section
+            }
+        }
 
         if lower.hasPrefix("div") {
             if let wasMatch = divIdStack.popLast(), wasMatch {
@@ -608,16 +780,28 @@ extension ThMLParser {
         // markers, work title, translator note, dated bracket, horizontal
         // rule, chapter ordinal, …
         for raw in body.components(separatedBy: "\n\n").prefix(12) {
-            // Strip inline scripRef tokens before any further work — they're
-            // editorial cross-reference annotations, not running prose, and
-            // they leak through to the synthesized label otherwise ("…we have
-            // that of {ref:Ecclesiasticus xv"). The token text format mirrors
-            // the renderer's stripping regex (REF_TOKEN_RE).
-            let cleaned = raw.replacingOccurrences(
-                of: #"\{ref:[^}]*\}"#,
-                with: "",
-                options: .regularExpression
-            )
+            // Strip inline tokens before any further work — they're either
+            // editorial annotations (scripRef) or structural markup (em / q /
+            // h / fn) and they leak through to the synthesized label
+            // otherwise ("…we have that of {ref:Ecclesiasticus xv" / "{em}On
+            // the Soul{/em}"). The token format mirrors the renderer's
+            // stripping regexes; keep them in sync with `SectionBody.tsx`.
+            let cleaned = raw
+                .replacingOccurrences(
+                    of: #"\{ref:[^}]*\}"#,
+                    with: "",
+                    options: .regularExpression
+                )
+                .replacingOccurrences(
+                    of: #"\{(?:em|b|q|h2|h3|h4|fn(?::[^}]*)?)\}"#,
+                    with: "",
+                    options: .regularExpression
+                )
+                .replacingOccurrences(
+                    of: #"\{/(?:em|b|q|h|fn)\}"#,
+                    with: "",
+                    options: .regularExpression
+                )
             var para = normalizeWhitespace(cleaned)
             if para.isEmpty { continue }
             if para.range(of: #"^[—–\-_·•\s]+$"#, options: .regularExpression) != nil { continue }
@@ -688,6 +872,12 @@ extension ThMLParser {
     }
 
     fileprivate static func classifyHeadingParagraph(_ para: String, labelNorm: String?, allowTitleHeuristic: Bool) -> HeadingOutcome {
+        // A paragraph that opens with a sub-heading token (`{h2}` / `{h3}` /
+        // `{h4}`) is itself the renderable heading the source wants us to
+        // show — keep it intact so the stripping pass stops here.
+        if para.range(of: #"^\{h[234]\}"#, options: .regularExpression) != nil {
+            return .keep
+        }
         // Horizontal rule (em-dash / en-dash / hyphen / underscore / bullet).
         if para.range(of: #"^[—–\-_·•\s]+$"#, options: .regularExpression) != nil {
             return .strip(structural: false)
