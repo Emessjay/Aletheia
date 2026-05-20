@@ -4,9 +4,9 @@ import {
   usePatristicWorks,
   useSection,
   useSectionCitations,
-  useWorkSections,
+  useWorkSectionOutline,
 } from "@/db/hooks";
-import type { SectionRow, WorkRow } from "@/db/types";
+import type { SectionOutlineRow, SectionRow, WorkRow } from "@/db/types";
 import { SectionBody } from "./SectionBody";
 
 const LANG_ATTR: Record<string, string> = { en: "en", la: "la", gr: "grc" };
@@ -52,7 +52,7 @@ function SectionView({
   // Some sub-sections are only present in Latin (Summa respondeo etc.).
   const childrenLa = useChildSections(workSlug, ordinalPath, "la");
   const citations = useSectionCitations(section.data?.id ?? null);
-  const allSections = useWorkSections(workSlug, "en");
+  const allSections = useWorkSectionOutline(workSlug, "en");
   const allWorks = usePatristicWorks();
   const work = (allWorks.data ?? []).find((w) => w.slug === workSlug) ?? null;
 
@@ -225,7 +225,7 @@ function PatristicsSidebar({
   workSlug: string;
   activePath: string;
 }) {
-  const sections = useWorkSections(workSlug, "en");
+  const sections = useWorkSectionOutline(workSlug, "en");
   const items = (sections.data ?? []).filter(filterForToc);
 
   return (
@@ -288,7 +288,7 @@ function PatristicsSidebar({
   );
 }
 
-function filterForToc(s: SectionRow): boolean {
+function filterForToc(s: SectionOutlineRow): boolean {
   // Summa: list only headings; the rest is rendered inline.
   if (
     s.ordinal_path.startsWith("summa.") &&
