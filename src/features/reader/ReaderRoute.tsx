@@ -250,24 +250,6 @@ export function ReaderRoute() {
     return () => document.removeEventListener("mouseup", onMouseUp);
   }, [valid, work, book, chapterNum]);
 
-  // Scroll to #vN anchor after verses mount.
-  useEffect(() => {
-    if (!location.hash) return;
-    const id = location.hash.slice(1);
-    let raf = 0;
-    let attempts = 0;
-    const tryScroll = () => {
-      const el = document.getElementById(id);
-      if (el) {
-        el.scrollIntoView({ behavior: "smooth", block: "center" });
-        return;
-      }
-      if (attempts++ < 30) raf = requestAnimationFrame(tryScroll);
-    };
-    raf = requestAnimationFrame(tryScroll);
-    return () => cancelAnimationFrame(raf);
-  }, [location.hash, location.pathname]);
-
   const annotations = useChapterAnnotations(work, book, chapterNum);
 
   // When the layout pairs an LXX-versified single column with an MT-versified
@@ -296,6 +278,29 @@ export function ReaderRoute() {
   const primaryQuery = chapterQueries[0];
   const chapterNumbers = primaryQuery?.data?.chapterNumbers ?? [];
   const primaryBookName = primaryQuery?.data?.book.name ?? null;
+  const primaryChapterReady = Boolean(primaryQuery?.data);
+
+  // Scroll to #vN anchor once the chapter data has rendered. Re-runs when the
+  // primary chapter query settles so the target verse exists in the DOM —
+  // verses on a remote backend can land well after the route changes, which
+  // is why a pure rAF retry loop wasn't reliable.
+  useEffect(() => {
+    if (!location.hash) return;
+    if (!primaryChapterReady) return;
+    const id = location.hash.slice(1);
+    let raf = 0;
+    let attempts = 0;
+    const tryScroll = () => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        return;
+      }
+      if (attempts++ < 60) raf = requestAnimationFrame(tryScroll);
+    };
+    raf = requestAnimationFrame(tryScroll);
+    return () => cancelAnimationFrame(raf);
+  }, [location.hash, location.pathname, primaryChapterReady]);
 
   if (!valid) return <Navigate to="/reader/bible/john/1" replace />;
 
