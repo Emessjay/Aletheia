@@ -1,36 +1,78 @@
+import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useSearch } from "@/db/hooks";
 import { SEARCH_MARK_CLOSE, SEARCH_MARK_OPEN } from "@/db/queries";
 
 export function SearchRoute() {
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
   const q = params.get("q") ?? "";
+  const [draft, setDraft] = useState(q);
+  const inputRef = useRef<HTMLInputElement>(null);
   const search = useSearch(q, "en_bsb", 100);
+
+  // Keep the input synced if the URL changes externally (back/forward,
+  // palette navigation). Only overwrite when the URL diverges from what
+  // the user is currently typing.
+  useEffect(() => {
+    setDraft((prev) => (prev === q ? prev : q));
+  }, [q]);
+
+  // Auto-focus on mount so users who land here have somewhere to type.
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  const commit = (next: string) => {
+    const trimmed = next.trim();
+    if (trimmed === q) return;
+    if (trimmed.length === 0) {
+      setParams({}, { replace: true });
+    } else {
+      setParams({ q: trimmed }, { replace: true });
+    }
+  };
 
   return (
     <article style={wrap}>
       <header style={{ marginBottom: "1.5rem" }}>
         <p className="al-eyebrow">Search</p>
-        <h1
-          style={{
-            fontSize: 22,
-            marginTop: 4,
-            fontStyle: "italic",
-            color: "var(--color-fg)",
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            commit(draft);
           }}
+          role="search"
         >
-          {q ? <>“{q}”</> : "Enter a query"}
-        </h1>
+          <input
+            ref={inputRef}
+            type="search"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder="Search the corpus…"
+            aria-label="Search the corpus"
+            spellCheck={false}
+            autoComplete="off"
+            style={inputStyle}
+          />
+        </form>
         {q && search.data ? (
-          <p style={{ color: "var(--color-fg-subtle)", fontSize: 13 }}>
-            {search.data.length} result{search.data.length === 1 ? "" : "s"}
+          <p
+            style={{
+              color: "var(--color-fg-subtle)",
+              fontSize: 13,
+              marginTop: 8,
+            }}
+          >
+            {search.data.length} result{search.data.length === 1 ? "" : "s"} for{" "}
+            <span style={{ fontStyle: "italic" }}>“{q}”</span>
           </p>
         ) : null}
       </header>
 
       {!q ? (
         <p style={{ color: "var(--color-fg-muted)" }}>
-          Tip: press <kbd>⌘K</kbd> anywhere to open the command palette.
+          Type a word or phrase and press Enter. Tip: press <kbd>⌘K</kbd>{" "}
+          anywhere to open the command palette.
         </p>
       ) : search.isPending ? (
         <p style={{ color: "var(--color-fg-muted)" }}>Searching…</p>
@@ -85,6 +127,20 @@ const wrap: React.CSSProperties = {
   maxWidth: "var(--measure)",
   margin: "0 auto",
   padding: "2.5rem 2rem 6rem",
+};
+
+const inputStyle: React.CSSProperties = {
+  width: "100%",
+  marginTop: 8,
+  padding: "10px 12px",
+  fontSize: 16,
+  fontFamily: "inherit",
+  color: "var(--color-fg)",
+  background: "var(--color-bg-elevated, var(--color-bg))",
+  border: "1px solid var(--color-rule)",
+  borderRadius: 6,
+  outline: "none",
+  boxSizing: "border-box",
 };
 
 function Snippet({ text }: { text: string }) {
