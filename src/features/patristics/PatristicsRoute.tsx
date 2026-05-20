@@ -23,6 +23,17 @@ const SUB_KIND_ORDER: Record<string, number> = {
   reply: 4,
 };
 
+// Scholastic kinds keep their typographic eyebrow rubric ("Objection 1",
+// "I answer that"); patristic kinds (sermon / homily / discourse / section
+// titles) render as real <h2> sub-headings so the hierarchy is visible at a
+// glance instead of melting into the surrounding prose.
+const SCHOLASTIC_KINDS = new Set([
+  "objection",
+  "reply",
+  "sedcontra",
+  "respondeo",
+]);
+
 export function PatristicsRoute() {
   const { work = "", section: sectionParam = "" } = useParams();
   const ordinalPath = decodeURIComponent(sectionParam);
@@ -196,19 +207,34 @@ function SectionView({
 function ChildSection({ section }: { section: SectionRow }) {
   const citations = useSectionCitations(section.id);
   const kindLabel = formatKind(section);
+  const scholastic = SCHOLASTIC_KINDS.has(section.kind);
   return (
-    <section style={{ marginTop: "1.25rem" }}>
-      <p
-        style={{
-          fontSize: 12,
-          letterSpacing: "0.14em",
-          textTransform: "uppercase",
-          color: "var(--color-fg-muted)",
-          margin: "0 0 4px",
-        }}
-      >
-        {kindLabel}
-      </p>
+    <section style={{ marginTop: scholastic ? "1.25rem" : "1.75rem" }}>
+      {scholastic ? (
+        <p
+          style={{
+            fontSize: 12,
+            letterSpacing: "0.14em",
+            textTransform: "uppercase",
+            color: "var(--color-fg-muted)",
+            margin: "0 0 4px",
+          }}
+        >
+          {kindLabel}
+        </p>
+      ) : (
+        <h2
+          style={{
+            fontSize: 19,
+            fontWeight: 600,
+            lineHeight: 1.3,
+            margin: "0 0 0.5em",
+            color: "var(--color-fg)",
+          }}
+        >
+          {kindLabel}
+        </h2>
+      )}
       <SectionBody
         body={section.body}
         citations={citations.data ?? []}
