@@ -388,14 +388,14 @@ export async function findBook(
   slug: string,
 ): Promise<BookRow | null> {
   const direct = await corpusSelectOne<BookRow>(
-    `SELECT * FROM book WHERE language = $1 AND slug = $2`,
+    `SELECT * FROM book WHERE language = $1 AND (slug = $2 OR lower(name) = lower($2))`,
     [language, slug],
   );
   if (direct) return direct;
   const fallback = FALLBACK_LANGUAGE[language];
   if (!fallback) return null;
   return corpusSelectOne<BookRow>(
-    `SELECT * FROM book WHERE language = $1 AND slug = $2`,
+    `SELECT * FROM book WHERE language = $1 AND (slug = $2 OR lower(name) = lower($2))`,
     [fallback, slug],
   );
 }
