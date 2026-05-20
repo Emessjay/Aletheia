@@ -1,14 +1,19 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { useSearch } from "@/db/hooks";
+import { useInfiniteSearch } from "@/db/hooks";
 import { SEARCH_MARK_CLOSE, SEARCH_MARK_OPEN } from "@/db/queries";
+import { getTranslation } from "@/domain/translations";
+
+const PAGE_SIZE = 100;
+const MAX_RESULTS = 1000;
 
 export function SearchRoute() {
   const [params, setParams] = useSearchParams();
   const q = params.get("q") ?? "";
   const [draft, setDraft] = useState(q);
   const inputRef = useRef<HTMLInputElement>(null);
-  const search = useSearch(q, "en_bsb", 100);
+  const search = useInfiniteSearch(q, PAGE_SIZE, MAX_RESULTS);
+  const hits = search.data?.pages.flat() ?? [];
 
   // Keep the input synced if the URL changes externally (back/forward,
   // palette navigation). Only overwrite when the URL diverges from what
@@ -63,7 +68,8 @@ export function SearchRoute() {
               marginTop: 8,
             }}
           >
-            {search.data.length} result{search.data.length === 1 ? "" : "s"} for{" "}
+            {hits.length} loaded result{hits.length === 1 ? "" : "s"}
+            {search.hasNextPage ? "+" : ""} for{" "}
             <span style={{ fontStyle: "italic" }}>“{q}”</span>
           </p>
         ) : null}
@@ -78,11 +84,11 @@ export function SearchRoute() {
         <p style={{ color: "var(--color-fg-muted)" }}>Searching…</p>
       ) : search.isError ? (
         <pre style={{ color: "var(--color-accent)" }}>{String(search.error)}</pre>
-      ) : !search.data || search.data.length === 0 ? (
+      ) : hits.length === 0 ? (
         <p style={{ color: "var(--color-fg-muted)" }}>No matches.</p>
       ) : (
         <ul style={{ listStyle: "none", padding: 0 }}>
-          {search.data.map((hit) => (
+          {hits.map((hit) => (
             <li
               key={hit.verse_id}
               style={{
@@ -100,7 +106,7 @@ export function SearchRoute() {
                   gap: 16,
                 }}
               >
-                <span>
+                <span dir={getTranslation(hit.translation)?.direction ?? "ltr"}>
                   <Snippet text={hit.snippet} />
                 </span>
                 <span
@@ -112,6 +118,8 @@ export function SearchRoute() {
                     letterSpacing: "0.06em",
                   }}
                 >
+                  {getTranslation(hit.translation)?.shortLabel ?? hit.translation}
+                  {" · "}
                   {hit.book_name} {hit.chapter}:{hit.verse}
                 </span>
               </Link>
@@ -119,6 +127,30 @@ export function SearchRoute() {
           ))}
         </ul>
       )}
+
+      {hits.length > 0 && search.hasNextPage ? (
+        <div style={{ marginTop: 16, textAlign: "center" }}>
+          <button
+            type="button"
+            onClick={() => search.fetchNextPage()}
+            disabled={search.isFetchingNextPage}
+            style={loadMoreStyle}
+          >
+            {search.isFetchingNextPage ? "Loading…" : `Load ${PAGE_SIZE} more`}
+          </button>
+        </div>
+      ) : hits.length >= MAX_RESULTS ? (
+        <p
+          style={{
+            color: "var(--color-fg-subtle)",
+            fontSize: 13,
+            marginTop: 16,
+            textAlign: "center",
+          }}
+        >
+          Result cap reached ({MAX_RESULTS}). Refine your query to see more.
+        </p>
+      ) : null}
     </article>
   );
 }
@@ -127,6 +159,17 @@ const wrap: React.CSSProperties = {
   maxWidth: "var(--measure)",
   margin: "0 auto",
   padding: "2.5rem 2rem 6rem",
+};
+
+const loadMoreStyle: React.CSSProperties = {
+  padding: "8px 16px",
+  fontSize: 14,
+  fontFamily: "inherit",
+  color: "var(--color-fg)",
+  background: "var(--color-bg-elevated, var(--color-bg))",
+  border: "1px solid var(--color-rule)",
+  borderRadius: 6,
+  cursor: "pointer",
 };
 
 const inputStyle: React.CSSProperties = {

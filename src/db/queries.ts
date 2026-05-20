@@ -294,47 +294,65 @@ export interface SearchHit {
   verse_id: number;
   book_slug: string;
   book_name: string;
+  /** Translation/language id of the matching verse — for badging in the UI. */
+  translation: CorpusLanguage;
   chapter: number;
   verse: number;
   snippet: string;
+}
+
+// Detects FTS5 operators / phrase syntax. When present we hand the query
+// through verbatim so power users can write `("foo" OR bar*) NOT baz` without
+// our tokenizer corrupting it.
+const FTS_OPERATOR_RE = /["*()]|\b(?:AND|OR|NOT|NEAR)\b/;
+
+export function buildFtsQuery(input: string): string {
+  const trimmed = input.trim();
+  if (!trimmed) return "";
+  if (FTS_OPERATOR_RE.test(trimmed)) return trimmed;
+  // Wrap each whitespace-separated token in a phrase + prefix marker so a
+  // mid-typed fragment ("begi") still matches "beginning". Quoting also
+  // protects non-ASCII Hebrew/Greek tokens from being mis-parsed as bare
+  // FTS terms.
+  return trimmed
+    .split(/\s+/)
+    .filter((t) => t.length > 0)
+    .map((t) => `"${t.replace(/"/g, '""')}"*`)
+    .join(" ");
 }
 
 const SEARCH_MARK_OPEN = "";
 const SEARCH_MARK_CLOSE = "";
 
 /**
- * Run a full-text search over verses in a given language. Returns up to `limit`
- * matches ordered by FTS rank. Snippet uses control-character delimiters that
- * the UI parses out into spans (avoids HTML injection).
+ * Run a full-text search over every bible-translation verse in the corpus.
+ * Returns up to `limit` matches ordered by FTS rank, starting at `offset`.
+ * Snippet uses control-character delimiters that the UI parses out into spans
+ * (avoids HTML injection).
  */
 export async function searchVerses(
   query: string,
-  language: CorpusLanguage = "en_bsb",
   limit = 30,
+  offset = 0,
 ): Promise<SearchHit[]> {
-  const trimmed = query.trim();
-  if (!trimmed) return [];
-  // Escape FTS metacharacters: wrap each whitespace-separated token in quotes.
-  const ftsQuery = trimmed
-    .split(/\s+/)
-    .map((t) => `"${t.replace(/"/g, '""')}"`)
-    .join(" ");
+  const ftsQuery = buildFtsQuery(query);
+  if (!ftsQuery) return [];
   return corpusSelect<SearchHit>(
     `SELECT v.id AS verse_id,
             b.slug AS book_slug,
             b.name AS book_name,
+            b.language AS translation,
             c.number AS chapter,
             v.number AS verse,
-            snippet(verse_fts, 0, $3, $4, '…', 12) AS snippet
+            snippet(verse_fts, 0, $2, $3, '…', 12) AS snippet
        FROM verse_fts
        JOIN verse v   ON v.id = verse_fts.rowid
        JOIN chapter c ON c.id = v.chapter_id
        JOIN book b    ON b.id = c.book_id
       WHERE verse_fts MATCH $1
-        AND b.language = $2
       ORDER BY rank
-      LIMIT $5`,
-    [ftsQuery, language, SEARCH_MARK_OPEN, SEARCH_MARK_CLOSE, limit],
+      LIMIT $4 OFFSET $5`,
+    [ftsQuery, SEARCH_MARK_OPEN, SEARCH_MARK_CLOSE, limit, offset],
   );
 }
 
