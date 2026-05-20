@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import type { CorpusLanguage, SectionRow, WorkRow } from "./types";
 import {
   getChapter,
@@ -32,18 +32,41 @@ export function useStrongs(id: string | null) {
   });
 }
 
-export function useSearch(
-  query: string,
-  language: CorpusLanguage = "en_bsb",
-  limit = 30,
-) {
+export function useSearch(query: string, limit = 30) {
   const q = query.trim();
   return useQuery<SearchHit[]>({
-    queryKey: ["corpus", "search", language, q, limit],
-    queryFn: () => searchVerses(q, language, limit),
+    queryKey: ["corpus", "search", q, limit],
+    queryFn: () => searchVerses(q, limit),
     enabled: q.length > 0,
     // Search is read-only over the immutable corpus, but the query string
     // changes often — modest staleness is fine.
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+/**
+ * Paginated search. Each page fetches up to `pageSize` hits; `maxResults`
+ * caps total loaded so a query like "the" can't stream the entire corpus.
+ */
+export function useInfiniteSearch(
+  query: string,
+  pageSize = 100,
+  maxResults = 1000,
+) {
+  const q = query.trim();
+  return useInfiniteQuery<SearchHit[]>({
+    queryKey: ["corpus", "search-infinite", q, pageSize, maxResults],
+    queryFn: ({ pageParam = 0 }) =>
+      searchVerses(q, pageSize, pageParam as number),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, allPages) => {
+      const loaded = allPages.reduce((n, p) => n + p.length, 0);
+      // No more pages if the last fetch came up short, or if we hit the cap.
+      if (lastPage.length < pageSize) return undefined;
+      if (loaded >= maxResults) return undefined;
+      return loaded;
+    },
+    enabled: q.length > 0,
     staleTime: 5 * 60 * 1000,
   });
 }

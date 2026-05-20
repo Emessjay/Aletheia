@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useSearch } from "@/db/hooks";
 import { SEARCH_MARK_CLOSE, SEARCH_MARK_OPEN, type SearchHit } from "@/db/queries";
 import { parseReference, type ParsedReference } from "@/domain/reference";
+import { getTranslation } from "@/domain/translations";
 import { useCommandPaletteStore } from "@/stores/useCommandPaletteStore";
 
 type Row =
@@ -30,7 +31,7 @@ export function CommandPalette() {
   }, [open]);
 
   const parsedRef = useMemo(() => parseReference(query), [query]);
-  const search = useSearch(parsedRef ? "" : query, "en_bsb", 25);
+  const search = useSearch(parsedRef ? "" : query, 25);
 
   const rows: Row[] = useMemo(() => {
     const out: Row[] = [];
@@ -233,9 +234,13 @@ export function CommandPalette() {
 }
 
 function VerseHitRow({ hit }: { hit: SearchHit }) {
+  const t = getTranslation(hit.translation);
   return (
     <>
-      <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
+      <span
+        dir={t?.direction ?? "ltr"}
+        style={{ overflow: "hidden", textOverflow: "ellipsis" }}
+      >
         <Snippet text={hit.snippet} />
       </span>
       <span
@@ -245,7 +250,8 @@ function VerseHitRow({ hit }: { hit: SearchHit }) {
           whiteSpace: "nowrap",
         }}
       >
-        {hit.book_name} {hit.chapter}:{hit.verse}
+        {t?.shortLabel ?? hit.translation} · {hit.book_name} {hit.chapter}:
+        {hit.verse}
       </span>
     </>
   );
