@@ -1,13 +1,20 @@
+import { useEffect, useRef, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
 import {
   useChildSections,
   usePatristicWorks,
   useSection,
   useSectionCitations,
-  useWorkSections,
+  useWorkSectionOutline,
 } from "@/db/hooks";
-import type { SectionRow, WorkRow } from "@/db/types";
+import type { SectionOutlineRow, SectionRow, WorkRow } from "@/db/types";
+import { useViewportWidth } from "@/lib/useViewportWidth";
 import { SectionBody } from "./SectionBody";
+
+// Match AppShell's SIDEBAR_BREAKPOINT so the patristics sidebar collapses at
+// the same width as the top-nav links. Below this, the 280px sidebar would
+// crush the reading panel to ~95px on a 375px-wide phone.
+const SIDEBAR_BREAKPOINT = 760;
 
 const LANG_ATTR: Record<string, string> = { en: "en", la: "la", gr: "grc" };
 
@@ -30,12 +37,135 @@ export function PatristicsRoute() {
 
   if (!valid) return <Navigate to="/patristics" replace />;
 
+  return <PatristicsLayout workSlug={work} ordinalPath={ordinalPath} />;
+}
+
+function PatristicsLayout({
+  workSlug,
+  ordinalPath,
+}: {
+  workSlug: string;
+  ordinalPath: string;
+}) {
+  const viewportW = useViewportWidth();
+  const compact = viewportW < SIDEBAR_BREAKPOINT;
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  // Auto-close drawer when switching section or transitioning to desktop.
+  useEffect(() => setDrawerOpen(false), [ordinalPath, compact]);
+
   return (
-    <div style={{ display: "flex", height: "100%", minHeight: 0 }}>
-      <PatristicsSidebar workSlug={work} activePath={ordinalPath} />
-      <main style={{ flex: 1, overflow: "auto" }}>
-        <SectionView workSlug={work} ordinalPath={ordinalPath} />
+    <div
+      style={{
+        display: "flex",
+        height: "100%",
+        minHeight: 0,
+        position: "relative",
+      }}
+    >
+      {!compact ? (
+        <PatristicsSidebar workSlug={workSlug} activePath={ordinalPath} />
+      ) : null}
+      <main style={{ flex: 1, overflow: "auto", minWidth: 0 }}>
+        {compact ? (
+          <div
+            style={{
+              padding: "10px 16px",
+              borderBottom: "1px solid var(--color-rule)",
+              background: "var(--color-bg-elevated)",
+              position: "sticky",
+              top: 0,
+              zIndex: 5,
+            }}
+          >
+            <button
+              type="button"
+              aria-label="Show section list"
+              aria-expanded={drawerOpen}
+              onClick={() => setDrawerOpen(true)}
+              style={{
+                background: "transparent",
+                border: "1px solid var(--color-rule)",
+                borderRadius: 3,
+                padding: "5px 10px",
+                font: "inherit",
+                fontSize: 12,
+                letterSpacing: "0.12em",
+                textTransform: "uppercase",
+                color: "var(--color-fg-muted)",
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              <ListIcon />
+              Sections
+            </button>
+          </div>
+        ) : null}
+        <SectionView workSlug={workSlug} ordinalPath={ordinalPath} />
       </main>
+      {compact && drawerOpen ? (
+        <>
+          <div
+            role="presentation"
+            onClick={() => setDrawerOpen(false)}
+            style={{
+              position: "absolute",
+              inset: 0,
+              background: "var(--color-scrim)",
+              zIndex: 50,
+            }}
+          />
+          <div
+            style={{
+              position: "absolute",
+              left: 0,
+              top: 0,
+              bottom: 0,
+              width: "min(300px, 85vw)",
+              zIndex: 60,
+              boxShadow: "var(--shadow-pop)",
+              background: "var(--color-bg-elevated)",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                padding: "6px 8px",
+                borderBottom: "1px solid var(--color-rule)",
+              }}
+            >
+              <button
+                type="button"
+                aria-label="Close section list"
+                onClick={() => setDrawerOpen(false)}
+                style={{
+                  background: "transparent",
+                  border: 0,
+                  padding: 4,
+                  color: "var(--color-fg-muted)",
+                  cursor: "pointer",
+                  lineHeight: 0,
+                }}
+              >
+                <CloseIcon />
+              </button>
+            </div>
+            <PatristicsSidebar
+              workSlug={workSlug}
+              activePath={ordinalPath}
+              onNavigate={() => setDrawerOpen(false)}
+              fillHeight
+            />
+          </div>
+        </>
+      ) : null}
     </div>
   );
 }
@@ -52,7 +182,7 @@ function SectionView({
   // Some sub-sections are only present in Latin (Summa respondeo etc.).
   const childrenLa = useChildSections(workSlug, ordinalPath, "la");
   const citations = useSectionCitations(section.data?.id ?? null);
-  const allSections = useWorkSections(workSlug, "en");
+  const allSections = useWorkSectionOutline(workSlug, "en");
   const allWorks = usePatristicWorks();
   const work = (allWorks.data ?? []).find((w) => w.slug === workSlug) ?? null;
 
@@ -98,8 +228,12 @@ function SectionView({
 
   const heading = parseHeadingLabel(s.label);
 
+  const trail = breadcrumbTrail(list, ordinalPath, work);
+
   return (
-    <article style={wrap}>
+    <>
+      <StickyBreadcrumb trail={trail} />
+      <article style={wrap}>
       <header style={{ marginBottom: "1.75rem" }}>
         <p className="al-eyebrow">{eyebrowLine(work, workSlug)}</p>
         {heading ? (
@@ -190,7 +324,64 @@ function SectionView({
         </div>
       </nav>
     </article>
+    </>
   );
+}
+
+function StickyBreadcrumb({ trail }: { trail: string[] }) {
+  if (trail.length === 0) return null;
+  return (
+    <div
+      style={{
+        position: "sticky",
+        top: 0,
+        zIndex: 5,
+        background: "var(--color-bg-elevated)",
+        borderBottom: "1px solid var(--color-rule)",
+        padding: "8px 2rem",
+        fontSize: 12,
+        color: "var(--color-fg-muted)",
+        letterSpacing: "0.02em",
+        whiteSpace: "nowrap",
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+      }}
+      aria-label="Current section"
+    >
+      {trail.join(" · ")}
+    </div>
+  );
+}
+
+/** Build "Author · Title · Book I · Chapter VIII"-style trail from the work
+ *  metadata plus the ancestor chain of the active section. Ancestors are
+ *  computed by ordinal-path prefix; each parent label is run through
+ *  parseHeadingLabel so we show just the rubric, not the full caption. */
+function breadcrumbTrail(
+  allSections: SectionOutlineRow[],
+  activePath: string,
+  work: WorkRow | null,
+): string[] {
+  const parts: string[] = [];
+  if (work) {
+    if (work.author) parts.push(work.author);
+    parts.push(work.title);
+  }
+  if (allSections.length === 0 || !activePath) return parts;
+  const byPath = new Map<string, SectionOutlineRow>();
+  for (const s of allSections) byPath.set(s.ordinal_path, s);
+
+  // Walk from root to active section using dotted prefixes.
+  const segments = activePath.split(".");
+  for (let i = 1; i <= segments.length; i++) {
+    const prefix = segments.slice(0, i).join(".");
+    const row = byPath.get(prefix);
+    if (!row) continue;
+    const heading = parseHeadingLabel(row.label);
+    const lead = heading?.lead ?? row.ordinal_path;
+    parts.push(lead);
+  }
+  return parts;
 }
 
 function ChildSection({ section }: { section: SectionRow }) {
@@ -221,21 +412,37 @@ function ChildSection({ section }: { section: SectionRow }) {
 function PatristicsSidebar({
   workSlug,
   activePath,
+  onNavigate,
+  fillHeight = false,
 }: {
   workSlug: string;
   activePath: string;
+  onNavigate?: () => void;
+  fillHeight?: boolean;
 }) {
-  const sections = useWorkSections(workSlug, "en");
+  const sections = useWorkSectionOutline(workSlug, "en");
   const items = (sections.data ?? []).filter(filterForToc);
+  const activeRef = useRef<HTMLAnchorElement | null>(null);
+
+  // Once the active item is in the DOM (and on every activePath change),
+  // pull it into the visible region of the sidebar. `block: "nearest"`
+  // means we only scroll when the item isn't already visible — clicks on
+  // items that are already on-screen don't yank the sidebar around.
+  useEffect(() => {
+    const el = activeRef.current;
+    if (!el) return;
+    el.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [activePath, items.length]);
 
   return (
     <aside
       style={{
-        width: 280,
+        width: fillHeight ? "100%" : 280,
+        flex: fillHeight ? "1 1 auto" : undefined,
         flexShrink: 0,
         overflowY: "auto",
         background: "var(--color-bg-elevated)",
-        borderRight: "1px solid var(--color-rule)",
+        borderRight: fillHeight ? undefined : "1px solid var(--color-rule)",
         padding: "16px 0",
       }}
     >
@@ -253,7 +460,9 @@ function PatristicsSidebar({
         items.map((s) => (
           <Link
             key={`${s.ordinal_path}-${s.id}`}
+            ref={s.ordinal_path === activePath ? activeRef : undefined}
             to={`/patristics/${workSlug}/${encodeURIComponent(s.ordinal_path)}`}
+            onClick={onNavigate}
             style={{
               display: "block",
               position: "relative",
@@ -288,7 +497,7 @@ function PatristicsSidebar({
   );
 }
 
-function filterForToc(s: SectionRow): boolean {
+function filterForToc(s: SectionOutlineRow): boolean {
   // Summa: list only headings; the rest is rendered inline.
   if (
     s.ordinal_path.startsWith("summa.") &&
@@ -442,3 +651,35 @@ const wrap: React.CSSProperties = {
   margin: "0 auto",
   padding: "2.5rem 2rem 6rem",
 };
+
+function ListIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 14 14"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.2"
+      strokeLinecap="round"
+    >
+      <path d="M2 3h10M2 7h10M2 11h10" />
+    </svg>
+  );
+}
+
+function CloseIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.2"
+      strokeLinecap="round"
+    >
+      <path d="M4 4l8 8M12 4l-8 8" />
+    </svg>
+  );
+}

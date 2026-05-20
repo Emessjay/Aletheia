@@ -1,5 +1,5 @@
 import { Navigate, useParams } from "react-router-dom";
-import { useWorkSections } from "@/db/hooks";
+import { useWorkSectionOutline } from "@/db/hooks";
 
 /** /patristics/:work — load the work's section list and redirect into the
  *  first section. We can't hard-code section URLs in the index because the
@@ -8,7 +8,7 @@ import { useWorkSections } from "@/db/hooks";
  *  links to /patristics/:work and this redirect resolves on demand. */
 export function PatristicsWorkRedirect() {
   const { work = "" } = useParams();
-  const sections = useWorkSections(work, "en");
+  const sections = useWorkSectionOutline(work, "en");
   if (sections.isPending) {
     return <p style={{ padding: "2rem", color: "var(--color-fg-muted)" }}>Loading…</p>;
   }

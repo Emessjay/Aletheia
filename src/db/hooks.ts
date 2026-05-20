@@ -1,5 +1,10 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import type { CorpusLanguage, SectionRow, WorkRow } from "./types";
+import type {
+  CorpusLanguage,
+  SectionOutlineRow,
+  SectionRow,
+  WorkRow,
+} from "./types";
 import {
   getChapter,
   getCommentaryBookIntro,
@@ -13,7 +18,7 @@ import {
   listCommentaryBooks,
   listCommentaryChapters,
   listPatristicWorks,
-  listSections,
+  listSectionOutline,
   listXrefsForVerse,
   searchVerses,
   type ChapterPayload,
@@ -177,13 +182,13 @@ export function usePatristicWorks() {
   });
 }
 
-export function useWorkSections(
+export function useWorkSectionOutline(
   workSlug: string,
   language: PatristicLanguage = "en",
 ) {
-  return useQuery({
-    queryKey: ["corpus", "work-sections", workSlug, language],
-    queryFn: () => listSections(workSlug, language),
+  return useQuery<SectionOutlineRow[]>({
+    queryKey: ["corpus", "work-section-outline", workSlug, language],
+    queryFn: () => listSectionOutline(workSlug, language),
     enabled: !!workSlug,
   });
 }

@@ -5,6 +5,7 @@ import type {
   CitationRow,
   CorpusLanguage,
   SectionLanguage,
+  SectionOutlineRow,
   SectionRow,
   StrongsRow,
   VerseRow,
@@ -150,13 +151,18 @@ export async function listPatristicWorks(): Promise<WorkRow[]> {
   );
 }
 
-/** All section rows for a patristic work — used for sidebar TOC + prev/next. */
-export async function listSections(
+/** Outline rows for a patristic work — id/path/kind/label/ordering, no body.
+ *  Used for the sidebar TOC, prev/next nav, and the work-redirect first-row
+ *  lookup. Dropping `body` keeps the response well under the server's 5 MiB
+ *  cap even for the Summa (~6000 sections). */
+export async function listSectionOutline(
   workSlug: string,
   language: PatristicLanguage,
-): Promise<SectionRow[]> {
-  return corpusSelect<SectionRow>(
-    `SELECT s.* FROM section s
+): Promise<SectionOutlineRow[]> {
+  return corpusSelect<SectionOutlineRow>(
+    `SELECT s.id, s.work_id, s.parent_id, s.ordinal_path, s.kind,
+            s.label, s.language, s.ordering
+       FROM section s
        JOIN work w ON w.id = s.work_id
       WHERE w.slug = $1 AND s.language = $2
       ORDER BY s.ordering`,
