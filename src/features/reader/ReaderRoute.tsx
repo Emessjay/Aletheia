@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useLayoutEffect, useMemo, useState } from "react";
-import { useQueries } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
 import { useLocation, useParams, Navigate } from "react-router-dom";
-import { getChapter, type ChapterPayload } from "@/db/queries";
+import { findBook, getChapter, type ChapterPayload } from "@/db/queries";
 import {
   useChapterAnnotations,
   useCreateHighlight,
@@ -32,6 +32,7 @@ import {
   activeTabsRequireMTRemap,
   isLXXVersified,
 } from "@/domain/versification";
+import { NotFoundRoute } from "@/features/notFound/NotFoundRoute";
 import { StrongsPopover } from "@/features/lexicon/StrongsPopover";
 import { VerseInline } from "./VerseInline";
 import { VerseToolbar } from "./VerseToolbar";
@@ -260,6 +261,17 @@ export function ReaderRoute() {
   const versificationFor = (lang: CorpusLanguage): "native" | "mt" =>
     mtRemap && isLXXVersified(lang) ? "mt" : "native";
 
+  // Check whether the book slug resolves to a real book. Runs before the chapter
+  // queries so we can show NotFound immediately instead of the "Not available"
+  // placeholder. Uses the primary language (with its fallback chain) as the
+  // authority; a slug missing from every fallback is genuinely unknown.
+  const primaryLang = activeLangs[0] ?? "en_bsb";
+  const bookQuery = useQuery({
+    queryKey: ["corpus", "book", primaryLang, book],
+    queryFn: () => findBook(primaryLang, book),
+    enabled: valid,
+  });
+
   // Fetch one chapter per active language. useQueries shares cache keys with
   // useChapter, so other consumers of the same (lang, book, chapter,
   // versification) tuple don't double-fetch.
@@ -303,6 +315,7 @@ export function ReaderRoute() {
   }, [location.hash, location.pathname, primaryChapterReady]);
 
   if (!valid) return <Navigate to="/reader/bible/john/1" replace />;
+  if (!bookQuery.isPending && bookQuery.data === null) return <NotFoundRoute />;
 
   const allHighlights = annotations.data?.highlights ?? [];
   const allNotes = annotations.data?.notes ?? [];
