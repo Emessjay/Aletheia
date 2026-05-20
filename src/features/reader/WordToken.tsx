@@ -24,7 +24,11 @@ export function WordToken({ surface, strongs, lang, onOpen }: Props) {
       <span
         ref={ref}
         lang={lang}
-        onClick={() => {
+        onClick={(e) => {
+          // Stop the click from bubbling to the verse wrapper — without this
+          // the verse-annotation toolbar opens on top of the lexicon panel,
+          // which is what shipped to the round-2 critic.
+          e.stopPropagation();
           if (ref.current) onOpen(strongs, ref.current.getBoundingClientRect());
         }}
         style={{

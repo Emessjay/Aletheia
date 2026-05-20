@@ -37,7 +37,11 @@ export function InterlinearWord({
       className="al-il-word"
       onClick={
         clickable
-          ? () => {
+          ? (e) => {
+              // Without stopPropagation the click bubbles to the verse
+              // wrapper and opens the verse-annotation toolbar on top of
+              // the lexicon — the round-2 critic's web-build regression.
+              e.stopPropagation();
               if (ref.current && strongs) {
                 onOpenStrongs(strongs, ref.current.getBoundingClientRect());
               }
