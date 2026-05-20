@@ -69,6 +69,7 @@
   --color-rule-strong: #b8ad92;
   --color-accent-muted: #a85555;
   --color-selection: #e6d9a8;
+  --color-search-mark: #f0d878;
 
   --color-hl-yellow: #f0e0a0;
   --color-hl-green:  #cfdcb8;
@@ -111,6 +112,7 @@
   --color-accent: #c87171;
   --color-accent-muted: #8a4a4a;
   --color-selection: #3a2f1c;
+  --color-search-mark: #6a5418;
 
   --color-hl-yellow: #4a4020;
   --color-hl-green:  #2e3a24;
@@ -442,6 +444,15 @@ kbd {
 .al-il-gloss :lang(he) {
   font-size: inherit;
   line-height: inherit;
+}
+
+/* Search hit highlight. A foreground-color shift alone is imperceptible
+   against Hebrew niqqud/cantillation clutter, so use a background tint —
+   uniform across LTR/RTL scripts and across light/dark themes. */
+.al-search-mark {
+  background: var(--color-search-mark);
+  border-radius: 2px;
+  padding: 0 1px;
 }
 
 /* Highlights — desaturated tint + 1px bottom rule in the same hue */

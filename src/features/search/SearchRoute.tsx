@@ -209,7 +209,7 @@ function Snippet({ text }: { text: string }) {
     <>
       {parts.map((p, i) =>
         p.marked ? (
-          <span key={i} style={{ color: "var(--color-accent)" }}>
+          <span key={i} className="al-search-mark">
             {p.text}
           </span>
         ) : (
