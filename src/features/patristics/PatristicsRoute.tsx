@@ -1,13 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
 import {
   useChildSections,
   usePatristicWorks,
   useSection,
   useSectionCitations,
-  useWorkSections,
+  useWorkSectionOutline,
 } from "@/db/hooks";
-import type { SectionRow, WorkRow } from "@/db/types";
+import type { SectionOutlineRow, SectionRow, WorkRow } from "@/db/types";
 import { useViewportWidth } from "@/lib/useViewportWidth";
 import { SectionBody } from "./SectionBody";
 
@@ -182,7 +182,7 @@ function SectionView({
   // Some sub-sections are only present in Latin (Summa respondeo etc.).
   const childrenLa = useChildSections(workSlug, ordinalPath, "la");
   const citations = useSectionCitations(section.data?.id ?? null);
-  const allSections = useWorkSections(workSlug, "en");
+  const allSections = useWorkSectionOutline(workSlug, "en");
   const allWorks = usePatristicWorks();
   const work = (allWorks.data ?? []).find((w) => w.slug === workSlug) ?? null;
 
@@ -228,8 +228,12 @@ function SectionView({
 
   const heading = parseHeadingLabel(s.label);
 
+  const trail = breadcrumbTrail(list, ordinalPath, work);
+
   return (
-    <article style={wrap}>
+    <>
+      <StickyBreadcrumb trail={trail} />
+      <article style={wrap}>
       <header style={{ marginBottom: "1.75rem" }}>
         <p className="al-eyebrow">{eyebrowLine(work, workSlug)}</p>
         {heading ? (
@@ -320,7 +324,64 @@ function SectionView({
         </div>
       </nav>
     </article>
+    </>
   );
+}
+
+function StickyBreadcrumb({ trail }: { trail: string[] }) {
+  if (trail.length === 0) return null;
+  return (
+    <div
+      style={{
+        position: "sticky",
+        top: 0,
+        zIndex: 5,
+        background: "var(--color-bg-elevated)",
+        borderBottom: "1px solid var(--color-rule)",
+        padding: "8px 2rem",
+        fontSize: 12,
+        color: "var(--color-fg-muted)",
+        letterSpacing: "0.02em",
+        whiteSpace: "nowrap",
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+      }}
+      aria-label="Current section"
+    >
+      {trail.join(" · ")}
+    </div>
+  );
+}
+
+/** Build "Author · Title · Book I · Chapter VIII"-style trail from the work
+ *  metadata plus the ancestor chain of the active section. Ancestors are
+ *  computed by ordinal-path prefix; each parent label is run through
+ *  parseHeadingLabel so we show just the rubric, not the full caption. */
+function breadcrumbTrail(
+  allSections: SectionOutlineRow[],
+  activePath: string,
+  work: WorkRow | null,
+): string[] {
+  const parts: string[] = [];
+  if (work) {
+    if (work.author) parts.push(work.author);
+    parts.push(work.title);
+  }
+  if (allSections.length === 0 || !activePath) return parts;
+  const byPath = new Map<string, SectionOutlineRow>();
+  for (const s of allSections) byPath.set(s.ordinal_path, s);
+
+  // Walk from root to active section using dotted prefixes.
+  const segments = activePath.split(".");
+  for (let i = 1; i <= segments.length; i++) {
+    const prefix = segments.slice(0, i).join(".");
+    const row = byPath.get(prefix);
+    if (!row) continue;
+    const heading = parseHeadingLabel(row.label);
+    const lead = heading?.lead ?? row.ordinal_path;
+    parts.push(lead);
+  }
+  return parts;
 }
 
 function ChildSection({ section }: { section: SectionRow }) {
@@ -359,8 +420,19 @@ function PatristicsSidebar({
   onNavigate?: () => void;
   fillHeight?: boolean;
 }) {
-  const sections = useWorkSections(workSlug, "en");
+  const sections = useWorkSectionOutline(workSlug, "en");
   const items = (sections.data ?? []).filter(filterForToc);
+  const activeRef = useRef<HTMLAnchorElement | null>(null);
+
+  // Once the active item is in the DOM (and on every activePath change),
+  // pull it into the visible region of the sidebar. `block: "nearest"`
+  // means we only scroll when the item isn't already visible — clicks on
+  // items that are already on-screen don't yank the sidebar around.
+  useEffect(() => {
+    const el = activeRef.current;
+    if (!el) return;
+    el.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [activePath, items.length]);
 
   return (
     <aside
@@ -388,6 +460,7 @@ function PatristicsSidebar({
         items.map((s) => (
           <Link
             key={`${s.ordinal_path}-${s.id}`}
+            ref={s.ordinal_path === activePath ? activeRef : undefined}
             to={`/patristics/${workSlug}/${encodeURIComponent(s.ordinal_path)}`}
             onClick={onNavigate}
             style={{
@@ -424,7 +497,7 @@ function PatristicsSidebar({
   );
 }
 
-function filterForToc(s: SectionRow): boolean {
+function filterForToc(s: SectionOutlineRow): boolean {
   // Summa: list only headings; the rest is rendered inline.
   if (
     s.ordinal_path.startsWith("summa.") &&
