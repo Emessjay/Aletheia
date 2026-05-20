@@ -449,15 +449,17 @@ function renderInline(node: Node, state: RenderState): React.ReactNode {
     // CCEL's `<scripRef passage="…">visible text</scripRef>` — the visible
     // text is whatever the editor printed (often a bare "Ver. 2." or
     // "Chap. i. 1." that prose-level detection can't recognise), so we
-    // resolve the href from the `passage` attribute and skip the inner
-    // text through `linkifyScriptureRefs` to avoid nested links.
+    // resolve the href from the `passage` attribute. Inner content is
+    // routed through `renderInlineNoLink` so any italics inside the ref
+    // ("{em}Phil. iv. 3{/em}") survive, but plain text inside isn't
+    // re-scanned for refs (we'd produce nested anchors).
     const key = state.nextKey();
     const parsed = parseReference(node.passage);
-    const innerText = inlineNodesToString(node.children);
+    const children = node.children.map((c, i) =>
+      renderInlineNoLink(c, state, `${key}-${i}`),
+    );
     if (!parsed) {
-      // Unparseable passage attribute — fall back to plain text so the
-      // visible content still renders.
-      return <span key={key}>{innerText}</span>;
+      return <span key={key}>{children}</span>;
     }
     return (
       <Link
@@ -465,7 +467,7 @@ function renderInline(node: Node, state: RenderState): React.ReactNode {
         to={parsed.href}
         title={`${parsed.bookSlug} ${parsed.chapter}${parsed.verse !== null ? ":" + parsed.verse : ""}`}
       >
-        {innerText}
+        {children}
       </Link>
     );
   }
@@ -478,6 +480,42 @@ function renderInline(node: Node, state: RenderState): React.ReactNode {
       </strong>
     );
   }
+  return null;
+}
+
+/** Render an inline node that lives *inside* a `<Link>` (the visible content
+ *  of a `{ref:…}…{/ref}` wrapper). Suppresses scripture-ref linkification on
+ *  text so we don't emit nested anchors; otherwise mirrors `renderInline`. */
+function renderInlineNoLink(
+  node: Node,
+  state: RenderState,
+  key: string,
+): React.ReactNode {
+  if (node.kind === "text") return <span key={key}>{node.value}</span>;
+  if (node.kind === "em")
+    return (
+      <em key={key}>
+        {node.children.map((c, i) => renderInlineNoLink(c, state, `${key}-${i}`))}
+      </em>
+    );
+  if (node.kind === "b")
+    return (
+      <strong key={key}>
+        {node.children.map((c, i) => renderInlineNoLink(c, state, `${key}-${i}`))}
+      </strong>
+    );
+  if (node.kind === "q")
+    return (
+      <q key={key}>
+        {node.children.map((c, i) => renderInlineNoLink(c, state, `${key}-${i}`))}
+      </q>
+    );
+  if ("children" in node)
+    return (
+      <span key={key}>
+        {node.children.map((c, i) => renderInlineNoLink(c, state, `${key}-${i}`))}
+      </span>
+    );
   return null;
 }
 
