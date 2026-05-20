@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { kvGet } from "@/db/user";
-import { getPlatform } from "@/platform";
 
 interface LastPosition {
   work: string;
@@ -13,15 +12,18 @@ export function HomeRoute() {
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
 
+  // Resolve last reading position from the user-data store and jump there.
+  // On a fresh install kvGet returns null and we fall through to a sensible
+  // default. Errors are surfaced inline rather than thrown so the landing
+  // page never just blanks out.
   useEffect(() => {
-    if (!getPlatform().info.isDesktop) return;
     (async () => {
       try {
         const raw = await kvGet("reader.last");
         const parsed = raw ? (JSON.parse(raw) as LastPosition) : null;
         const target = parsed
           ? `/reader/${parsed.work}/${parsed.book}/${parsed.chapter}`
-          : "/reader/bible/john/1";
+          : "/reader/bible/genesis/1";
         navigate(target, { replace: true });
       } catch (e) {
         setError(String(e));
@@ -43,12 +45,7 @@ export function HomeRoute() {
       <p style={{ color: "var(--color-fg-muted)", marginBottom: "1em" }}>
         Bible and classics reader.
       </p>
-      {!getPlatform().info.isDesktop ? (
-        <p style={{ color: "var(--color-fg-muted)" }}>
-          Run <code>npm run tauri dev</code> to open the reader. Browser-only
-          dev mode cannot reach the SQLite plugin.
-        </p>
-      ) : error ? (
+      {error ? (
         <pre style={{ color: "var(--color-accent)" }}>{error}</pre>
       ) : (
         <p style={{ color: "var(--color-fg-subtle)" }}>Resuming…</p>

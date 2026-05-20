@@ -8,7 +8,6 @@ import {
   useCommentaryBooks,
   useCommentaryChapters,
 } from "@/db/hooks";
-import { getPlatform } from "@/platform";
 import { commentaryReferenceTranslation } from "@/domain/translations";
 import type { ChapterPayload } from "@/db/queries";
 import type { SectionRow, WorkRow } from "@/db/types";
@@ -25,16 +24,6 @@ export function CommentariesRoute() {
   const book = params.book ?? null;
   const chapterParam = params.chapter ?? null;
   const chapter = chapterParam ? Number.parseInt(chapterParam, 10) : null;
-
-  if (!getPlatform().info.isDesktop) {
-    return (
-      <article style={wrap}>
-        <p style={{ color: "var(--color-fg-muted)" }}>
-          Run <code>./scripts/dev-instance.sh</code> to read commentaries.
-        </p>
-      </article>
-    );
-  }
 
   if (work && book && chapter && Number.isFinite(chapter)) {
     return <ChapterView workSlug={work} bookSlug={book} chapter={chapter} />;

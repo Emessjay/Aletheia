@@ -1,23 +1,11 @@
 import { Link, useSearchParams } from "react-router-dom";
 import { useSearch } from "@/db/hooks";
 import { SEARCH_MARK_CLOSE, SEARCH_MARK_OPEN } from "@/db/queries";
-import { getPlatform } from "@/platform";
 
 export function SearchRoute() {
   const [params] = useSearchParams();
   const q = params.get("q") ?? "";
   const search = useSearch(q, "en_bsb", 100);
-
-  if (!getPlatform().info.isDesktop) {
-    return (
-      <article style={wrap}>
-        <p style={{ color: "var(--color-fg-muted)" }}>
-          Run <code>npm run tauri dev</code> to search. Browser-only dev mode
-          cannot reach the SQLite plugin.
-        </p>
-      </article>
-    );
-  }
 
   return (
     <article style={wrap}>

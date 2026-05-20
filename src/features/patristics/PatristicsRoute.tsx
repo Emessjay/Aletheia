@@ -7,7 +7,6 @@ import {
   useWorkSections,
 } from "@/db/hooks";
 import type { SectionRow, WorkRow } from "@/db/types";
-import { getPlatform } from "@/platform";
 import { SectionBody } from "./SectionBody";
 
 const LANG_ATTR: Record<string, string> = { en: "en", la: "la", gr: "grc" };
@@ -30,16 +29,6 @@ export function PatristicsRoute() {
   const valid = !!work && !!ordinalPath;
 
   if (!valid) return <Navigate to="/patristics" replace />;
-
-  if (!getPlatform().info.isDesktop) {
-    return (
-      <article style={wrap}>
-        <p style={{ color: "var(--color-fg-muted)" }}>
-          Run <code>npm run tauri dev</code> to read.
-        </p>
-      </article>
-    );
-  }
 
   return (
     <div style={{ display: "flex", height: "100%", minHeight: 0 }}>

@@ -49,7 +49,10 @@ export function CommandPalette() {
       return out;
     }
     if (search.isError) {
-      out.push({ kind: "empty", message: String(search.error) });
+      // Surface a generic empty state rather than the raw Error.message — the
+      // user typed a query, they don't need a stack-trace artifact in the
+      // results list. The console still gets the full error from react-query.
+      out.push({ kind: "empty", message: "No matches." });
       return out;
     }
     if (!search.data || search.data.length === 0) {
