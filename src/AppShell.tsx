@@ -54,7 +54,7 @@ export function AppShell() {
   }, [togglePalette]);
 
   const sidebarVisible = showSidebarRoute && !compact;
-  const drawerVisible = showSidebarRoute && compact && drawerOpen;
+  const drawerVisible = compact && drawerOpen;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
@@ -78,10 +78,10 @@ export function AppShell() {
         }}
       >
         <nav style={{ display: "flex", alignItems: "center", gap: compact ? 10 : 18 }}>
-          {showSidebarRoute && compact ? (
+          {compact ? (
             <button
               type="button"
-              aria-label={drawerOpen ? "Close books" : "Open books"}
+              aria-label={drawerOpen ? "Close menu" : "Open menu"}
               onClick={() => setDrawerOpen((v) => !v)}
               style={{
                 background: "transparent",
@@ -197,9 +197,46 @@ export function AppShell() {
                 width: "min(280px, 80vw)",
                 zIndex: 60,
                 boxShadow: "var(--shadow-pop)",
+                background: "var(--color-bg-elevated)",
+                display: "flex",
+                flexDirection: "column",
+                overflow: "auto",
               }}
             >
-              <Sidebar />
+              <nav
+                aria-label="Main"
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  padding: "10px 0",
+                  borderBottom: showSidebarRoute ? "1px solid var(--color-rule)" : undefined,
+                }}
+              >
+                {MAIN_TABS.map((tab) => {
+                  const active = isTabActive(tab, loc.pathname);
+                  return (
+                    <Link
+                      key={tab.id}
+                      to={tab.navTo}
+                      style={{
+                        textDecoration: "none",
+                        fontSize: 12,
+                        letterSpacing: "0.14em",
+                        textTransform: "uppercase",
+                        padding: "10px 16px",
+                        color: active ? "var(--color-fg)" : "var(--color-fg-muted)",
+                        background: active ? "var(--color-bg-inset)" : "transparent",
+                        borderLeft: active
+                          ? "2px solid var(--color-fg)"
+                          : "2px solid transparent",
+                      }}
+                    >
+                      {tab.label}
+                    </Link>
+                  );
+                })}
+              </nav>
+              {showSidebarRoute ? <Sidebar /> : null}
             </div>
           </>
         ) : null}
