@@ -84,4 +84,51 @@ describe("parseReference", () => {
     expect(r?.chapter).toBe(3);
     expect(r?.verse).toBeNull();
   });
+
+  // "phil" overlaps both Philippians ("phil") and Philemon (which has "phile"
+  // as one of its aliases). The longest-match rule has to keep these apart.
+  it("'phil' resolves to Philippians, not Philemon", () => {
+    expect(parseReference("phil 1:1")?.bookSlug).toBe("phil");
+    expect(parseReference("philippians 2")?.bookSlug).toBe("phil");
+  });
+
+  it("'phile' / 'phlm' / 'philemon' all resolve to Philemon", () => {
+    expect(parseReference("phile 1")?.bookSlug).toBe("phlm");
+    expect(parseReference("phlm 1")?.bookSlug).toBe("phlm");
+    expect(parseReference("philemon 1:6")?.bookSlug).toBe("phlm");
+  });
+
+  it("parses every common '1 Cor' spelling", () => {
+    for (const s of ["1cor 13", "1 cor 13", "1Cor 13", "1 Corinthians 13"]) {
+      expect(parseReference(s)?.bookSlug).toBe("1cor");
+      expect(parseReference(s)?.chapter).toBe(13);
+    }
+  });
+
+  it("parses every common '2 Cor' spelling", () => {
+    for (const s of ["2cor 5:17", "2 cor 5:17", "2Cor 5:17", "2 Corinthians 5:17"]) {
+      const r = parseReference(s);
+      expect(r?.bookSlug).toBe("2cor");
+      expect(r?.chapter).toBe(5);
+      expect(r?.verse).toBe(17);
+    }
+  });
+
+  it("parses other numbered books", () => {
+    expect(parseReference("1 Sam 17")?.bookSlug).toBe("1sam");
+    expect(parseReference("2sam 11:2")?.bookSlug).toBe("2sam");
+    expect(parseReference("1kings 8")?.bookSlug).toBe("1kgs");
+    expect(parseReference("3 John 1")?.bookSlug).toBe("3john");
+  });
+
+  it("rejects Roman-numeral prefixes ('I Cor' / 'II Cor')", () => {
+    // We do not currently translate Roman numerals; locking the contract
+    // so a future change is conscious, not a silent regression.
+    expect(parseReference("I Cor 13")).toBeNull();
+    expect(parseReference("II Cor 13")).toBeNull();
+  });
+
+  it("treats a bare two-letter fragment ('ph') as unknown", () => {
+    expect(parseReference("ph 5")).toBeNull();
+  });
 });
