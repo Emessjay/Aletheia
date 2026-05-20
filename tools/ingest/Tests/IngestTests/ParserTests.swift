@@ -367,11 +367,13 @@ final class ThMLHeadingTests: XCTestCase {
     }
 
     func testHeadingSnippetStripsScripRefTokens() {
-        // The ThML parser inlines {ref:PASSAGE} tokens; they don't belong in
-        // synthesized labels (and could otherwise be truncated mid-token).
-        let body = "Sect. XLVI. — FIRST of all, we have that of {ref:Ecclesiasticus xv. 14-17}Ecclesiasticus 15:14-17, where it is written."
+        // The ThML parser wraps each scripRef in paired {ref:PASSAGE}…{/ref}
+        // tokens; neither the opener nor the closer belongs in synthesized
+        // labels (and they could otherwise be truncated mid-token).
+        let body = "Sect. XLVI. — FIRST of all, we have that of {ref:Ecclesiasticus xv. 14-17}Ecclesiasticus 15:14-17{/ref}, where it is written."
         let snippet = ThMLParser.headingSnippet(from: body)
         XCTAssertTrue(snippet?.contains("{ref") == false, "snippet should not contain ref token; got: \(snippet ?? "nil")")
+        XCTAssertTrue(snippet?.contains("{/ref") == false, "snippet should not contain ref closer; got: \(snippet ?? "nil")")
         XCTAssertTrue(snippet?.hasPrefix("FIRST of all, we have that of") == true, "got: \(snippet ?? "nil")")
     }
 

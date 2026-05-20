@@ -207,3 +207,38 @@ describe("findScriptureReferences — sentence boundaries", () => {
     expect(out[0]).toMatchObject({ slug: "rom", chapter: 8, verse: 28 });
   });
 });
+
+describe("findScriptureReferences — single-chapter books", () => {
+  // Books with one chapter (Obadiah, Philemon, 2 John, 3 John, Jude,
+  // Letter of Jeremiah, Bel, Susanna, Prayer of Manasseh) are conventionally
+  // cited "Book N" where N is the verse, not the chapter. The detector
+  // remaps "3 John 9" to 3 John 1:9 so the citation links to the right verse.
+  it("maps '3 John 9' to chapter 1 verse 9", () => {
+    const out = refs("see (3 John 9), and so on");
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({
+      slug: "3john",
+      chapter: 1,
+      verse: 9,
+      href: "/reader/bible/3john/1#v9",
+    });
+  });
+
+  it("maps 'Jude 14' to chapter 1 verse 14", () => {
+    const out = refs("as Jude 14 says");
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({ slug: "jude", chapter: 1, verse: 14 });
+  });
+
+  it("maps 'Philemon 8' to chapter 1 verse 8", () => {
+    const out = refs("in Phlm. 8 we read");
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({ slug: "phlm", chapter: 1, verse: 8 });
+  });
+
+  it("maps 'Obadiah 4' to chapter 1 verse 4", () => {
+    const out = refs("see Obad. 4 here");
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({ slug: "obad", chapter: 1, verse: 4 });
+  });
+});

@@ -185,7 +185,17 @@ export function findScriptureReferences(text: string): DetectedReference[] {
     }
 
     const maxChapter = MAX_CHAPTER_BY_SLUG[slug] ?? 200;
-    if (!Number.isFinite(chapter) || chapter < 1 || chapter > maxChapter) continue;
+    if (!Number.isFinite(chapter)) continue;
+    // Single-chapter books (Obadiah, Philemon, 2 John, 3 John, Jude, Jude,
+    // Epistle of Jeremiah, Susanna, Bel, Prayer of Manasseh): patristic
+    // editors customarily write "3 John 9" or "Jude 14" to mean
+    // *verse* 9 / 14 of the single chapter, not chapter 9. Without this
+    // remap the citation would fail the chapter-cap check and never link.
+    if (maxChapter === 1 && verse === null && chapter >= 1) {
+      verse = chapter;
+      chapter = 1;
+    }
+    if (chapter < 1 || chapter > maxChapter) continue;
     if (verse !== null && (!Number.isFinite(verse) || verse < 1 || verse > MAX_VERSE)) {
       verse = null;
     }

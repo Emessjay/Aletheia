@@ -72,9 +72,45 @@ describe("SectionBody tokenizer", () => {
 
   it("strips all known tokens with stripAllTokens", () => {
     const s =
-      "before {em}italic{/em} mid {h3}heading{/h} {fn:1}note text{/fn} {q}quoted{/q} after";
+      "before {em}italic{/em} mid {h3}heading{/h} {fn:1}note text{/fn} {q}quoted{/q} {ref:Rom. 1.20}Rom. i. 20{/ref} after";
     expect(stripAllTokens(s)).toBe(
-      "before italic mid heading note text quoted after",
+      "before italic mid heading note text quoted Rom. i. 20 after",
     );
+  });
+
+  it("captures scripRef with passage attribute and visible text", () => {
+    // CCEL's <scripRef passage="Phil. 4.3">Phil. iv. 3</scripRef> survives as
+    // paired tokens — the renderer turns them into a clickable link whose
+    // href derives from the passage attribute regardless of how the visible
+    // text is abbreviated.
+    const tree = tokenize(
+      "St. Paul mentions ({ref:Phil. 4.3}Phil. iv. 3{/ref}) here.",
+    );
+    expect(tree).toEqual([
+      { kind: "text", value: "St. Paul mentions (" },
+      {
+        kind: "ref",
+        passage: "Phil. 4.3",
+        children: [{ kind: "text", value: "Phil. iv. 3" }],
+      },
+      { kind: "text", value: ") here." },
+    ]);
+  });
+
+  it("captures scripRef whose visible text is a bare marker", () => {
+    // Sometimes the editor's visible cue is just "Ver. 2." — without the
+    // paired tokens we'd have no way to link it. The tokenizer preserves
+    // the passage attribute so the renderer can resolve the marker.
+    const tree = tokenize(
+      "{ref:1 John 1:2}Ver. 2.{/ref} The life was manifested.",
+    );
+    expect(tree).toEqual([
+      {
+        kind: "ref",
+        passage: "1 John 1:2",
+        children: [{ kind: "text", value: "Ver. 2." }],
+      },
+      { kind: "text", value: " The life was manifested." },
+    ]);
   });
 });

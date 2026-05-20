@@ -6,8 +6,10 @@ import Foundation
 ///
 /// We pull `<div2 type="Chapter" ...>` / `<div3 type="Section" ...>` containers and capture
 /// their `<p>` children's text content as the section body. Scripture references appear as
-/// `<scripRef passage="John 3:16">…</scripRef>` and are preserved as inline `{ref:John.3.16}`
-/// tokens so the app's reader can link them.
+/// `<scripRef passage="John 3:16">…</scripRef>` and are preserved as inline
+/// `{ref:John 3:16}…{/ref}` tokens wrapping the visible text, so the renderer can turn them
+/// into a `<Link>` whose target derives from the `passage` attribute even when the visible
+/// text ("Ver. 2.", "Chap. i. 1.") is not itself parseable as a scripture reference.
 ///
 /// Structural markup that the Schaff editions carry — italics, block quotes, subheadings,
 /// editor footnotes — survives as a parallel family of inline tokens that the renderer
@@ -27,7 +29,7 @@ public struct ThMLParser {
         public let ordinalPath: String     // 'trypho.31' or 'incarnation.32'
         public let kind: String            // 'chapter' / 'section'
         public let label: String?          // 'Chapter 31'
-        public let body: String            // body text with inline {ref:} tokens
+        public let body: String            // body text with inline {ref:…}{/ref}, {em}, {fn:N}, … tokens
     }
 
     public struct ParseResult {
@@ -367,6 +369,12 @@ private final class ThMLDelegate: NSObject, XMLParserDelegate {
     /// (e.g. `{em}Chapter I.{/em}—Salutation`), so we suppress nested tokens
     /// while this is non-zero.
     private var inUntokenisedHeadingDepth: Int = 0
+    /// Per-scripRef record of whether we emitted an opening `{ref:passage}`
+    /// token. ScripRefs nested inside `<note>` (or the suppressed chapter
+    /// title) emit no token; the matching close also emits no token. A
+    /// stack keeps the open/close pairs straight even when scripRefs
+    /// nest (rare but legal in ThML).
+    private var refTokenOpenStack: [Bool] = []
 
     init(workSlug: String, containerID: String? = nil) {
         self.workSlug = workSlug
@@ -517,14 +525,27 @@ private final class ThMLDelegate: NSObject, XMLParserDelegate {
             headingsSeenInSection = 0
         }
 
-        if !inNote, lower == "scripref", let passage = attributes["passage"] {
-            // Embed an inline token the app can post-process into a tappable link.
-            // ScripRefs nested inside <note> are footnote-only and skipped along
-            // with the rest of the note body.
-            if var s = currentSection {
-                s.body += "{ref:\(passage)}"
+        if lower == "scripref" {
+            // CCEL wraps each scripture-citation marker in `<scripRef passage="…">…</scripRef>`.
+            // The visible text often isn't itself a recognizable reference (a bare
+            // "Ver. 2." or "Chap. i. 1." inside a verse-by-verse commentary), so we
+            // can't rely on prose-level detection to linkify it. Emit paired
+            // `{ref:passage}…{/ref}` tokens that wrap the visible text — the
+            // renderer turns them into a `<Link>` whose href derives from the
+            // `passage` attribute regardless of the visible text shape.
+            //
+            // ScripRefs nested inside a `<note>` are folded into the footnote text
+            // (which gets its own ref-detection pass in the renderer); ScripRefs
+            // inside the untokenised chapter title are likewise suppressed so the
+            // `stripLeadingHeadingParagraphs` regex still matches the plain text.
+            // In both cases we still push onto the stack so the matching closer
+            // pops the right frame.
+            let shouldEmit = !inNote && !suppressTokens && attributes["passage"] != nil
+            if shouldEmit, var s = currentSection, let passage = attributes["passage"] {
+                s.body += "{ref:\(sanitizeTokenArg(passage))}"
                 currentSection = s
             }
+            refTokenOpenStack.append(shouldEmit)
         }
 
         // Heading tags inside body content. The first heading per section is the
@@ -638,6 +659,13 @@ private final class ThMLDelegate: NSObject, XMLParserDelegate {
             noteDepth = max(0, noteDepth - 1)
             if !suppressTokens, var section = currentSection {
                 section.body += "{/fn}"
+                currentSection = section
+            }
+        }
+        if lower == "scripref" {
+            let wasOpen = refTokenOpenStack.popLast() ?? false
+            if wasOpen, var section = currentSection {
+                section.body += "{/ref}"
                 currentSection = section
             }
         }
@@ -798,7 +826,7 @@ extension ThMLParser {
                     options: .regularExpression
                 )
                 .replacingOccurrences(
-                    of: #"\{/(?:em|b|q|h|fn)\}"#,
+                    of: #"\{/(?:em|b|q|h|fn|ref)\}"#,
                     with: "",
                     options: .regularExpression
                 )

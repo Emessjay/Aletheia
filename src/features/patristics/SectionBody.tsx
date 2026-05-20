@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import type { CitationRow } from "@/db/types";
+import { parseReference } from "@/domain/reference";
 import { findScriptureReferences } from "@/domain/scriptureRefs";
 
 interface Props {
@@ -13,7 +14,11 @@ interface Props {
  * preserves as inline curly-brace tokens.
  *
  * Token vocabulary (must stay in sync with `ThMLParser.swift`):
- *   `{ref:Passage}`    one-off scripture-reference anchor
+ *   `{ref:Passage}…{/ref}` scripture-citation marker — wraps the visible text
+ *                          ("Ver. 2.", "Chap. i. 1.", "Phil. iv. 3") in a
+ *                          `<Link>` whose target derives from the `Passage`
+ *                          attribute, so a marker that doesn't itself parse
+ *                          as a reference still links.
  *   `{em}…{/em}`       italic emphasis
  *   `{b}…{/b}`         bold
  *   `{q}…{/q}`         block quote
@@ -24,11 +29,15 @@ interface Props {
  * printed edition are collapsed to spaces — otherwise `pre-wrap` would
  * preserve them as visible mid-sentence breaks.
  *
+ * Plain-text scripture references in body prose and inside footnote text
+ * also get linkified by `linkifyScriptureRefs` — patristic editors often
+ * leave the citation only in the footnote, so confining linking to body
+ * prose would miss the bulk of the references in NPNF/ANF.
+ *
  * The legacy linked-citation branch operates on the de-tokenised body and is
  * kept for a future patristic scripture-citation pass (no patristic work has
  * rows in the `citation` table today).
  */
-const REF_TOKEN_RE = /\{ref:[^}]*\}/g;
 const PARAGRAPH_BREAK_RE = /\n{2,}/g;
 const INTERNAL_WS_RE = /\s+/g;
 // Migne / Maurist section markers embedded mid-paragraph: "…doctrine. 2. Still,
@@ -108,14 +117,16 @@ type Node =
   | { kind: "b"; children: Node[] }
   | { kind: "q"; children: Node[] }
   | { kind: "h"; level: 2 | 3 | 4; children: Node[] }
-  | { kind: "fn"; id: string; children: Node[] };
+  | { kind: "fn"; id: string; children: Node[] }
+  | { kind: "ref"; passage: string; children: Node[] };
 
 // Opening tokens carry the tag (and an optional argument); closing tokens use
 // the bare tag name. Heading closers are the uniform `{/h}` (no level) so the
 // alternation lists `h` rather than `h2|h3|h4` on the close side — the parser
 // always emits matched pairs, and the tokenizer matches by the topmost open
 // heading frame regardless of level.
-const TOKEN_RE = /\{(?:(em|b|q|h2|h3|h4|fn)(?::([^}]*))?|\/(em|b|q|h|fn))\}/g;
+const TOKEN_RE =
+  /\{(?:(em|b|q|h2|h3|h4|fn|ref)(?::([^}]*))?|\/(em|b|q|h|fn|ref))\}/g;
 
 interface OpenFrame {
   node: Extract<Node, { children: Node[] }>;
@@ -181,6 +192,8 @@ function tokenize(input: string): Node[] {
       else if (openTag === "h4") node = { kind: "h", level: 4, children: [] };
       else if (openTag === "fn")
         node = { kind: "fn", id: arg ?? "", children: [] };
+      else if (openTag === "ref")
+        node = { kind: "ref", passage: arg ?? "", children: [] };
       else {
         cursor = m.index + m[0].length;
         continue;
@@ -432,6 +445,30 @@ function renderInline(node: Node, state: RenderState): React.ReactNode {
       </sup>
     );
   }
+  if (node.kind === "ref") {
+    // CCEL's `<scripRef passage="…">visible text</scripRef>` — the visible
+    // text is whatever the editor printed (often a bare "Ver. 2." or
+    // "Chap. i. 1." that prose-level detection can't recognise), so we
+    // resolve the href from the `passage` attribute and skip the inner
+    // text through `linkifyScriptureRefs` to avoid nested links.
+    const key = state.nextKey();
+    const parsed = parseReference(node.passage);
+    const innerText = inlineNodesToString(node.children);
+    if (!parsed) {
+      // Unparseable passage attribute — fall back to plain text so the
+      // visible content still renders.
+      return <span key={key}>{innerText}</span>;
+    }
+    return (
+      <Link
+        key={key}
+        to={parsed.href}
+        title={`${parsed.bookSlug} ${parsed.chapter}${parsed.verse !== null ? ":" + parsed.verse : ""}`}
+      >
+        {innerText}
+      </Link>
+    );
+  }
   // Heading reaching the inline path means the layout grouped it with prose;
   // fall through as strong text so we don't drop the content.
   if (node.kind === "h") {
@@ -469,7 +506,13 @@ function Footnotes({ entries }: { entries: RenderState["footnotes"] }) {
 }
 
 function renderInlineForNote(node: Node, key: string): React.ReactNode {
-  if (node.kind === "text") return <span key={key}>{node.value}</span>;
+  if (node.kind === "text") {
+    // Patristic editors put most of their scripture citations in the
+    // footnote, not the body prose (a chapter's body says "as it is
+    // written," and the footnote says "Rom. i. 21–25"). Linkify here too
+    // so those references aren't dead text.
+    return <span key={key}>{linkifyScriptureRefs(node.value, key)}</span>;
+  }
   if (node.kind === "em")
     return (
       <em key={key}>
@@ -502,10 +545,8 @@ function renderInlineForNote(node: Node, key: string): React.ReactNode {
 // ---------------------------------------------------------------------------
 
 export function SectionBody({ body, citations, lang }: Props) {
-  const stripped = body.replace(REF_TOKEN_RE, "");
-
   if (citations.length === 0) {
-    const tree = tokenize(stripped);
+    const tree = tokenize(body);
     const state = newState();
     const rendered = renderBlockSequence(tree, state);
     return (
@@ -516,7 +557,7 @@ export function SectionBody({ body, citations, lang }: Props) {
     );
   }
 
-  const flat = stripAllTokens(stripped);
+  const flat = stripAllTokens(body);
   const sorted = citations
     .filter(
       (c) =>
