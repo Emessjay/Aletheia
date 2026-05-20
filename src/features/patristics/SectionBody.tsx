@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import type { CitationRow } from "@/db/types";
+import { findScriptureReferences } from "@/domain/scriptureRefs";
 
 interface Props {
   body: string;
@@ -53,6 +54,31 @@ const blockquoteStyle: React.CSSProperties = {
   lineHeight: 1.55,
 };
 
+/** Scan a paragraph for scripture references and splice them as Links into
+ *  the prose. Reference styling falls through to the global `a` rule (accent
+ *  color, thin underline) so light/dark theme parity is automatic. */
+function linkifyScriptureRefs(text: string): React.ReactNode {
+  const hits = findScriptureReferences(text);
+  if (hits.length === 0) return text;
+  const out: React.ReactNode[] = [];
+  let cursor = 0;
+  hits.forEach((hit, i) => {
+    if (hit.start > cursor) out.push(text.slice(cursor, hit.start));
+    out.push(
+      <Link
+        key={`ref-${i}-${hit.start}`}
+        to={hit.parsed.href}
+        title={`${hit.parsed.bookSlug} ${hit.parsed.chapter}${hit.parsed.verse !== null ? ":" + hit.parsed.verse : ""}`}
+      >
+        {hit.text}
+      </Link>,
+    );
+    cursor = hit.end;
+  });
+  if (cursor < text.length) out.push(text.slice(cursor));
+  return out;
+}
+
 function splitParagraphs(text: string): string[] {
   return text
     .split(PARAGRAPH_BREAK_RE)
@@ -73,13 +99,13 @@ export function SectionBody({ body, citations, lang }: Props) {
           if (quoted) {
             return (
               <blockquote key={i} style={blockquoteStyle}>
-                {quoted[1]}
+                {linkifyScriptureRefs(quoted[1])}
               </blockquote>
             );
           }
           return (
             <p key={i} style={paraStyle}>
-              {p}
+              {linkifyScriptureRefs(p)}
             </p>
           );
         })}
