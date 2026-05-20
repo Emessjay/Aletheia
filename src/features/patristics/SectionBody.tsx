@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import type { CitationRow } from "@/db/types";
+import { findScriptureReferences } from "@/domain/scriptureRefs";
 
 interface Props {
   body: string;
@@ -121,6 +122,32 @@ interface OpenFrame {
   closer: string;
 }
 
+/** Scan a run of plain text for scripture references and splice them as
+ *  `<Link>`s. Returns the text as-is when there are no hits. Reference styling
+ *  falls through to the global `a` rule (accent color, thin underline) so
+ *  light/dark theme parity is automatic. */
+function linkifyScriptureRefs(text: string, keyPrefix: string): React.ReactNode {
+  const hits = findScriptureReferences(text);
+  if (hits.length === 0) return text;
+  const out: React.ReactNode[] = [];
+  let cursor = 0;
+  hits.forEach((hit, i) => {
+    if (hit.start > cursor) out.push(text.slice(cursor, hit.start));
+    out.push(
+      <Link
+        key={`${keyPrefix}-${i}-${hit.start}`}
+        to={hit.parsed.href}
+        title={`${hit.parsed.bookSlug} ${hit.parsed.chapter}${hit.parsed.verse !== null ? ":" + hit.parsed.verse : ""}`}
+      >
+        {hit.text}
+      </Link>,
+    );
+    cursor = hit.end;
+  });
+  if (cursor < text.length) out.push(text.slice(cursor));
+  return out;
+}
+
 function tokenize(input: string): Node[] {
   const root: Node[] = [];
   const stack: OpenFrame[] = [];
@@ -219,9 +246,10 @@ function renderBlockSequence(
       const joined = inlineNodesToString(p);
       const quoted = joined.match(BLOCKQUOTE_DELIM_RE);
       if (quoted) {
+        const key = state.nextKey();
         out.push(
-          <blockquote key={state.nextKey()} style={blockquoteStyle}>
-            {quoted[1]}
+          <blockquote key={key} style={blockquoteStyle}>
+            {linkifyScriptureRefs(quoted[1], key)}
           </blockquote>,
         );
       } else {
@@ -364,7 +392,8 @@ function inlineNodesToString(nodes: Node[]): string {
 
 function renderInline(node: Node, state: RenderState): React.ReactNode {
   if (node.kind === "text") {
-    return <span key={state.nextKey()}>{node.value}</span>;
+    const key = state.nextKey();
+    return <span key={key}>{linkifyScriptureRefs(node.value, key)}</span>;
   }
   if (node.kind === "em") {
     return (

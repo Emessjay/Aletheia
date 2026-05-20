@@ -126,6 +126,13 @@ export interface SectionRow {
   ordering: number;
 }
 
+// Metadata-only view of `section` — no `body`. Used wherever we render an
+// outline (sidebar TOC, prev/next nav, work-redirect first-row lookup) and
+// fetching the full body of every section would blow past the server's
+// response-size cap. The Summa alone is ~6000 sections and its bodies push
+// the full SELECT well past 5 MiB; the outline fits in ~1 MiB.
+export type SectionOutlineRow = Omit<SectionRow, "body">;
+
 export interface CitationRow {
   id: number;
   section_id: number;

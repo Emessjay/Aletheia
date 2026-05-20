@@ -112,7 +112,9 @@ const BOOKS: BookEntry[] = [
 ];
 
 // Build a flat alias index sorted by length desc so the longest match wins.
-const ALIAS_INDEX: Array<{ alias: string; slug: string }> = (() => {
+// Exported so the inline-prose detector ([[scripture-refs]]) can build its
+// regex from the same source — keeping book coverage in one place.
+export const ALIAS_INDEX: Array<{ alias: string; slug: string }> = (() => {
   const out: Array<{ alias: string; slug: string }> = [];
   for (const b of BOOKS) for (const a of b.aliases) out.push({ alias: a, slug: b.slug });
   return out.sort((x, y) => y.alias.length - x.alias.length);
