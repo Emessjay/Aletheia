@@ -23,7 +23,7 @@ export function HomeRoute() {
         const parsed = raw ? (JSON.parse(raw) as LastPosition) : null;
         const target = parsed
           ? `/reader/${parsed.work}/${parsed.book}/${parsed.chapter}`
-          : "/reader/bible/genesis/1";
+          : "/reader/bible/gen/1";
         navigate(target, { replace: true });
       } catch (e) {
         setError(String(e));
