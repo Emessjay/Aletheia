@@ -14,6 +14,7 @@ export function LibrariesRoute() {
   const libs = useLibraries();
   const createLib = useCreateLibrary();
   const [newName, setNewName] = useState("");
+  const [inputFocused, setInputFocused] = useState(false);
 
   return (
     <article style={wrap}>
@@ -32,58 +33,82 @@ export function LibrariesRoute() {
 
       <div
         style={{
-          display: "flex",
-          gap: 10,
-          alignItems: "baseline",
           marginBottom: "2rem",
           paddingBottom: "1rem",
           borderBottom: "1px solid var(--color-rule)",
         }}
       >
-        <input
-          value={newName}
-          onChange={(e) => setNewName(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && newName.trim()) {
-              createLib.mutate(newName.trim());
-              setNewName("");
-            }
-          }}
-          placeholder="New library…"
-          style={{
-            background: "var(--color-bg-inset)",
-            border: 0,
-            borderBottom: "1px solid var(--color-rule)",
-            padding: "6px 8px",
-            font: "inherit",
-            color: "var(--color-fg)",
-            outline: "none",
-            flex: 1,
-            maxWidth: 320,
-          }}
-        />
-        <button
-          type="button"
-          disabled={!newName.trim()}
-          onClick={() => {
-            if (!newName.trim()) return;
-            createLib.mutate(newName.trim());
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            const trimmed = newName.trim();
+            if (!trimmed || createLib.isPending) return;
+            createLib.mutate(trimmed);
             setNewName("");
           }}
           style={{
-            background: "transparent",
-            border: 0,
-            padding: 0,
-            font: "inherit",
-            fontSize: 14,
-            color: newName.trim()
-              ? "var(--color-accent)"
-              : "var(--color-fg-subtle)",
-            cursor: newName.trim() ? "pointer" : "default",
+            display: "flex",
+            alignItems: "stretch",
+            border: `1px solid var(${
+              inputFocused ? "--color-rule-strong" : "--color-rule"
+            })`,
+            borderRadius: 2,
+            background: "var(--color-bg-inset)",
+            maxWidth: 420,
+            transition: "border-color 80ms",
           }}
         >
-          Create
-        </button>
+          <input
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            onFocus={() => setInputFocused(true)}
+            onBlur={() => setInputFocused(false)}
+            placeholder="Name a new library…"
+            aria-label="New library name"
+            disabled={createLib.isPending}
+            style={{
+              background: "transparent",
+              border: 0,
+              padding: "8px 10px",
+              font: "inherit",
+              color: "var(--color-fg)",
+              outline: "none",
+              flex: 1,
+              minWidth: 0,
+            }}
+          />
+          <button
+            type="submit"
+            disabled={!newName.trim() || createLib.isPending}
+            style={{
+              background: newName.trim()
+                ? "var(--color-accent)"
+                : "transparent",
+              borderWidth: 0,
+              borderLeft: "1px solid var(--color-rule-strong)",
+              padding: "0 14px",
+              font: "inherit",
+              fontSize: 14,
+              color: newName.trim()
+                ? "var(--color-bg)"
+                : "var(--color-fg-muted)",
+              cursor:
+                newName.trim() && !createLib.isPending ? "pointer" : "default",
+              transition: "background-color 80ms, color 80ms",
+            }}
+          >
+            {createLib.isPending ? "Creating…" : "Create"}
+          </button>
+        </form>
+        <p
+          style={{
+            margin: "6px 2px 0",
+            fontSize: 12,
+            color: "var(--color-fg-subtle)",
+          }}
+        >
+          Type a name and press Enter to create a library.
+        </p>
       </div>
 
       {libs.isPending ? (
