@@ -120,8 +120,13 @@ const workRow: React.CSSProperties = {
   padding: "0.45rem 0",
 };
 
+// Italicise the work title so the browse list matches the commentaries hub
+// — italic serif for the work title is the long-standing typographic
+// convention for book titles, and aligning the two hubs keeps the
+// browse-list feel consistent.
 const workLink: React.CSSProperties = {
   color: "var(--color-fg)",
   fontSize: 16,
+  fontStyle: "italic",
   textDecoration: "none",
 };
