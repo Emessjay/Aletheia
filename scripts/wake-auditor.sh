@@ -23,7 +23,7 @@ fi
 
 slug="$1"
 kind="$2"
-session="aletheia-auditor"
+session="nimbus-auditor"
 
 # Silent no-op if tmux is missing or the session is gone.
 if ! command -v tmux >/dev/null 2>&1; then
