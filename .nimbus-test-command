@@ -1,1 +1,1 @@
-npm test --silent
+npm test --silent && python3 -m pytest server-py -q

@@ -61,22 +61,32 @@ probably bypassing one of them — stop and look:
   one to the other transparently. Keep the SQL strings in
   `src/db/user.ts` using `$N` — that is the shared dialect.
 
-## Web/Railway deployment
+## Web/Railway deployment (FastAPI)
 
 The same React frontend runs in two hosts: the Tauri desktop build (`npm run
-tauri build` or `./scripts/dev-instance.sh` for dev) and a Node API server
-under `server/` that serves the corpus over HTTP plus the static frontend.
-The Node server is what gets deployed to Railway via `server/Dockerfile` and
-`railway.toml` at the repo root.
+tauri build` or `./scripts/dev-instance.sh` for dev) and a FastAPI API server
+under `server-py/` that serves the corpus over HTTP plus the static frontend.
+The FastAPI server is what gets deployed to Railway via the repo-root
+`Dockerfile` (referenced by `railway.toml`).
+
+Phase 1 (this PR) is the API rewrite only — the corpus is still bundled
+SQLite, and there is no auth. Phase 2 migrates the corpus to Postgres
+(Alembic). Phase 3 wires Supabase Auth and moves web user-data off sql.js.
 
 To run the server locally:
 
-    npm run build
-    cd server && npm install && npm run build && node dist/index.js
+    pip install -r server-py/requirements.txt
+    npm run build       # produces dist/
+    uvicorn app.main:app --reload --app-dir server-py
 
-Visit `http://localhost:3000`. The server expects `data/Aletheia.sqlite` at
-the repo root (override with `ALETHEIA_CORPUS_PATH`) and writes audio cache
-under `/tmp/aletheia-audio` (override with `ALETHEIA_AUDIO_CACHE`).
+Visit `http://localhost:8000` (or pass `--port 3000` to match the Docker
+image). The server expects `data/Aletheia.sqlite` at the repo root (override
+with `ALETHEIA_CORPUS_PATH`) and writes audio cache under `/tmp/aletheia-audio`
+(override with `ALETHEIA_AUDIO_CACHE`). The built frontend is picked up from
+`dist/` unless `ALETHEIA_STATIC_DIR` points elsewhere.
+
+The test gate (`.nimbus-test-command`) chains the vitest suite with the pytest
+acceptance suite, so any FastAPI change needs both to stay green.
 
 ## Worktree-per-feature
 

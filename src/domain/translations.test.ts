@@ -66,10 +66,10 @@ describe("translations registry", () => {
 
 // Parity tests: the audio allow-list lives in three places — TypeScript
 // (the `hasAudio` flag here), Rust (`matches!()` in src-tauri/src/audio.rs),
-// and Node (`ALLOWED_TRANSLATIONS` in server/src/routes/audio.ts). All three
-// must agree or the web build serves URLs the desktop side rejects (or vice
-// versa). Codegen would be cleaner but a static read+regex parse is far
-// simpler for a list that changes once a year, so we just verify the
+// and Python (`ALLOWED_TRANSLATIONS` in server-py/app/routes/audio.py).
+// All three must agree or the web build serves URLs the desktop side rejects
+// (or vice versa). Codegen would be cleaner but a static read+regex parse is
+// far simpler for a list that changes once a year, so we just verify the
 // invariant.
 describe("audio.rs ↔ translations registry parity", () => {
   it("Rust validate_translation matches audioTranslations()", () => {
@@ -94,19 +94,19 @@ describe("audio.rs ↔ translations registry parity", () => {
   });
 });
 
-describe("server audio.ts ↔ translations registry parity", () => {
-  it("Node ALLOWED_TRANSLATIONS matches audioTranslations()", () => {
+describe("server audio.py ↔ translations registry parity", () => {
+  it("Python ALLOWED_TRANSLATIONS matches audioTranslations()", () => {
     const here = dirname(fileURLToPath(import.meta.url));
-    const audioTsPath = resolve(here, "../../server/src/routes/audio.ts");
-    const source = readFileSync(audioTsPath, "utf8");
+    const audioPyPath = resolve(here, "../../server-py/app/routes/audio.py");
+    const source = readFileSync(audioPyPath, "utf8");
 
-    // Find: `const ALLOWED_TRANSLATIONS = new Set(["en_bsb", "en_kjv", "en_web"]);`
+    // Find: `ALLOWED_TRANSLATIONS = {"en_bsb", "en_kjv", "en_web"}`
     const m = source.match(
-      /ALLOWED_TRANSLATIONS\s*=\s*new Set\(\s*\[\s*((?:"[a-z0-9_]+"\s*,?\s*)+)\]/,
+      /ALLOWED_TRANSLATIONS\s*=\s*\{\s*((?:"[a-z0-9_]+"\s*,?\s*)+)\}/,
     );
     expect(
       m,
-      "expected `ALLOWED_TRANSLATIONS = new Set([...])` in server/src/routes/audio.ts",
+      'expected `ALLOWED_TRANSLATIONS = {"..."}` set in server-py/app/routes/audio.py',
     ).not.toBeNull();
 
     const ids = (m![1].match(/"[a-z0-9_]+"/g) ?? []).map((s) => s.slice(1, -1));
