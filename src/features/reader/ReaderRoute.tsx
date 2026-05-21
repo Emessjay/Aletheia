@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { useLocation, useParams, Navigate } from "react-router-dom";
-import { findBook, getChapter, type ChapterPayload } from "@/db/queries";
+import { findBook, getChapter, getChapterCount, type ChapterPayload } from "@/db/queries";
 import {
   useChapterAnnotations,
   useCreateHighlight,
@@ -19,7 +19,7 @@ import type {
 import { kvSet } from "@/db/user";
 import { onAnyScroll } from "@/lib/onScroll";
 import { useSettingsStore } from "@/stores/useSettingsStore";
-import { translationMenuLabel } from "@/domain/translations";
+import { translationShortLabel } from "@/domain/translations";
 import {
   equivalentFor,
   interlinearLabel,
@@ -272,6 +272,12 @@ export function ReaderRoute() {
     enabled: valid,
   });
 
+  const chapterCountQuery = useQuery({
+    queryKey: ["corpus", "chapterCount", primaryLang, book],
+    queryFn: () => getChapterCount(primaryLang, book),
+    enabled: valid && !bookQuery.isPending && bookQuery.data !== null,
+  });
+
   // Fetch one chapter per active language. useQueries shares cache keys with
   // useChapter, so other consumers of the same (lang, book, chapter,
   // versification) tuple don't double-fetch.
@@ -316,6 +322,12 @@ export function ReaderRoute() {
 
   if (!valid) return <Navigate to="/reader/bible/john/1" replace />;
   if (!bookQuery.isPending && bookQuery.data === null) return <NotFoundRoute />;
+  if (
+    !chapterCountQuery.isPending &&
+    chapterCountQuery.data !== null &&
+    chapterCountQuery.data !== undefined &&
+    chapterNum > chapterCountQuery.data
+  ) return <NotFoundRoute />;
 
   const allHighlights = annotations.data?.highlights ?? [];
   const allNotes = annotations.data?.notes ?? [];
@@ -718,7 +730,7 @@ function TabColumnCells({
   const colSide = sideOf(tab.kind === "single" ? tab.lang : tab.primary);
   const label =
     tab.kind === "single"
-      ? translationMenuLabel(tab.lang)
+      ? translationShortLabel(tab.lang)
       : interlinearLabel(tab.primary, tab.secondary);
 
   const headerCell = (
@@ -741,7 +753,7 @@ function TabColumnCells({
       ) : !chapter ? (
         <p style={{ color: "var(--color-fg-subtle)", fontStyle: "italic" }}>
           Not available
-          {tab.kind === "single" ? ` in ${translationMenuLabel(tab.lang)}` : ""}.
+          {tab.kind === "single" ? ` in ${translationShortLabel(tab.lang)}` : ""}.
         </p>
       ) : null}
     </div>
@@ -1011,7 +1023,7 @@ function Column({
           chapterNum={chapterNum}
         />
         <p style={{ color: "var(--color-fg-subtle)", fontStyle: "italic" }}>
-          Not available in {translationMenuLabel(language)}.
+          Not available in {translationShortLabel(language)}.
         </p>
       </section>
     );
@@ -1091,7 +1103,7 @@ function ColumnHeading({
 }) {
   return (
     <header style={{ marginBottom: "1.25rem" }}>
-      <p className="al-eyebrow">{translationMenuLabel(language)}</p>
+      <p className="al-eyebrow">{translationShortLabel(language)}</p>
       <p className="al-chapter-label" style={{ marginTop: 4 }}>
         {bookName ? `${bookName} · Chapter ${toRoman(chapterNum)}` : "—"}
       </p>

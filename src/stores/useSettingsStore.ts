@@ -34,7 +34,7 @@ export const TOGGLEABLE_LANGS: CorpusLanguage[] = readerTabTranslations().map(
 function readTheme(): ThemeMode {
   if (typeof window === "undefined") return "light";
   const raw = window.localStorage.getItem(THEME_KEY);
-  return raw === "dark" || raw === "system" ? raw : "light";
+  return raw === "dark" || raw === "light" || raw === "system" ? raw : "system";
 }
 
 function defaultTabs(): Tab[] {

@@ -15,6 +15,8 @@ export const router = createBrowserRouter([
       // Legacy alias: desktop builds historically linked Notes at /notes;
       // the Notes tab now points at /libraries, so keep old bookmarks alive.
       { path: "notes", element: <Navigate to="/libraries" replace /> },
+      // Route alias: /library/summa → /patristics/summa (Summa is in the patristics route).
+      { path: "library/summa", element: <Navigate to="/patristics/summa" replace /> },
       ...MAIN_TABS.flatMap((t) => t.routes),
       { path: "*", element: <NotFoundRoute /> },
     ],
