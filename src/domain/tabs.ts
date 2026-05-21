@@ -1,4 +1,5 @@
 import type { CorpusLanguage, StrongsRow } from "@/db/types";
+import { translationShortLabel } from "@/domain/translations";
 
 export type PrimaryLang = "he" | "gk";
 export type SecondaryLang = "en_bsb" | "en_kjv";
@@ -51,8 +52,8 @@ export function interlinearLabel(
   primary: PrimaryLang,
   secondary: SecondaryLang,
 ): string {
-  const p = primary === "he" ? "Hebrew" : "Greek";
-  const s = secondary === "en_kjv" ? "King James English" : "English";
+  const p = translationShortLabel(primary);
+  const s = translationShortLabel(secondary);
   return `Interlinear (${p} + ${s})`;
 }
 

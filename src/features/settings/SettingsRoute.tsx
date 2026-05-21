@@ -111,7 +111,7 @@ export function SettingsRoute() {
                     : "1px solid transparent",
                 }}
               >
-                {t.menuLabel}
+                {t.shortLabel}
               </button>
             );
           })}

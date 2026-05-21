@@ -23,8 +23,6 @@ export interface Translation {
   shortLabel: string;
   /** Full canonical title. */
   longLabel: string;
-  /** What the reader/settings UI displays in toggle lists and tab headers. */
-  menuLabel: string;
   language: "en" | "he" | "grc" | "la";
   direction: "ltr" | "rtl";
   hasStrongs: boolean;
@@ -45,7 +43,6 @@ export const TRANSLATIONS: readonly Translation[] = [
     id: "en_bsb",
     shortLabel: "BSB",
     longLabel: "Berean Standard Bible",
-    menuLabel: "English (Modern)",
     language: "en",
     direction: "ltr",
     hasStrongs: false,
@@ -57,7 +54,6 @@ export const TRANSLATIONS: readonly Translation[] = [
     id: "en_kjv",
     shortLabel: "KJV",
     longLabel: "King James Version",
-    menuLabel: "English (King James)",
     language: "en",
     direction: "ltr",
     hasStrongs: false,
@@ -70,7 +66,6 @@ export const TRANSLATIONS: readonly Translation[] = [
     id: "gk",
     shortLabel: "Greek",
     longLabel: "Greek",
-    menuLabel: "Greek",
     language: "grc",
     direction: "ltr",
     hasStrongs: true,
@@ -80,9 +75,8 @@ export const TRANSLATIONS: readonly Translation[] = [
   },
   {
     id: "he",
-    shortLabel: "Hebrew",
+    shortLabel: "WLC",
     longLabel: "Hebrew",
-    menuLabel: "Hebrew",
     language: "he",
     direction: "rtl",
     hasStrongs: true,
@@ -94,7 +88,6 @@ export const TRANSLATIONS: readonly Translation[] = [
     id: "en_brenton",
     shortLabel: "Brenton",
     longLabel: "Brenton English LXX",
-    menuLabel: "Brenton",
     language: "en",
     direction: "ltr",
     hasStrongs: false,
@@ -106,7 +99,6 @@ export const TRANSLATIONS: readonly Translation[] = [
     id: "en_web",
     shortLabel: "WEB",
     longLabel: "World English Bible",
-    menuLabel: "World English Bible",
     language: "en",
     direction: "ltr",
     hasStrongs: false,
@@ -118,7 +110,6 @@ export const TRANSLATIONS: readonly Translation[] = [
     id: "la",
     shortLabel: "Latin",
     longLabel: "Latin",
-    menuLabel: "Latin",
     language: "la",
     direction: "ltr",
     hasStrongs: false,
@@ -136,10 +127,17 @@ export function getTranslation(id: TranslationId): Translation | undefined {
   return BY_ID.get(id);
 }
 
-/** Display label for the toggle/tab UI. Falls back to the raw id if the
- *  registry hasn't been updated yet — preferable to crashing the reader. */
-export function translationMenuLabel(id: TranslationId): string {
-  return BY_ID.get(id)?.menuLabel ?? id;
+/** Specific edition label for the UI (reader pills, settings toggles,
+ *  audio selector, search hits). Falls back to the raw id if the registry
+ *  hasn't been updated yet — preferable to crashing the reader.
+ *
+ *  Round-2/round-3 critics flagged that the reader pills showed generic
+ *  language descriptions ("English (Modern)", "Greek") while search rows
+ *  rendered the edition's abbreviation ("BSB", "Brenton") from this same
+ *  registry. Everything now reads `shortLabel`, so the two surfaces stay in
+ *  lockstep. */
+export function translationShortLabel(id: TranslationId): string {
+  return BY_ID.get(id)?.shortLabel ?? id;
 }
 
 export function translationsInOrder(): Translation[] {

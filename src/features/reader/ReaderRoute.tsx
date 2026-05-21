@@ -19,7 +19,7 @@ import type {
 import { kvSet } from "@/db/user";
 import { onAnyScroll } from "@/lib/onScroll";
 import { useSettingsStore } from "@/stores/useSettingsStore";
-import { translationMenuLabel } from "@/domain/translations";
+import { translationShortLabel } from "@/domain/translations";
 import {
   equivalentFor,
   interlinearLabel,
@@ -718,7 +718,7 @@ function TabColumnCells({
   const colSide = sideOf(tab.kind === "single" ? tab.lang : tab.primary);
   const label =
     tab.kind === "single"
-      ? translationMenuLabel(tab.lang)
+      ? translationShortLabel(tab.lang)
       : interlinearLabel(tab.primary, tab.secondary);
 
   const headerCell = (
@@ -741,7 +741,7 @@ function TabColumnCells({
       ) : !chapter ? (
         <p style={{ color: "var(--color-fg-subtle)", fontStyle: "italic" }}>
           Not available
-          {tab.kind === "single" ? ` in ${translationMenuLabel(tab.lang)}` : ""}.
+          {tab.kind === "single" ? ` in ${translationShortLabel(tab.lang)}` : ""}.
         </p>
       ) : null}
     </div>
@@ -1011,7 +1011,7 @@ function Column({
           chapterNum={chapterNum}
         />
         <p style={{ color: "var(--color-fg-subtle)", fontStyle: "italic" }}>
-          Not available in {translationMenuLabel(language)}.
+          Not available in {translationShortLabel(language)}.
         </p>
       </section>
     );
@@ -1091,7 +1091,7 @@ function ColumnHeading({
 }) {
   return (
     <header style={{ marginBottom: "1.25rem" }}>
-      <p className="al-eyebrow">{translationMenuLabel(language)}</p>
+      <p className="al-eyebrow">{translationShortLabel(language)}</p>
       <p className="al-chapter-label" style={{ marginTop: 4 }}>
         {bookName ? `${bookName} · Chapter ${toRoman(chapterNum)}` : "—"}
       </p>

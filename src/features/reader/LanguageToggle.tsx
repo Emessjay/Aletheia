@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { useSettingsStore } from "@/stores/useSettingsStore";
-import { translationMenuLabel } from "@/domain/translations";
+import { translationShortLabel } from "@/domain/translations";
 import {
   interlinearLabel,
   resolveInterlinear,
@@ -42,7 +42,7 @@ export function LanguageToggle() {
 
   function labelFor(t: Tab): string {
     return t.kind === "single"
-      ? translationMenuLabel(t.lang)
+      ? translationShortLabel(t.lang)
       : interlinearLabel(t.primary, t.secondary);
   }
 
