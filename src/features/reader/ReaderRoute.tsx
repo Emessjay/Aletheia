@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { useLocation, useParams, Navigate } from "react-router-dom";
-import { findBook, getChapter, type ChapterPayload } from "@/db/queries";
+import { findBook, getChapter, getChapterCount, type ChapterPayload } from "@/db/queries";
 import {
   useChapterAnnotations,
   useCreateHighlight,
@@ -272,6 +272,12 @@ export function ReaderRoute() {
     enabled: valid,
   });
 
+  const chapterCountQuery = useQuery({
+    queryKey: ["corpus", "chapterCount", primaryLang, book],
+    queryFn: () => getChapterCount(primaryLang, book),
+    enabled: valid && !bookQuery.isPending && bookQuery.data !== null,
+  });
+
   // Fetch one chapter per active language. useQueries shares cache keys with
   // useChapter, so other consumers of the same (lang, book, chapter,
   // versification) tuple don't double-fetch.
@@ -316,6 +322,12 @@ export function ReaderRoute() {
 
   if (!valid) return <Navigate to="/reader/bible/john/1" replace />;
   if (!bookQuery.isPending && bookQuery.data === null) return <NotFoundRoute />;
+  if (
+    !chapterCountQuery.isPending &&
+    chapterCountQuery.data !== null &&
+    chapterCountQuery.data !== undefined &&
+    chapterNum > chapterCountQuery.data
+  ) return <NotFoundRoute />;
 
   const allHighlights = annotations.data?.highlights ?? [];
   const allNotes = annotations.data?.notes ?? [];

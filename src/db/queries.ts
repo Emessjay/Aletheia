@@ -424,6 +424,19 @@ export async function findBook(
   );
 }
 
+export async function getChapterCount(
+  language: CorpusLanguage,
+  slug: string,
+): Promise<number | null> {
+  const bookRow = await findBook(language, slug);
+  if (!bookRow) return null;
+  const row = await corpusSelectOne<{ count: number }>(
+    `SELECT COUNT(*) AS count FROM chapter WHERE book_id = $1`,
+    [bookRow.id],
+  );
+  return row?.count ?? null;
+}
+
 export type VersificationMode = "native" | "mt";
 
 export async function getChapter(
