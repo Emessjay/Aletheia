@@ -40,29 +40,18 @@ describe("translations registry", () => {
     }
   });
 
-  it("every shortLabel names a specific edition, not just a generic language", () => {
-    // Reader pills, settings toggles, and search results all render
-    // `shortLabel`. Round-2/round-3 critics flagged that generic-language
-    // labels ("English (Modern)", "Greek", "Hebrew") on the reader pills
-    // were jarring next to search rows that show "BSB"/"KJV". The fix is
-    // to unify on `shortLabel`, so each entry's shortLabel must actually
-    // identify the edition.
-    const GENERIC = new Set([
-      "English",
-      "English (Modern)",
-      "English (King James)",
-      "Hebrew",
-      "Greek",
-      "Latin",
-    ]);
-    for (const t of TRANSLATIONS) {
-      // gk is a genuine composite (Brenton LXX for OT + Robinson-Pierpont
-      // Byzantine for NT), so "Greek" is the honest label there.
-      if (t.id === "gk") continue;
-      // Non-reader-tab entries (la, en_web) are only reached via fallback
-      // and don't render as user-visible pills, so don't constrain them.
-      if (!t.isReaderTab) continue;
-      expect(GENERIC.has(t.shortLabel)).toBe(false);
+  it("reader-tab shortLabels use language-name form", () => {
+    // Reader pills, settings toggles, and search results all render `shortLabel`.
+    // The four reader-tab translations use language-name labels; edition
+    // abbreviations are available via `longLabel` for surfaces that want them.
+    const READER_TAB_LABELS: Record<string, string> = {
+      en_bsb: "English (Modern)",
+      en_kjv: "English (King James)",
+      gk: "Greek",
+      he: "Hebrew",
+    };
+    for (const t of TRANSLATIONS.filter((t) => t.isReaderTab)) {
+      expect(t.shortLabel).toBe(READER_TAB_LABELS[t.id]);
     }
   });
 
