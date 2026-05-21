@@ -41,7 +41,7 @@ export interface Translation {
 export const TRANSLATIONS: readonly Translation[] = [
   {
     id: "en_bsb",
-    shortLabel: "BSB",
+    shortLabel: "English (Modern)",
     longLabel: "Berean Standard Bible",
     language: "en",
     direction: "ltr",
@@ -52,7 +52,7 @@ export const TRANSLATIONS: readonly Translation[] = [
   },
   {
     id: "en_kjv",
-    shortLabel: "KJV",
+    shortLabel: "English (King James)",
     longLabel: "King James Version",
     language: "en",
     direction: "ltr",
@@ -75,7 +75,7 @@ export const TRANSLATIONS: readonly Translation[] = [
   },
   {
     id: "he",
-    shortLabel: "WLC",
+    shortLabel: "Hebrew",
     longLabel: "Hebrew",
     language: "he",
     direction: "rtl",
@@ -127,15 +127,14 @@ export function getTranslation(id: TranslationId): Translation | undefined {
   return BY_ID.get(id);
 }
 
-/** Specific edition label for the UI (reader pills, settings toggles,
- *  audio selector, search hits). Falls back to the raw id if the registry
- *  hasn't been updated yet — preferable to crashing the reader.
+/** Compact label for the UI (reader pills, settings toggles, audio selector,
+ *  search hits). Falls back to the raw id if the registry hasn't been updated
+ *  yet — preferable to crashing the reader.
  *
- *  Round-2/round-3 critics flagged that the reader pills showed generic
- *  language descriptions ("English (Modern)", "Greek") while search rows
- *  rendered the edition's abbreviation ("BSB", "Brenton") from this same
- *  registry. Everything now reads `shortLabel`, so the two surfaces stay in
- *  lockstep. */
+ *  Reader pills and search rows both read `shortLabel`. For the four reader-tab
+ *  translations this is the language-name form ("English (Modern)", "Hebrew",
+ *  etc.); edition abbreviations remain available via `longLabel` if a surface
+ *  ever wants them. */
 export function translationShortLabel(id: TranslationId): string {
   return BY_ID.get(id)?.shortLabel ?? id;
 }
