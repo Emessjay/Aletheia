@@ -6,7 +6,8 @@ on:
     branches: [main]
 
 jobs:
-  build-and-test:
+  ci:
+    name: ci
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -18,26 +19,35 @@ jobs:
           node-version: "20"
           cache: npm
 
-      - name: Install root dependencies
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: server-py/requirements.txt
+
+      - name: Install npm dependencies
         run: npm ci --no-audit --no-fund
 
-      - name: Vitest suite
-        run: npm test
+      - name: Install Python dependencies
+        run: pip install -r server-py/requirements.txt
 
-      - name: TypeScript project references
+      - name: TypeScript typecheck
         run: npx tsc -b
 
-      - name: Frontend build
+      - name: Vitest suite
+        run: npm test --silent
+
+      - name: Stub corpus for acceptance tests
+        # The real corpus (data/Aletheia.sqlite, ~600MB) is gitignored, but
+        # the FastAPI acceptance tests only need the file to exist —
+        # open_corpus() does an existence check and the tests query either
+        # sqlite_master or constant expressions. An empty SQLite satisfies
+        # both. Phase 2 (Postgres) will retire this.
+        run: python3 -c "import sqlite3; sqlite3.connect('data/Aletheia.sqlite').close()"
+
+      - name: Pytest suite
+        run: python3 -m pytest server-py -q
+
+      - name: Frontend production build
         run: npm run build
-
-      - name: Install server dependencies
-        working-directory: server
-        run: npm ci --no-audit --no-fund
-
-      - name: Server build
-        working-directory: server
-        run: npm run build
-
-      - name: Server tests
-        working-directory: server
-        run: npm test --if-present
