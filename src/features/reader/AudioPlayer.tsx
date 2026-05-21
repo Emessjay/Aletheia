@@ -242,8 +242,35 @@ export function AudioPlayer({
     }
   };
 
+  // Publish the bar's rendered height as a CSS variable on <html> so the
+  // reader (and anything else with a fixed-bottom collision) can add it to
+  // its bottom padding without hardcoding a pixel guess. ResizeObserver
+  // covers the error-message state and any future content that grows the
+  // bar. Cleanup unsets the variable so non-audio routes don't reserve an
+  // empty footer.
+  const containerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const root = document.documentElement;
+    const set = (h: number) => {
+      root.style.setProperty("--audio-player-height", `${Math.ceil(h)}px`);
+    };
+    set(el.getBoundingClientRect().height);
+    const ro = new ResizeObserver((entries) => {
+      const rect = entries[0]?.contentRect;
+      if (rect) set(el.getBoundingClientRect().height);
+    });
+    ro.observe(el);
+    return () => {
+      ro.disconnect();
+      root.style.removeProperty("--audio-player-height");
+    };
+  }, []);
+
   return (
     <div
+      ref={containerRef}
       role="region"
       aria-label="Audio narration"
       style={{

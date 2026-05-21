@@ -1111,8 +1111,13 @@ function ColumnHeading({
   );
 }
 
+// Bottom padding tracks the fixed AudioPlayer's measured height (it sets
+// --audio-player-height on <html> while mounted) plus a small breathing
+// room. On chapters with no audio bar the variable is unset, falling back
+// to 0px so we don't reserve an empty footer.
 const readerWrap: React.CSSProperties = {
   maxWidth: "min(100%, 80em)",
   margin: "0 auto",
-  padding: "2.5rem 2rem 6rem",
+  padding: "2.5rem 2rem 0",
+  paddingBottom: "calc(2.5rem + var(--audio-player-height, 0px))",
 };
