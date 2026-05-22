@@ -1,7 +1,10 @@
-"""/api/corpus/{select,selectOne} — mirrors server/src/routes/corpus.ts.
+"""/api/corpus/{select,selectOne} — Postgres backend (phase 2).
 
-POST (not GET) because SQL strings can exceed URL length limits and may
-contain characters that would need escaping.
+The request/response shape is unchanged from phase 1: clients post
+``{sql, params}`` and get back ``{rows}`` or ``{row}``. FTS5 idioms
+(``verse_fts MATCH``, ``snippet(...)``, ``ORDER BY rank``) in the incoming
+SQL are translated to Postgres tsvector equivalents by ``app.db.rewrite_fts``
+before execution.
 """
 
 from __future__ import annotations
@@ -11,7 +14,7 @@ from typing import Any
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
-from ..corpus import CorpusHandle, QueryError
+from ..db import QueryError, get_pool, select, select_one
 
 
 def _normalize_params(raw: Any) -> list[Any]:
@@ -30,7 +33,7 @@ def corpus_router() -> APIRouter:
     router = APIRouter()
 
     @router.post("/select")
-    async def select(req: Request) -> JSONResponse:
+    async def select_endpoint(req: Request) -> JSONResponse:
         try:
             body = await req.json()
         except Exception:
@@ -44,9 +47,9 @@ def corpus_router() -> APIRouter:
             params = _normalize_params(body.get("params"))
         except QueryError as err:
             return _err(str(err), err.status)
-        corpus: CorpusHandle = req.app.state.corpus
+        pool = await get_pool(req.app.state)
         try:
-            rows = corpus.select(sql, params)
+            rows = await select(pool, sql, params)
             return JSONResponse({"rows": rows})
         except QueryError as err:
             return _err(str(err), err.status)
@@ -54,7 +57,7 @@ def corpus_router() -> APIRouter:
             return _err(str(err), 400)
 
     @router.post("/selectOne")
-    async def select_one(req: Request) -> JSONResponse:
+    async def select_one_endpoint(req: Request) -> JSONResponse:
         try:
             body = await req.json()
         except Exception:
@@ -68,9 +71,9 @@ def corpus_router() -> APIRouter:
             params = _normalize_params(body.get("params"))
         except QueryError as err:
             return _err(str(err), err.status)
-        corpus: CorpusHandle = req.app.state.corpus
+        pool = await get_pool(req.app.state)
         try:
-            row = corpus.select_one(sql, params)
+            row = await select_one(pool, sql, params)
             return JSONResponse({"row": row})
         except QueryError as err:
             return _err(str(err), err.status)

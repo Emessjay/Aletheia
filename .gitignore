@@ -38,5 +38,10 @@ __pycache__/
 .DS_Store
 *.log
 
+# Local environment overrides (DATABASE_URL etc.) — see .env.example
+.env
+.env.local
+.env.*.local
+
 # Auditor system per-worker state (see scripts/spawn-worker.sh, AUDITOR.md)
 .auditor-state/

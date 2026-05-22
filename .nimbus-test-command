@@ -1,1 +1,1 @@
-npm test --silent && python3 -m pytest server-py -q
+docker compose up -d postgres && until docker compose exec -T postgres pg_isready -U aletheia -d aletheia >/dev/null 2>&1; do sleep 1; done && npm test --silent && DATABASE_URL=${DATABASE_URL:-postgresql://aletheia:aletheia@localhost:5432/aletheia} python3 -m pytest server-py -q

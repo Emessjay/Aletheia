@@ -61,7 +61,7 @@ probably bypassing one of them — stop and look:
   one to the other transparently. Keep the SQL strings in
   `src/db/user.ts` using `$N` — that is the shared dialect.
 
-## Web/Railway deployment (FastAPI)
+## Web/Railway deployment (FastAPI + Postgres)
 
 The same React frontend runs in two hosts: the Tauri desktop build (`npm run
 tauri build` or `./scripts/dev-instance.sh` for dev) and a FastAPI API server
@@ -69,24 +69,73 @@ under `server-py/` that serves the corpus over HTTP plus the static frontend.
 The FastAPI server is what gets deployed to Railway via the repo-root
 `Dockerfile` (referenced by `railway.toml`).
 
-Phase 1 (this PR) is the API rewrite only — the corpus is still bundled
-SQLite, and there is no auth. Phase 2 migrates the corpus to Postgres
-(Alembic). Phase 3 wires Supabase Auth and moves web user-data off sql.js.
+Two hosts, two storage layers:
 
-To run the server locally:
+- **Tauri desktop** reads the bundled `data/Aletheia.sqlite` directly via
+  `tauri-plugin-sql`. The SQLite file is the canonical corpus artifact —
+  it's the source the ingest script reads from.
+- **FastAPI web** reads from **Postgres** (asyncpg) via `app.state.pool`.
+  The Docker image no longer bundles `Aletheia.sqlite`; instead Railway
+  provides a Postgres database, the container runs `alembic upgrade head`
+  on every start to apply the schema, and a one-off
+  `python -m app.scripts.ingest_corpus` loads the data.
 
+Phase 2 (this PR) is the corpus-to-Postgres migration. Phase 3 wires
+Supabase Auth and moves web user-data off sql.js.
+
+### FTS routing (option a — server-side rewrite)
+
+The frontend speaks SQLite FTS5 — `WHERE verse_fts MATCH $1`,
+`snippet(verse_fts, ...)`, `ORDER BY rank` — because that's the dialect the
+Tauri build natively supports. Rather than introduce a typed search endpoint
+that would need parallel implementations on Tauri and web, the FastAPI
+corpus router rewrites the incoming SQL: `verse_fts MATCH $N` becomes
+`v.search_vector @@ websearch_to_tsquery('english', $N)`, `snippet(...)`
+becomes `ts_headline(...)`, and `ORDER BY rank` becomes
+`ORDER BY ts_rank(...) DESC`. The transformation lives in
+`server-py/app/db.py::rewrite_fts`. The `verse.search_vector` and
+`section.search_vector` columns are Postgres `GENERATED ALWAYS … STORED`
+tsvectors over the same text fields the SQLite FTS5 virtual tables indexed
+(`text_plain`, `body`), with `GIN` indexes for query performance.
+
+### Running the server locally
+
+    docker compose up -d postgres                              # phase-2 dep
     pip install -r server-py/requirements.txt
-    npm run build       # produces dist/
-    uvicorn app.main:app --reload --app-dir server-py
+    cp .env.example .env                                       # edit if needed
+    cd server-py && DATABASE_URL=$DATABASE_URL alembic upgrade head
+    cd .. && DATABASE_URL=$DATABASE_URL python3 -m app.scripts.ingest_corpus  \
+        # one-shot; ~75s against the bundled SQLite
+    npm run build                                              # produces dist/
+    DATABASE_URL=$DATABASE_URL uvicorn app.main:app --reload --app-dir server-py
 
 Visit `http://localhost:8000` (or pass `--port 3000` to match the Docker
-image). The server expects `data/Aletheia.sqlite` at the repo root (override
-with `ALETHEIA_CORPUS_PATH`) and writes audio cache under `/tmp/aletheia-audio`
-(override with `ALETHEIA_AUDIO_CACHE`). The built frontend is picked up from
-`dist/` unless `ALETHEIA_STATIC_DIR` points elsewhere.
+image). The server requires `DATABASE_URL` and fails fast if it can't open
+the pool. The ingest script's source SQLite path defaults to
+`data/Aletheia.sqlite` (override with `ALETHEIA_CORPUS_PATH`). Audio cache
+goes under `/tmp/aletheia-audio` (override with `ALETHEIA_AUDIO_CACHE`).
+The built frontend is picked up from `dist/` unless `ALETHEIA_STATIC_DIR`
+points elsewhere.
 
-The test gate (`.nimbus-test-command`) chains the vitest suite with the pytest
-acceptance suite, so any FastAPI change needs both to stay green.
+### Ingest on Railway
+
+The Dockerfile deliberately does **not** run `ingest_corpus.py` on every
+start — that would re-truncate-and-reload the corpus on every cold start.
+After the first Railway deploy stands up an empty Postgres, run the ingest
+once via a Railway one-off job (or by exec'ing into the container):
+
+    railway run python -m app.scripts.ingest_corpus
+
+The script is idempotent (TRUNCATE … CASCADE + bulk COPY), so re-running
+it is safe but slow; only do so when the bundled SQLite has changed.
+
+### Test gate
+
+The test gate (`.nimbus-test-command`) spins up the local Postgres,
+chains the vitest suite with the pytest suite, and uses
+`DATABASE_URL=postgresql://aletheia:aletheia@localhost:5432/aletheia` by
+default. Any FastAPI change needs both pytest (acceptance + integration)
+and vitest to stay green.
 
 ## Worktree-per-feature
 

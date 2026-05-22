@@ -6,14 +6,6 @@ import os
 from pathlib import Path
 
 
-def resolve_corpus_path() -> Path:
-    env = os.environ.get("ALETHEIA_CORPUS_PATH")
-    if env:
-        return Path(env).resolve()
-    # Local dev default: server-py/ is a sibling of data/.
-    return (Path(__file__).resolve().parents[2] / "data" / "Aletheia.sqlite").resolve()
-
-
 def resolve_audio_cache() -> Path:
     """Resolved at request time so tests can override via monkeypatch."""
     env = os.environ.get("ALETHEIA_AUDIO_CACHE")

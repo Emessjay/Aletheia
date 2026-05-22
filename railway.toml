@@ -6,3 +6,14 @@ dockerfilePath = "Dockerfile"
 healthcheckPath = "/api/health"
 healthcheckTimeout = 30
 restartPolicyType = "ON_FAILURE"
+
+# Required environment variables (set in the Railway service):
+#   DATABASE_URL  — provided by the linked Supabase Postgres plugin.
+#                   The container runs `alembic upgrade head` on every
+#                   start, so a fresh database self-creates the schema.
+#                   The corpus itself is loaded by a one-off
+#                   `python -m app.scripts.ingest_corpus` run (see CLAUDE.md);
+#                   it is NOT executed automatically by this deploy.
+#
+# Optional:
+#   PORT          — Railway sets this; the Dockerfile CMD picks it up.

@@ -9,7 +9,7 @@ async def test_select_returns_rows_for_valid_sql():
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         resp = await client.post(
             "/api/corpus/select",
-            json={"sql": "SELECT name FROM sqlite_master WHERE type='table' LIMIT 3", "params": []},
+            json={"sql": "SELECT tablename AS name FROM pg_tables WHERE schemaname = 'public' LIMIT 3", "params": []},
         )
     assert resp.status_code == 200
     body = resp.json()
@@ -57,7 +57,7 @@ async def test_select_with_params_substitutes_correctly():
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         resp = await client.post(
             "/api/corpus/select",
-            json={"sql": "SELECT ? AS x, ? AS y", "params": [7, "hi"]},
+            json={"sql": "SELECT $1::int AS x, $2::text AS y", "params": [7, "hi"]},
         )
     assert resp.status_code == 200
     rows = resp.json()["rows"]

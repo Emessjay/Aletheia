@@ -1,26 +1,29 @@
-"""Aletheia FastAPI app — phase 1 of the web-stack rewrite.
+"""Aletheia FastAPI app — phase 2 of the web-stack rewrite.
 
-Replaces the previous Node server (deleted from this commit). Phase 2 moves
-the corpus to Postgres; phase 3 adds Supabase Auth and user-data sync.
+Phase 1 served the corpus from bundled SQLite. Phase 2 moves the corpus to
+Postgres via asyncpg, leaving the {sql, params} HTTP contract intact —
+SQLite FTS5 idioms in incoming SQL are rewritten to Postgres tsvector
+equivalents in app/db.py. The Tauri desktop build still uses SQLite locally
+and is unaffected.
 
-Boot order mirrors the Node version:
-  1. open the corpus DB read-only (fail fast if missing — Railway healthcheck
-     won't pass without it),
+Boot order:
+  1. open the asyncpg pool against DATABASE_URL (fail fast if unset or
+     unreachable — Railway healthcheck depends on the app booting cleanly),
   2. mount /api/health, /api/corpus, /api/audio,
-  3. mount static-file serving + SPA fallback LAST so /api/* takes precedence
-     over any same-named asset.
+  3. mount static-file serving + SPA fallback LAST so /api/* takes precedence.
 """
 
 from __future__ import annotations
 
 import logging
+import re
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
-from .config import resolve_audio_cache, resolve_corpus_path, resolve_static_dir
-from .corpus import open_corpus
+from .config import resolve_audio_cache, resolve_static_dir
+from .db import create_pool, resolve_database_url
 from .routes.audio import audio_router
 from .routes.corpus import corpus_router
 from .static import mount_static
@@ -28,30 +31,37 @@ from .static import mount_static
 log = logging.getLogger("aletheia")
 
 
+def _redact(url: str) -> str:
+    return re.sub(r"://([^:/@]+):[^@]*@", r"://\1:****@", url)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    log.info("corpus: %s", app.state.corpus_path)
+    database_url = resolve_database_url()
+    if not database_url:
+        raise RuntimeError(
+            "DATABASE_URL is not set. The phase-2 server reads the corpus "
+            "from Postgres; set DATABASE_URL to a reachable database URL."
+        )
+    log.info("database: %s", _redact(database_url))
     log.info("audio cache: %s", resolve_audio_cache())
     log.info("static dir: %s", app.state.static_dir)
+    app.state.pool = await create_pool(database_url)
     try:
         yield
     finally:
-        try:
-            app.state.corpus.close()
-        except Exception:  # noqa: BLE001
-            # Already closed or never opened; nothing actionable.
-            pass
+        pool = app.state.pool
+        if pool is not None:
+            await pool.close()
 
 
 def create_app() -> FastAPI:
     app = FastAPI(lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
 
-    corpus_path = resolve_corpus_path()
     static_dir = resolve_static_dir()
-
-    app.state.corpus_path = corpus_path
     app.state.static_dir = static_dir
-    app.state.corpus = open_corpus(corpus_path)
+    app.state.pool = None  # populated by lifespan, or lazily by get_pool()
+    app.state._pool_lock = None  # asyncio.Lock created lazily (needs running loop)
 
     @app.get("/api/health")
     async def health() -> JSONResponse:
