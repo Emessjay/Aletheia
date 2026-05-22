@@ -6,7 +6,8 @@ on:
     branches: [main]
 
 jobs:
-  build-and-test:
+  ci:
+    name: ci
     runs-on: ubuntu-latest
 
     # Postgres for the FastAPI integration suite. asyncpg + alembic talk to
@@ -47,13 +48,13 @@ jobs:
           cache: pip
           cache-dependency-path: server-py/requirements.txt
 
-      - name: Install Node dependencies
+      - name: Install npm dependencies
         run: npm ci --no-audit --no-fund
 
       - name: Install Python dependencies
         run: pip install -r server-py/requirements.txt
 
-      - name: TypeScript project references
+      - name: TypeScript typecheck
         run: npx tsc -b
 
       - name: Vitest suite
@@ -64,7 +65,7 @@ jobs:
         run: alembic upgrade head
 
       - name: Pytest suite (FastAPI + Postgres)
-        run: python -m pytest server-py -q
+        run: python3 -m pytest server-py -q
 
-      - name: Frontend build
+      - name: Frontend production build
         run: npm run build

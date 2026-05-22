@@ -41,7 +41,7 @@ probably bypassing one of them — stop and look:
 
   The audio allow-list is intrinsically duplicated across three
   languages — TypeScript (`hasAudio` flag), Rust
-  (`src-tauri/src/audio.rs`), Node (`server/src/routes/audio.ts`). A
+  (`src-tauri/src/audio.rs`), Python (`server-py/app/routes/audio.py`). A
   Vitest parity test in `src/domain/translations.test.ts` reads the two
   non-TS sources as text and asserts they match the registry. If you
   flip `hasAudio`, update both other sites or CI will fail loudly.

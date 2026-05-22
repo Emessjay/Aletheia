@@ -104,6 +104,28 @@ editions (SBLGNT, NA28, BHS, Rahlfs-Hanhart, Göttingen, CCAT/CATSS) are
 explicitly out of scope. The full policy and the list of vetted vs.
 rejected sources lives in [CLAUDE.md](CLAUDE.md).
 
+## Continuous integration
+
+CI lives at [.github/workflows/ci.yml](.github/workflows/ci.yml) and runs on
+every push to `main` and on every pull request. It installs the Node and
+Python dependencies, typechecks (`npx tsc -b`), runs the vitest and pytest
+suites, and builds the production frontend bundle. A non-zero exit at any
+step fails the job.
+
+Railway auto-deploys `main` on push, so a red CI must block the deploy.
+That gate is enforced on the GitHub side via **branch protection**, not by
+the workflow itself:
+
+1. In the GitHub repo, open **Settings → Branches → Branch protection rules**.
+2. Add or edit the rule for `main`.
+3. Enable **Require status checks to pass before merging** and select the
+   `ci` check from this workflow.
+4. Enable **Require branches to be up to date before merging** so the same
+   gate also applies to direct pushes to `main`.
+
+This is a one-time UI step; the workflow itself needs no additional
+configuration to be enabled.
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the worktree convention, how to
