@@ -1,9 +1,11 @@
-// User-data CRUD helpers. Persistence is delegated to the platform's
-// UserDataAdapter; this module owns the SQL strings and row-shape contracts.
+// User-data CRUD helpers — thin wrappers around the platform's typed
+// UserDataAdapter. Phase 3b moved the SQL strings out of this module and
+// into each adapter (Tauri keeps SQLite via plugin-sql; web speaks to the
+// FastAPI /api/user/* endpoints with a Supabase JWT). This file stays as
+// the stable import surface for feature code — same function signatures,
+// same row shapes, no SQL leaking up.
 
 import { getPlatform } from "@/platform";
-import { nowMs } from "@/lib/time";
-import { newId } from "@/lib/ulid";
 import type {
   BookmarkRow,
   HighlightColor,
@@ -18,66 +20,25 @@ export interface ChapterAnnotations {
   notes: NoteRow[];
 }
 
-export function userSelect<T>(
-  sql: string,
-  params: unknown[] = [],
-): Promise<T[]> {
-  return getPlatform().userData.select<T>(sql, params);
-}
-
-export function userExecute(
-  sql: string,
-  params: unknown[] = [],
-): Promise<void> {
-  return getPlatform().userData.execute(sql, params);
+function ud() {
+  return getPlatform().userData;
 }
 
 // ── Library ──────────────────────────────────────────────────────────────────
 
-export async function listLibraries(): Promise<LibraryRow[]> {
-  return userSelect<LibraryRow>(
-    `SELECT * FROM libraries WHERE deleted_at IS NULL ORDER BY sort_order, name`,
-  );
+export function listLibraries(): Promise<LibraryRow[]> {
+  return ud().libraries.list();
 }
 
-export async function createLibrary(name: string): Promise<LibraryRow> {
-  const id = newId();
-  const now = nowMs();
-  await userExecute(
-    `INSERT INTO libraries (id, name, sort_order, created_at, updated_at)
-     VALUES ($1, $2, 0, $3, $3)`,
-    [id, name, now],
-  );
-  return {
-    id,
-    name,
-    sort_order: 0,
-    created_at: now,
-    updated_at: now,
-    deleted_at: null,
-  };
+export function createLibrary(name: string): Promise<LibraryRow> {
+  return ud().libraries.create({ name });
 }
 
-export async function softDeleteLibrary(id: string): Promise<void> {
-  const now = nowMs();
-  await userExecute(
-    `UPDATE libraries SET deleted_at = $1, updated_at = $1 WHERE id = $2`,
-    [now, id],
-  );
+export function softDeleteLibrary(id: string): Promise<void> {
+  return ud().libraries.softDelete(id);
 }
 
 // ── Highlights ───────────────────────────────────────────────────────────────
-
-export async function listHighlightsForVerse(
-  ref: VerseRef,
-): Promise<HighlightRow[]> {
-  return userSelect<HighlightRow>(
-    `SELECT * FROM highlights
-     WHERE work_slug = $1 AND book_slug = $2 AND chapter = $3 AND verse = $4
-       AND deleted_at IS NULL`,
-    [ref.workSlug, ref.bookSlug, ref.chapter, ref.verse],
-  );
-}
 
 export interface HighlightRange {
   /** Character offset into VerseRow.text_plain (inclusive). */
@@ -86,204 +47,107 @@ export interface HighlightRange {
   endToken: number;
 }
 
-export async function createHighlight(
+export function listHighlightsForVerse(ref: VerseRef): Promise<HighlightRow[]> {
+  return ud().highlights.listForVerse({
+    workSlug: ref.workSlug,
+    bookSlug: ref.bookSlug,
+    chapter: ref.chapter,
+    verse: ref.verse,
+  });
+}
+
+export function createHighlight(
   ref: VerseRef,
   color: HighlightColor,
   translation: string | null = null,
   range: HighlightRange | null = null,
 ): Promise<HighlightRow> {
-  const id = newId();
-  const now = nowMs();
-  const start = range?.startToken ?? null;
-  const end = range?.endToken ?? null;
-  await userExecute(
-    `INSERT INTO highlights
-       (id, work_slug, book_slug, chapter, verse, translation, color,
-        start_token, end_token, created_at, updated_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $10)`,
-    [
-      id,
-      ref.workSlug,
-      ref.bookSlug,
-      ref.chapter,
-      ref.verse,
-      translation,
-      color,
-      start,
-      end,
-      now,
-    ],
-  );
-  return {
-    id,
-    work_slug: ref.workSlug,
-    book_slug: ref.bookSlug,
+  return ud().highlights.create({
+    workSlug: ref.workSlug,
+    bookSlug: ref.bookSlug,
     chapter: ref.chapter,
     verse: ref.verse,
     translation,
     color,
-    start_token: start,
-    end_token: end,
-    created_at: now,
-    updated_at: now,
-    deleted_at: null,
-  };
+    startToken: range?.startToken ?? null,
+    endToken: range?.endToken ?? null,
+  });
 }
 
-export async function softDeleteHighlight(id: string): Promise<void> {
-  const now = nowMs();
-  await userExecute(
-    `UPDATE highlights SET deleted_at = $1, updated_at = $1 WHERE id = $2`,
-    [now, id],
-  );
+export function softDeleteHighlight(id: string): Promise<void> {
+  return ud().highlights.softDelete(id);
 }
 
-export async function listChapterAnnotations(
+export function listChapterAnnotations(
   workSlug: string,
   bookSlug: string,
   chapter: number,
 ): Promise<ChapterAnnotations> {
-  const highlights = await userSelect<HighlightRow>(
-    `SELECT * FROM highlights
-       WHERE work_slug = $1 AND book_slug = $2 AND chapter = $3
-         AND deleted_at IS NULL`,
-    [workSlug, bookSlug, chapter],
-  );
-  const notes = await userSelect<NoteRow>(
-    `SELECT * FROM notes
-       WHERE work_slug = $1 AND book_slug = $2 AND chapter = $3
-         AND deleted_at IS NULL`,
-    [workSlug, bookSlug, chapter],
-  );
-  return { highlights, notes };
+  return ud().annotations.forChapter({ workSlug, bookSlug, chapter });
 }
 
 // ── Notes ────────────────────────────────────────────────────────────────────
 
-export async function listNotesForVerse(ref: VerseRef): Promise<NoteRow[]> {
-  return userSelect<NoteRow>(
-    `SELECT * FROM notes
-     WHERE work_slug = $1 AND book_slug = $2 AND chapter = $3 AND verse = $4
-       AND deleted_at IS NULL
-     ORDER BY created_at`,
-    [ref.workSlug, ref.bookSlug, ref.chapter, ref.verse],
-  );
+export function listNotesForVerse(ref: VerseRef): Promise<NoteRow[]> {
+  return ud().notes.listForVerse({
+    workSlug: ref.workSlug,
+    bookSlug: ref.bookSlug,
+    chapter: ref.chapter,
+    verse: ref.verse,
+  });
 }
 
-export async function createNote(
-  ref: VerseRef,
-  body: string,
-): Promise<NoteRow> {
-  const id = newId();
-  const now = nowMs();
-  await userExecute(
-    `INSERT INTO notes
-       (id, work_slug, book_slug, chapter, verse, body, created_at, updated_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $7)`,
-    [id, ref.workSlug, ref.bookSlug, ref.chapter, ref.verse, body, now],
-  );
-  return {
-    id,
-    work_slug: ref.workSlug,
-    book_slug: ref.bookSlug,
+export function createNote(ref: VerseRef, body: string): Promise<NoteRow> {
+  return ud().notes.create({
+    workSlug: ref.workSlug,
+    bookSlug: ref.bookSlug,
     chapter: ref.chapter,
     verse: ref.verse,
     body,
-    created_at: now,
-    updated_at: now,
-    deleted_at: null,
-  };
+  });
 }
 
 export async function updateNote(id: string, body: string): Promise<void> {
-  const now = nowMs();
-  await userExecute(
-    `UPDATE notes SET body = $1, updated_at = $2 WHERE id = $3`,
-    [body, now, id],
-  );
+  await ud().notes.update(id, { body });
 }
 
-export async function softDeleteNote(id: string): Promise<void> {
-  const now = nowMs();
-  await userExecute(
-    `UPDATE notes SET deleted_at = $1, updated_at = $1 WHERE id = $2`,
-    [now, id],
-  );
-}
-
-export async function softDeleteBookmark(id: string): Promise<void> {
-  const now = nowMs();
-  await userExecute(
-    `UPDATE bookmarks SET deleted_at = $1, updated_at = $1 WHERE id = $2`,
-    [now, id],
-  );
+export function softDeleteNote(id: string): Promise<void> {
+  return ud().notes.softDelete(id);
 }
 
 // ── Bookmarks ────────────────────────────────────────────────────────────────
 
-export async function listBookmarks(libraryId: string): Promise<BookmarkRow[]> {
-  return userSelect<BookmarkRow>(
-    `SELECT * FROM bookmarks
-     WHERE library_id = $1 AND deleted_at IS NULL
-     ORDER BY created_at DESC`,
-    [libraryId],
-  );
+export function listBookmarks(libraryId: string): Promise<BookmarkRow[]> {
+  return ud().bookmarks.listForLibrary(libraryId);
 }
 
-export async function createBookmark(
+export function createBookmark(
   libraryId: string,
   ref: VerseRef,
   translation: string | null = null,
   label: string | null = null,
 ): Promise<BookmarkRow> {
-  const id = newId();
-  const now = nowMs();
-  await userExecute(
-    `INSERT INTO bookmarks
-       (id, library_id, work_slug, book_slug, chapter, verse, translation, label, created_at, updated_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $9)`,
-    [
-      id,
-      libraryId,
-      ref.workSlug,
-      ref.bookSlug,
-      ref.chapter,
-      ref.verse,
-      translation,
-      label,
-      now,
-    ],
-  );
-  return {
-    id,
-    library_id: libraryId,
-    work_slug: ref.workSlug,
-    book_slug: ref.bookSlug ?? null,
+  return ud().bookmarks.create({
+    libraryId,
+    workSlug: ref.workSlug,
+    bookSlug: ref.bookSlug,
     chapter: ref.chapter,
     verse: ref.verse,
     translation,
     label,
-    created_at: now,
-    updated_at: now,
-    deleted_at: null,
-  };
+  });
+}
+
+export function softDeleteBookmark(id: string): Promise<void> {
+  return ud().bookmarks.softDelete(id);
 }
 
 // ── KV ───────────────────────────────────────────────────────────────────────
 
-export async function kvGet(key: string): Promise<string | null> {
-  const rows = await userSelect<{ value: string }>(
-    `SELECT value FROM kv WHERE key = $1`,
-    [key],
-  );
-  return rows[0]?.value ?? null;
+export function kvGet(key: string): Promise<string | null> {
+  return ud().kv.get(key);
 }
 
-export async function kvSet(key: string, value: string): Promise<void> {
-  const now = nowMs();
-  await userExecute(
-    `INSERT INTO kv (key, value, updated_at) VALUES ($1, $2, $3)
-     ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
-    [key, value, now],
-  );
+export function kvSet(key: string, value: string): Promise<void> {
+  return ud().kv.set(key, value);
 }

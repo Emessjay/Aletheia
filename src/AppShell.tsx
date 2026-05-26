@@ -9,6 +9,9 @@ import { getPlatform } from "@/platform";
 import { useViewportWidth } from "@/lib/useViewportWidth";
 import { useGlobalShortcuts } from "@/lib/useGlobalShortcuts";
 import { MAIN_TABS, isTabActive } from "@/tabs/registry";
+import { AuthProvider } from "@/auth/AuthProvider";
+import { AuthMenu } from "@/auth/AuthMenu";
+import { AuthScreen } from "@/auth/AuthScreen";
 
 // titleBarStyle "Overlay" leaves the native window controls floating on top of
 // our header. Pad to clear them where applicable.
@@ -57,6 +60,7 @@ export function AppShell() {
   const drawerVisible = compact && drawerOpen;
 
   return (
+    <AuthProvider>
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
       <header
         data-tauri-drag-region
@@ -169,6 +173,7 @@ export function AppShell() {
             ) : null}
           </button>
           <ThemeToggle />
+          <AuthMenu />
         </div>
       </header>
       <div style={{ flex: 1, display: "flex", minHeight: 0, position: "relative" }}>
@@ -243,7 +248,9 @@ export function AppShell() {
       </div>
       <CommandPalette />
       <KeyboardHelp open={helpOpen} onClose={() => setHelpOpen(false)} />
+      <AuthScreen />
     </div>
+    </AuthProvider>
   );
 }
 

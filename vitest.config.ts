@@ -6,7 +6,10 @@ export default defineConfig({
     alias: { "@": path.resolve(__dirname, "src") },
   },
   test: {
-    environment: "node",
+    // jsdom for React component tests (AuthProvider, HighlightPopover);
+    // plain-node tests don't depend on the DOM and run fine here too.
+    environment: "jsdom",
     include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
+    setupFiles: ["./src/test/setup.ts"],
   },
 });

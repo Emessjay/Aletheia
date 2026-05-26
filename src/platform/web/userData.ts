@@ -1,180 +1,425 @@
 // Web implementation of UserDataAdapter.
 //
-// Highlights, notes, bookmarks, libraries and the kv table all live
-// client-side: the Wave 3a Node server exposes no user-data endpoints, in
-// keeping with the project's local-first ethos (no auth, no shared state,
-// no cross-device sync). The browser becomes the single source of truth
-// per device — mirroring how the Tauri build already works.
+// Phase 3b: every method maps to one of the typed /api/user/* endpoints
+// from the FastAPI server. The adapter attaches the Supabase JWT as
+// Authorization: Bearer <jwt> via getAccessToken(); call sites never see
+// raw tokens.
 //
-// Implementation: sql.js (SQLite compiled to WebAssembly) backed by
-// IndexedDB. We considered re-routing each SQL string from src/db/user.ts
-// to an IndexedDB transaction, but the SQL contracts are stable enough
-// that a real SQLite engine pays for itself: the same SQL runs unchanged
-// on desktop (plugin-sql) and web (sql.js), so feature code stays
-// platform-agnostic and schema migrations stay declarative.
+// Snake_case ↔ camelCase translation happens here so feature code can keep
+// using the camelCase TS row types from `src/db/types.ts`. The wire format
+// (Postgres snake_case) matches phase 3a's contract exactly.
 //
-// Cost: sql.js is roughly ~600 KB gzipped of WASM, fetched once. The
-// blob is cached in IndexedDB after every write so the next page load
-// rehydrates without losing data. Writes are issued synchronously to
-// sql.js, then the exported byte array is persisted asynchronously; the
-// Promise the adapter returns awaits the persistence step so callers
-// cannot race a refresh against a half-saved write.
-//
-// SQL dialect: src/db/user.ts writes parameters as `$1, $2, …` (sqlx /
-// Postgres syntax that plugin-sql translates for us). sql.js sees
-// SQLite directly, so we rewrite `$N` to `?N` (numbered positional
-// placeholders that SQLite accepts and that handle the duplicate-bind
-// case in createHighlight's `VALUES (…, $10, $10)`).
+// When the user is signed out, every write method (and every read) rejects
+// with AuthRequiredError. Feature code catches the sentinel and pops the
+// AuthScreen — silent failure is worse than a thrown error. A 401 from
+// the server (expired / invalid JWT) maps to the same error so callers
+// don't have to distinguish "never signed in" from "signed in but stale".
 
-import initSqlJs from "sql.js";
-import sqlWasmUrl from "sql.js/dist/sql-wasm.wasm?url";
-import schemaSql from "@/db/schema.sql?raw";
-import migration0002Sql from "@/db/migrations/0002_per_side_annotations.sql?raw";
-import type { UserDataAdapter } from "../types";
+import { getAccessToken } from "@/auth/client";
+import type {
+  BookmarkCreate,
+  BookmarksAdapter,
+  ChapterAnnotationsResult,
+  HighlightCreate,
+  HighlightsAdapter,
+  KvAdapter,
+  LibrariesAdapter,
+  LibraryCreate,
+  NoteCreate,
+  NotesAdapter,
+  UserDataAdapter,
+  VerseRefArg,
+  ChapterRefArg,
+} from "../types";
+import type {
+  BookmarkRow,
+  HighlightColor,
+  HighlightRow,
+  LibraryRow,
+  NoteRow,
+} from "@/db/types";
 
-type SqlJsStatic = initSqlJs.SqlJsStatic;
-type Database = initSqlJs.Database;
-type BindParams = initSqlJs.BindParams;
+const API_BASE = "/api/user";
 
-const IDB_NAME = "aletheia-user";
-const IDB_STORE = "db";
-const IDB_KEY = "blob";
-const SCHEMA_VERSION = 2;
-
-// Rewrite Postgres-style `$N` placeholders into SQLite's `?N` form. Done
-// once per SQL string and cached, because the SQL literals in user.ts are
-// finite and reused on every keystroke through some flows (notes editor).
-const placeholderCache = new Map<string, string>();
-function toSqliteSql(sql: string): string {
-  const cached = placeholderCache.get(sql);
-  if (cached !== undefined) return cached;
-  const out = sql.replace(/\$(\d+)/g, "?$1");
-  placeholderCache.set(sql, out);
-  return out;
-}
-
-let sqlJsPromise: Promise<SqlJsStatic> | null = null;
-function getSqlJs(): Promise<SqlJsStatic> {
-  if (!sqlJsPromise) {
-    sqlJsPromise = initSqlJs({ locateFile: () => sqlWasmUrl });
+export class AuthRequiredError extends Error {
+  constructor(message = "auth required") {
+    super(message);
+    this.name = "AuthRequiredError";
   }
-  return sqlJsPromise;
 }
 
-function openIdb(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(IDB_NAME, 1);
-    req.onupgradeneeded = () => {
-      const db = req.result;
-      if (!db.objectStoreNames.contains(IDB_STORE)) {
-        db.createObjectStore(IDB_STORE);
-      }
-    };
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error ?? new Error("indexedDB open failed"));
+interface RequestOptions {
+  method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+  body?: unknown;
+  query?: Record<string, string | number | null | undefined>;
+  // When true, a 404 response resolves to null rather than throwing. Used by
+  // the kv namespace where "not found" is a valid value.
+  allow404?: boolean;
+}
+
+async function apiRequest<T>(
+  path: string,
+  opts: RequestOptions = {},
+): Promise<T | null> {
+  const token = await getAccessToken();
+  if (!token) throw new AuthRequiredError();
+
+  const url = new URL(`${API_BASE}${path}`, location.origin);
+  if (opts.query) {
+    for (const [k, v] of Object.entries(opts.query)) {
+      if (v === undefined || v === null) continue;
+      url.searchParams.set(k, String(v));
+    }
+  }
+
+  const headers = new Headers();
+  headers.set("authorization", `Bearer ${token}`);
+  if (opts.body !== undefined) {
+    headers.set("content-type", "application/json");
+  }
+
+  // Render the URL as path+search so call sites and tests can assert against
+  // a stable origin-relative string; absolute origins leak the test harness.
+  const requestUrl = url.pathname + url.search;
+
+  const res = await fetch(requestUrl, {
+    method: opts.method ?? "GET",
+    headers,
+    body: opts.body === undefined ? undefined : JSON.stringify(opts.body),
   });
+
+  if (res.status === 401) {
+    throw new AuthRequiredError("session expired");
+  }
+  if (res.status === 404 && opts.allow404) {
+    return null;
+  }
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`${opts.method ?? "GET"} ${path} → ${res.status}: ${text}`);
+  }
+
+  if (res.status === 204) return null;
+  const ct = res.headers.get("content-type") ?? "";
+  if (!ct.includes("application/json")) return null;
+  return (await res.json()) as T;
 }
 
-async function loadBlob(): Promise<Uint8Array | null> {
-  const idb = await openIdb();
-  return new Promise((resolve, reject) => {
-    const tx = idb.transaction(IDB_STORE, "readonly");
-    const req = tx.objectStore(IDB_STORE).get(IDB_KEY);
-    req.onsuccess = () => {
-      const v = req.result;
-      if (v instanceof Uint8Array) resolve(v);
-      else if (v instanceof ArrayBuffer) resolve(new Uint8Array(v));
-      else resolve(null);
+// ── Row decoders ─────────────────────────────────────────────────────────
+// Postgres returns snake_case; TS row types are snake_case in src/db/types.ts
+// (mirroring the SQLite schema the Tauri build still uses). Where the spec
+// requires camelCase on the public adapter surface (HighlightRow.sortOrder
+// for libraries, for example), we copy the field across. Otherwise we
+// forward the row as-is — this keeps the call-site rows identical between
+// hosts. (`sortOrder` is the one field test #1 exercises in camelCase.)
+
+interface RawLibrary {
+  id: string;
+  user_id?: string;
+  name: string;
+  sort_order: number;
+  created_at: number;
+  updated_at: number;
+  deleted_at: number | null;
+}
+
+function decodeLibrary(r: RawLibrary): LibraryRow & { sortOrder: number } {
+  return {
+    id: r.id,
+    name: r.name,
+    sort_order: r.sort_order,
+    sortOrder: r.sort_order,
+    created_at: r.created_at,
+    updated_at: r.updated_at,
+    deleted_at: r.deleted_at,
+  };
+}
+
+interface RawHighlight {
+  id: string;
+  user_id?: string;
+  work_slug: string;
+  book_slug: string;
+  chapter: number;
+  verse: number;
+  translation: string | null;
+  color: HighlightColor;
+  start_token: number | null;
+  end_token: number | null;
+  created_at: number;
+  updated_at: number;
+  deleted_at: number | null;
+}
+
+function decodeHighlight(r: RawHighlight): HighlightRow {
+  return {
+    id: r.id,
+    work_slug: r.work_slug,
+    book_slug: r.book_slug,
+    chapter: r.chapter,
+    verse: r.verse,
+    translation: r.translation,
+    color: r.color,
+    start_token: r.start_token,
+    end_token: r.end_token,
+    created_at: r.created_at,
+    updated_at: r.updated_at,
+    deleted_at: r.deleted_at,
+  };
+}
+
+interface RawNote {
+  id: string;
+  user_id?: string;
+  work_slug: string;
+  book_slug: string;
+  chapter: number;
+  verse: number;
+  body: string;
+  created_at: number;
+  updated_at: number;
+  deleted_at: number | null;
+}
+
+function decodeNote(r: RawNote): NoteRow {
+  return {
+    id: r.id,
+    work_slug: r.work_slug,
+    book_slug: r.book_slug,
+    chapter: r.chapter,
+    verse: r.verse,
+    body: r.body,
+    created_at: r.created_at,
+    updated_at: r.updated_at,
+    deleted_at: r.deleted_at,
+  };
+}
+
+interface RawBookmark {
+  id: string;
+  user_id?: string;
+  library_id: string;
+  work_slug: string;
+  book_slug: string | null;
+  chapter: number | null;
+  verse: number | null;
+  translation: string | null;
+  label: string | null;
+  created_at: number;
+  updated_at: number;
+  deleted_at: number | null;
+}
+
+function decodeBookmark(r: RawBookmark): BookmarkRow {
+  return {
+    id: r.id,
+    library_id: r.library_id,
+    work_slug: r.work_slug,
+    book_slug: r.book_slug,
+    chapter: r.chapter,
+    verse: r.verse,
+    translation: r.translation,
+    label: r.label,
+    created_at: r.created_at,
+    updated_at: r.updated_at,
+    deleted_at: r.deleted_at,
+  };
+}
+
+// ── Adapter namespaces ───────────────────────────────────────────────────
+
+const libraries: LibrariesAdapter = {
+  async list() {
+    const rows = (await apiRequest<RawLibrary[]>("/libraries")) ?? [];
+    return rows.map(decodeLibrary);
+  },
+  async create(input: LibraryCreate) {
+    const body: Record<string, unknown> = { name: input.name };
+    if (input.sortOrder !== undefined) body.sort_order = input.sortOrder;
+    if (input.id !== undefined) body.id = input.id;
+    const row = await apiRequest<RawLibrary>("/libraries", {
+      method: "POST",
+      body,
+    });
+    if (!row) throw new Error("libraries.create: empty response");
+    return decodeLibrary(row);
+  },
+  async softDelete(id: string) {
+    await apiRequest<{ id: string }>(`/libraries/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+    });
+  },
+};
+
+const highlights: HighlightsAdapter = {
+  async listForVerse(input) {
+    const rows =
+      (await apiRequest<RawHighlight[]>("/highlights/verse", {
+        query: {
+          work_slug: input.workSlug,
+          book_slug: input.bookSlug,
+          chapter: input.chapter,
+          verse: input.verse,
+          translation: input.translation ?? undefined,
+        },
+      })) ?? [];
+    return rows.map(decodeHighlight);
+  },
+  async listForChapter(input: ChapterRefArg) {
+    const rows =
+      (await apiRequest<RawHighlight[]>("/highlights/chapter", {
+        query: {
+          work_slug: input.workSlug,
+          book_slug: input.bookSlug,
+          chapter: input.chapter,
+        },
+      })) ?? [];
+    return rows.map(decodeHighlight);
+  },
+  async create(input: HighlightCreate) {
+    const body: Record<string, unknown> = {
+      work_slug: input.workSlug,
+      book_slug: input.bookSlug,
+      chapter: input.chapter,
+      verse: input.verse,
+      translation: input.translation,
+      color: input.color,
+      start_token: input.startToken,
+      end_token: input.endToken,
     };
-    req.onerror = () => reject(req.error ?? new Error("indexedDB get failed"));
-    tx.oncomplete = () => idb.close();
-  });
-}
+    if (input.id !== undefined) body.id = input.id;
+    const row = await apiRequest<RawHighlight>("/highlights", {
+      method: "POST",
+      body,
+    });
+    if (!row) throw new Error("highlights.create: empty response");
+    return decodeHighlight(row);
+  },
+  async softDelete(id: string) {
+    await apiRequest<{ id: string }>(`/highlights/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+    });
+  },
+};
 
-async function saveBlob(blob: Uint8Array): Promise<void> {
-  const idb = await openIdb();
-  await new Promise<void>((resolve, reject) => {
-    const tx = idb.transaction(IDB_STORE, "readwrite");
-    tx.objectStore(IDB_STORE).put(blob, IDB_KEY);
-    tx.oncomplete = () => {
-      idb.close();
-      resolve();
+const notes: NotesAdapter = {
+  async listForVerse(input: VerseRefArg) {
+    const rows =
+      (await apiRequest<RawNote[]>("/notes/verse", {
+        query: {
+          work_slug: input.workSlug,
+          book_slug: input.bookSlug,
+          chapter: input.chapter,
+          verse: input.verse,
+        },
+      })) ?? [];
+    return rows.map(decodeNote);
+  },
+  async create(input: NoteCreate) {
+    const body: Record<string, unknown> = {
+      work_slug: input.workSlug,
+      book_slug: input.bookSlug,
+      chapter: input.chapter,
+      verse: input.verse,
+      body: input.body,
     };
-    tx.onerror = () => reject(tx.error ?? new Error("indexedDB put failed"));
-    tx.onabort = () => reject(tx.error ?? new Error("indexedDB tx aborted"));
-  });
-}
+    if (input.id !== undefined) body.id = input.id;
+    const row = await apiRequest<RawNote>("/notes", {
+      method: "POST",
+      body,
+    });
+    if (!row) throw new Error("notes.create: empty response");
+    return decodeNote(row);
+  },
+  async update(id: string, input: { body: string }) {
+    const row = await apiRequest<RawNote>(
+      `/notes/${encodeURIComponent(id)}`,
+      { method: "PATCH", body: { body: input.body } },
+    );
+    if (!row) throw new Error("notes.update: empty response");
+    return decodeNote(row);
+  },
+  async softDelete(id: string) {
+    await apiRequest<{ id: string }>(`/notes/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+    });
+  },
+};
 
-function currentSchemaVersion(db: Database): number {
-  const stmt = db.prepare("PRAGMA user_version");
-  try {
-    stmt.step();
-    const v = stmt.get()[0];
-    return typeof v === "number" ? v : 0;
-  } finally {
-    stmt.free();
-  }
-}
+const bookmarks: BookmarksAdapter = {
+  async listForLibrary(libraryId: string) {
+    const rows =
+      (await apiRequest<RawBookmark[]>("/bookmarks", {
+        query: { library_id: libraryId },
+      })) ?? [];
+    return rows.map(decodeBookmark);
+  },
+  async create(input: BookmarkCreate) {
+    const body: Record<string, unknown> = {
+      library_id: input.libraryId,
+      work_slug: input.workSlug,
+      book_slug: input.bookSlug,
+      chapter: input.chapter,
+      verse: input.verse,
+      translation: input.translation,
+      label: input.label,
+    };
+    if (input.id !== undefined) body.id = input.id;
+    const row = await apiRequest<RawBookmark>("/bookmarks", {
+      method: "POST",
+      body,
+    });
+    if (!row) throw new Error("bookmarks.create: empty response");
+    return decodeBookmark(row);
+  },
+  async softDelete(id: string) {
+    await apiRequest<{ id: string }>(`/bookmarks/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+    });
+  },
+};
 
-function runMigrations(db: Database): boolean {
-  const version = currentSchemaVersion(db);
-  if (version >= SCHEMA_VERSION) return false;
-  if (version < 1) {
-    db.exec(schemaSql);
-  }
-  if (version < 2) {
-    db.exec(migration0002Sql);
-  }
-  db.exec(`PRAGMA user_version = ${SCHEMA_VERSION}`);
-  return true;
-}
+const annotations = {
+  async forChapter(input: ChapterRefArg): Promise<ChapterAnnotationsResult> {
+    const res =
+      (await apiRequest<{ highlights: RawHighlight[]; notes: RawNote[] }>(
+        "/annotations/chapter",
+        {
+          query: {
+            work_slug: input.workSlug,
+            book_slug: input.bookSlug,
+            chapter: input.chapter,
+          },
+        },
+      )) ?? { highlights: [], notes: [] };
+    return {
+      highlights: res.highlights.map(decodeHighlight),
+      notes: res.notes.map(decodeNote),
+    };
+  },
+};
 
-let dbPromise: Promise<Database> | null = null;
-function getDb(): Promise<Database> {
-  if (!dbPromise) {
-    dbPromise = (async () => {
-      const SQL = await getSqlJs();
-      const blob = await loadBlob().catch((err) => {
-        console.warn("could not read user db from IndexedDB", err);
-        return null;
-      });
-      const db = new SQL.Database(blob ?? undefined);
-      const changed = runMigrations(db);
-      if (changed) {
-        await saveBlob(db.export()).catch((err) =>
-          console.warn("could not persist user db after migration", err),
-        );
-      }
-      return db;
-    })();
-  }
-  return dbPromise;
-}
-
-async function persist(db: Database): Promise<void> {
-  try {
-    await saveBlob(db.export());
-  } catch (err) {
-    console.warn("could not persist user db to IndexedDB", err);
-  }
-}
+const kv: KvAdapter = {
+  async get(key: string) {
+    const res = await apiRequest<{ value: string }>(
+      `/kv/${encodeURIComponent(key)}`,
+      { allow404: true },
+    );
+    return res?.value ?? null;
+  },
+  async set(key: string, value: string) {
+    await apiRequest<{ value: string }>(`/kv/${encodeURIComponent(key)}`, {
+      method: "PUT",
+      body: { value },
+    });
+  },
+};
 
 export const webUserData: UserDataAdapter = {
-  async select<T>(sql: string, params: unknown[] = []): Promise<T[]> {
-    const db = await getDb();
-    const stmt = db.prepare(toSqliteSql(sql));
-    try {
-      stmt.bind(params as BindParams);
-      const out: T[] = [];
-      while (stmt.step()) out.push(stmt.getAsObject() as unknown as T);
-      return out;
-    } finally {
-      stmt.free();
-    }
-  },
-  async execute(sql: string, params: unknown[] = []): Promise<void> {
-    const db = await getDb();
-    db.run(toSqliteSql(sql), params as BindParams);
-    await persist(db);
-  },
+  libraries,
+  highlights,
+  notes,
+  bookmarks,
+  annotations,
+  kv,
 };

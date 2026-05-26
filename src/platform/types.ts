@@ -8,6 +8,13 @@
 
 import type { AudioTranslation } from "@/domain/audio";
 import type { PreferencesV1 } from "@/theme/types";
+import type {
+  BookmarkRow,
+  HighlightColor,
+  HighlightRow,
+  LibraryRow,
+  NoteRow,
+} from "@/db/types";
 
 /** Read-only SQL access to the bundled corpus database. */
 export interface CorpusAdapter {
@@ -15,10 +22,113 @@ export interface CorpusAdapter {
   selectOne<T>(sql: string, params?: unknown[]): Promise<T | null>;
 }
 
-/** Read/write SQL access to the user's annotations database. */
+// ── User-data typed adapter ──────────────────────────────────────────────
+// Phase 3b moved the web build from sql.js-over-IndexedDB to a per-user
+// REST API. Both hosts now speak this typed interface; the web adapter
+// translates each method to an /api/user/* fetch (with Bearer JWT) and the
+// Tauri adapter translates to plugin-sql against the local SQLite. Call
+// sites do not see HTTP or SQL — only the typed shape.
+
+export interface HighlightCreate {
+  workSlug: string;
+  bookSlug: string;
+  chapter: number;
+  verse: number;
+  translation: string | null;
+  color: HighlightColor;
+  startToken: number | null;
+  endToken: number | null;
+  id?: string;
+}
+
+export interface NoteCreate {
+  workSlug: string;
+  bookSlug: string;
+  chapter: number;
+  verse: number;
+  body: string;
+  id?: string;
+}
+
+export interface BookmarkCreate {
+  libraryId: string;
+  workSlug: string;
+  bookSlug: string | null;
+  chapter: number | null;
+  verse: number | null;
+  translation: string | null;
+  label: string | null;
+  id?: string;
+}
+
+export interface LibraryCreate {
+  name: string;
+  sortOrder?: number;
+  id?: string;
+}
+
+export interface VerseRefArg {
+  workSlug: string;
+  bookSlug: string;
+  chapter: number;
+  verse: number;
+}
+
+export interface ChapterRefArg {
+  workSlug: string;
+  bookSlug: string;
+  chapter: number;
+}
+
+export interface ChapterAnnotationsResult {
+  highlights: HighlightRow[];
+  notes: NoteRow[];
+}
+
+export interface LibrariesAdapter {
+  list(): Promise<LibraryRow[]>;
+  create(input: LibraryCreate): Promise<LibraryRow>;
+  softDelete(id: string): Promise<void>;
+}
+
+export interface HighlightsAdapter {
+  listForVerse(
+    input: VerseRefArg & { translation?: string | null },
+  ): Promise<HighlightRow[]>;
+  listForChapter(input: ChapterRefArg): Promise<HighlightRow[]>;
+  create(input: HighlightCreate): Promise<HighlightRow>;
+  softDelete(id: string): Promise<void>;
+}
+
+export interface NotesAdapter {
+  listForVerse(input: VerseRefArg): Promise<NoteRow[]>;
+  create(input: NoteCreate): Promise<NoteRow>;
+  update(id: string, input: { body: string }): Promise<NoteRow>;
+  softDelete(id: string): Promise<void>;
+}
+
+export interface BookmarksAdapter {
+  listForLibrary(libraryId: string): Promise<BookmarkRow[]>;
+  create(input: BookmarkCreate): Promise<BookmarkRow>;
+  softDelete(id: string): Promise<void>;
+}
+
+export interface AnnotationsAdapter {
+  forChapter(input: ChapterRefArg): Promise<ChapterAnnotationsResult>;
+}
+
+export interface KvAdapter {
+  get(key: string): Promise<string | null>;
+  set(key: string, value: string): Promise<void>;
+}
+
 export interface UserDataAdapter {
-  select<T>(sql: string, params?: unknown[]): Promise<T[]>;
-  execute(sql: string, params?: unknown[]): Promise<void>;
+  libraries: LibrariesAdapter;
+  highlights: HighlightsAdapter;
+  notes: NotesAdapter;
+  bookmarks: BookmarksAdapter;
+  annotations: AnnotationsAdapter;
+  kv: KvAdapter;
 }
 
 /** Result of resolving an audio source file's absolute path. */

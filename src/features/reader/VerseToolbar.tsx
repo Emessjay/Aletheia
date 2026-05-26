@@ -11,6 +11,8 @@ import {
   useUpdateNote,
 } from "@/db/userHooks";
 import { SIDE_LABELS, type SideKey } from "@/domain/sides";
+import { useAuth } from "@/auth/AuthProvider";
+import { SignInCta } from "@/auth/SignInCta";
 
 interface Props {
   ref_: VerseRef;
@@ -183,10 +185,15 @@ function NoteEditor({
   // Phase 8: a single note per verse for the MVP.
   const existing = notes[0];
   const [draft, setDraft] = useState(existing?.body ?? "");
+  const { status } = useAuth();
 
   const createMut = useCreateNote();
   const updateMut = useUpdateNote();
   const deleteMut = useDeleteNote();
+
+  if (status === "anonymous") {
+    return <SignInCta label="Sign in to save notes" />;
+  }
 
   const save = () => {
     const body = draft.trim();
@@ -279,6 +286,11 @@ function BookmarkPicker({
   const createBm = useCreateBookmark();
   const createLib = useCreateLibrary();
   const [newName, setNewName] = useState("");
+  const { status } = useAuth();
+
+  if (status === "anonymous") {
+    return <SignInCta label="Sign in to save bookmarks" />;
+  }
 
   if (libs.isPending) {
     return <span style={{ color: "var(--color-fg-muted)" }}>Loading…</span>;

@@ -9,12 +9,15 @@ import {
 } from "@/db/userHooks";
 import type { LibraryRow } from "@/db/types";
 import { SIDE_LABELS, type SideKey } from "@/domain/sides";
+import { useAuth } from "@/auth/AuthProvider";
+import { SignInCta } from "@/auth/SignInCta";
 
 export function LibrariesRoute() {
   const libs = useLibraries();
   const createLib = useCreateLibrary();
   const [newName, setNewName] = useState("");
   const [inputFocused, setInputFocused] = useState(false);
+  const { status } = useAuth();
 
   return (
     <article style={wrap}>
@@ -38,7 +41,10 @@ export function LibrariesRoute() {
           borderBottom: "1px solid var(--color-rule)",
         }}
       >
-        <form
+        {status === "anonymous" ? (
+          <SignInCta label="Sign in to create a library" />
+        ) : null}
+        {status === "authenticated" ? <form
           onSubmit={(e) => {
             e.preventDefault();
             const trimmed = newName.trim();
@@ -99,7 +105,7 @@ export function LibrariesRoute() {
           >
             {createLib.isPending ? "Creating…" : "Create"}
           </button>
-        </form>
+        </form> : null}
         <p
           style={{
             margin: "6px 2px 0",

@@ -9,10 +9,8 @@ import {
 } from "@/db/userHooks";
 import type {
   CorpusLanguage,
-  HighlightColor,
   HighlightRow,
   NoteRow,
-  VerseRef,
   VerseRow,
   WordRow,
 } from "@/db/types";
@@ -36,7 +34,7 @@ import { NotFoundRoute } from "@/features/notFound/NotFoundRoute";
 import { StrongsPopover } from "@/features/lexicon/StrongsPopover";
 import { VerseInline } from "./VerseInline";
 import { VerseToolbar } from "./VerseToolbar";
-import { HighlightPopover } from "./HighlightPopover";
+import { HighlightPopover, type HighlightUiState } from "./HighlightPopover";
 import { ChapterNav } from "./ChapterNav";
 import { ChapterPicker } from "./ChapterPicker";
 import { AudioPlayer } from "./AudioPlayer";
@@ -51,29 +49,10 @@ interface StrongsState {
   rect: DOMRect;
 }
 
-interface NewHighlightState {
-  kind: "new";
-  ref: VerseRef;
-  startToken: number;
-  endToken: number;
-  translation: SideKey;
-  rect: DOMRect;
-}
-
 export interface VerseSelection {
   number: number;
   side: SideKey | null;
 }
-
-interface EditHighlightState {
-  kind: "edit";
-  ref: VerseRef;
-  highlightId: string;
-  color: HighlightColor;
-  rect: DOMRect;
-}
-
-type HighlightUiState = NewHighlightState | EditHighlightState;
 
 const LANG_ATTR: Partial<Record<CorpusLanguage, string>> = {
   he: "he",
@@ -373,6 +352,9 @@ export function ReaderRoute() {
             },
             highlightId,
             color: h.color,
+            translation: h.translation,
+            startToken: h.start_token,
+            endToken: h.end_token,
             rect,
           });
         }}
@@ -440,8 +422,8 @@ export function ReaderRoute() {
       ) : null}
       {hlUi ? (
         <HighlightPopover
-          anchorRect={hlUi.rect}
-          activeColor={hlUi.kind === "edit" ? hlUi.color : null}
+          state={hlUi}
+          onClose={() => setHlUi(null)}
           onPick={(color) => {
             if (hlUi.kind === "new") {
               createHl.mutate({
@@ -450,31 +432,22 @@ export function ReaderRoute() {
                 translation: hlUi.translation,
                 range: { startToken: hlUi.startToken, endToken: hlUi.endToken },
               });
-              window.getSelection()?.removeAllRanges();
-            } else {
+            } else if (hlUi.startToken != null && hlUi.endToken != null) {
               // Replace: delete the old, insert a new one with the same range.
-              const old = allHighlights.find((h) => h.id === hlUi.highlightId);
-              if (old && old.start_token != null && old.end_token != null) {
-                deleteHl.mutate({ id: old.id, ref: hlUi.ref });
-                createHl.mutate({
-                  ref: hlUi.ref,
-                  color,
-                  translation: old.translation,
-                  range: { startToken: old.start_token, endToken: old.end_token },
-                });
-              }
+              deleteHl.mutate({ id: hlUi.highlightId, ref: hlUi.ref });
+              createHl.mutate({
+                ref: hlUi.ref,
+                color,
+                translation: hlUi.translation,
+                range: { startToken: hlUi.startToken, endToken: hlUi.endToken },
+              });
             }
-            setHlUi(null);
           }}
           onRemove={
             hlUi.kind === "edit"
-              ? () => {
-                  deleteHl.mutate({ id: hlUi.highlightId, ref: hlUi.ref });
-                  setHlUi(null);
-                }
+              ? () => deleteHl.mutate({ id: hlUi.highlightId, ref: hlUi.ref })
               : undefined
           }
-          onClose={() => setHlUi(null)}
         />
       ) : null}
     </article>

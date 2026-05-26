@@ -174,6 +174,63 @@ mutation or read against the user-data tables. If you find yourself
 about to write `DELETE FROM highlight WHERE id = $1` without a
 `user_id = $2` clause, stop — that's a tenancy bug.
 
+## Auth (phase 3b frontend)
+
+`src/auth/` is the entire auth surface on the React side:
+
+- `client.ts` — module-level Supabase client built from
+  `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY`. If either is missing, the
+  module exports a stub whose every method either no-ops (`getSession`,
+  `onAuthStateChange`) or rejects with `"auth not configured"` — dev can
+  still boot without Supabase set up. Also exports
+  `getAccessToken()`, an async helper that returns the current JWT (or
+  null when signed out) and is the only thing the HTTP adapter reads.
+- `AuthProvider.tsx` + `useAuth()` — React context. State is
+  `{ session, status: "loading" | "anonymous" | "authenticated" }`. The
+  provider wraps the app at the top of `src/AppShell.tsx`.
+- `AuthScreen.tsx` + `useAuthScreen` — a small zustand store that any
+  CTA can call to pop the email+password modal. The screen has two tabs
+  ("Sign in" / "Create account"), surfaces errors inline, and shows a
+  confirmation notice after sign-up (Supabase's default flow requires
+  email confirmation).
+- `AuthMenu.tsx` — the top-right corner control: a "Sign in" button when
+  anonymous, the user's email + a "Sign out" dropdown when authenticated.
+  Hidden on the Tauri build (`getPlatform().info.isDesktop`) because the
+  desktop adapter is local-first and never holds a Supabase session.
+- `SignInCta.tsx` — the inline "Sign in to <verb>" link used by every
+  write-gated surface (notes editor, bookmark picker, library creator,
+  the highlight popover).
+
+The web `UserDataAdapter` is typed-method per `/api/user/*` endpoint
+(see `src/platform/types.ts`); the adapter handles snake_case ↔ camelCase
+translation and Bearer-JWT attachment so feature code never builds an
+HTTP request or sees a token. Tauri's adapter exposes the same typed
+interface and translates internally to plugin-sql against
+`aletheia_user.db`, so the rest of the codebase is host-agnostic. There
+is no raw SQL on the wire from the web build — that's the rationale for
+the typed surface, since shipping arbitrary SQL strings to a public API
+would either bypass per-user scoping or require server-side SQL parsing.
+
+**Anonymous browsing is allowed.** The corpus is public, so reader /
+search / audio / patristics work without a session. Writes are gated:
+every create/update/delete CTA either pre-checks `status` or catches
+`AuthRequiredError` from the adapter and pops `AuthScreen`. Silent
+failure is the wrong behavior — the user must know sign-in is required.
+
+**IndexedDB orphan note.** Phase 3b deletes the prior sql.js + IndexedDB
+web user-data path. Existing IndexedDB data is intentionally orphaned —
+the user reported that the previous web highlights weren't actually
+working, and the simplest cut was to drop the migration entirely. A
+future worker can add a one-time prompt that exports the orphan blob
+and POSTs it to `/api/user/*` if anyone turns out to have real data
+there. Tauri user-data is unaffected.
+
+**Env vars.** `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` are read at
+import time. CI sets dummy values so vitest + `tsc -b` + `vite build`
+pass; tests mock the supabase client at the boundary
+(`vi.mock("@/auth/client", …)`), so the dummy values never need to be
+real.
+
 ## Worktree-per-feature
 
 Before starting work on any non-trivial feature, create a git worktree for it
