@@ -22,10 +22,12 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
+from .auth import resolve_jwt_secret
 from .config import resolve_audio_cache, resolve_static_dir
 from .db import create_pool, resolve_database_url
 from .routes.audio import audio_router
 from .routes.corpus import corpus_router
+from .routes.user import user_router
 from .static import mount_static
 
 log = logging.getLogger("aletheia")
@@ -62,6 +64,9 @@ def create_app() -> FastAPI:
     app.state.static_dir = static_dir
     app.state.pool = None  # populated by lifespan, or lazily by get_pool()
     app.state._pool_lock = None  # asyncio.Lock created lazily (needs running loop)
+    # Cached at process start so request handlers don't re-read the env.
+    # Unset → /api/user/* returns 503 (the corpus endpoints still work).
+    app.state.jwt_secret = resolve_jwt_secret()
 
     @app.get("/api/health")
     async def health() -> JSONResponse:
@@ -69,6 +74,7 @@ def create_app() -> FastAPI:
 
     app.include_router(corpus_router(), prefix="/api/corpus")
     app.include_router(audio_router(), prefix="/api/audio")
+    app.include_router(user_router(), prefix="/api/user")
 
     # Mount the SPA catch-all LAST. The handler itself returns JSON 404 for
     # any unmatched /api/* path so the SPA fallback never swallows API calls.

@@ -30,6 +30,10 @@ jobs:
 
     env:
       DATABASE_URL: postgresql://aletheia:aletheia@localhost:5432/aletheia
+      # Phase 3a: integration tests sign HS256 JWTs with this secret; the
+      # server's auth dependency verifies against it. Test-only value;
+      # production sets SUPABASE_JWT_SECRET from the Supabase dashboard.
+      SUPABASE_JWT_SECRET: test-jwt-secret-do-not-use-in-prod
 
     steps:
       - name: Checkout

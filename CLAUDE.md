@@ -137,6 +137,43 @@ chains the vitest suite with the pytest suite, and uses
 default. Any FastAPI change needs both pytest (acceptance + integration)
 and vitest to stay green.
 
+## Auth (phase 3a backend)
+
+The web build authenticates end-users with Supabase Auth. The FastAPI
+server verifies the Supabase-issued JWT and treats the `sub` claim as the
+user's UUID — there is no user table on our side, just a `user_id UUID`
+column on every per-user row.
+
+Contract:
+
+- Frontend sends `Authorization: Bearer <jwt>` on every `/api/user/*`
+  request (phase 3b will wire this from supabase-js).
+- The dependency `get_current_user_id` in `server-py/app/auth.py`
+  verifies HS256 against `SUPABASE_JWT_SECRET`, requires
+  `aud == "authenticated"` (Supabase's default end-user audience), and
+  returns the `sub` UUID.
+- Any failure (missing header, malformed token, bad signature, expired,
+  wrong audience) → `401`. A request with a valid JWT referencing a row
+  belonging to another user → `404` (don't leak existence of other
+  users' rows).
+- `SUPABASE_JWT_SECRET` is read at app start and cached on
+  `app.state.jwt_secret`. If unset, `/api/health` + `/api/corpus` still
+  work; `/api/user/*` returns `503 "auth not configured"`. Find the
+  secret in Supabase: *Settings → API → JWT Settings → JWT Secret*.
+
+**Tauri stays local-first.** The new Postgres tables (`library`,
+`bookmark`, `highlight`, `note`, `kv`) are for the web build only. The
+desktop build keeps reading/writing its bundled `aletheia_user.db` via
+`tauri-plugin-sql` and never sends a JWT. Tauri code paths under
+`src/platform/tauri/` and `src-tauri/` are untouched by phase 3a.
+
+**Scoping invariant.** Every SQL statement issued by
+`server-py/app/routes/user/*` binds `user_id` as a parameter and
+constrains the row to `WHERE user_id = $N`. There is no unscoped
+mutation or read against the user-data tables. If you find yourself
+about to write `DELETE FROM highlight WHERE id = $1` without a
+`user_id = $2` clause, stop — that's a tenancy bug.
+
 ## Worktree-per-feature
 
 Before starting work on any non-trivial feature, create a git worktree for it
