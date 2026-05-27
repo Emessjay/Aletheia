@@ -9,6 +9,7 @@ import {
 } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "./client";
+import { getPlatform } from "@/platform";
 
 export type AuthStatus = "loading" | "anonymous" | "authenticated";
 
@@ -27,6 +28,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<AuthStatus>("loading");
 
   useEffect(() => {
+    if (getPlatform().info.isDesktop) {
+      // Tauri is local-first — no Supabase session, but the UserDataAdapter
+      // goes straight to plugin-sql. Treat the user as authenticated so the
+      // anonymous write-gate CTAs don't fire on desktop.
+      setStatus("authenticated");
+      return;
+    }
     let cancelled = false;
     void supabase.auth.getSession().then(({ data }) => {
       if (cancelled) return;

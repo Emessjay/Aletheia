@@ -1,6 +1,13 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import { AuthProvider, useAuth } from "./AuthProvider";
+
+// Mock the platform adapter so tests can toggle isDesktop.
+vi.mock("@/platform", () => ({
+  getPlatform: vi.fn(() => ({ info: { isDesktop: false } })),
+}));
+import { getPlatform } from "@/platform";
+const mockGetPlatform = vi.mocked(getPlatform);
 
 // Mock the supabase-js client at the boundary. The real client tries to
 // reach VITE_SUPABASE_URL on construction; in tests we just return canned
@@ -41,6 +48,23 @@ function Probe() {
 }
 
 describe("AuthProvider", () => {
+  beforeEach(() => {
+    mockGetPlatform.mockReturnValue({ info: { isDesktop: false } } as never);
+  });
+
+  it("reports 'authenticated' on Tauri without calling Supabase", async () => {
+    mockGetPlatform.mockReturnValue({ info: { isDesktop: true } } as never);
+    render(
+      <AuthProvider>
+        <Probe />
+      </AuthProvider>,
+    );
+    await waitFor(() => {
+      expect(screen.getByTestId("status").textContent).toBe("authenticated");
+    });
+    expect(mockGetSession).not.toHaveBeenCalled();
+  });
+
   it("starts in 'loading' and becomes 'anonymous' when no session", async () => {
     mockGetSession.mockResolvedValue({ data: { session: null }, error: null } as never);
     render(
