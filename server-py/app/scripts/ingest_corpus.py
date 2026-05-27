@@ -64,11 +64,25 @@ TABLE_COLUMNS: dict[str, tuple[str, ...]] = {
 # Tables are listed parent → child so the FK references resolve at load time
 # (we TRUNCATE...CASCADE first anyway, but it keeps the COPY order predictable
 # even with FK checks left on).
+#
+# `word` (~1M rows; Strong's interlinear) and `xref` (~344k rows; Treasury of
+# Scripture Knowledge cross-refs) are deliberately omitted: together they blow
+# past Supabase's 500MB free-tier disk cap. The schema still defines both
+# tables (so queries don't error); the frontend renders an "available in the
+# desktop app" hint when it sees empty results. Tauri reads the full corpus
+# from its bundled SQLite and is unaffected.
 INGEST_ORDER: tuple[str, ...] = (
-    "book", "chapter", "verse", "word",
+    "book", "chapter", "verse",
     "work", "section", "citation",
-    "strongs", "xref", "meta",
+    "strongs", "meta",
 )
+
+# Tables truncated but not reloaded. Kept in the TRUNCATE list so a re-run
+# against a database that previously had `word`/`xref` data (e.g. a non-
+# Supabase target where someone manually loaded them) still leaves the
+# tables empty afterward — the trim is a Postgres-only consideration and
+# must hold regardless of prior state.
+TRUNCATE_EXTRA: tuple[str, ...] = ("word", "xref")
 
 
 def _iter_rows(sqlite_conn: sqlite3.Connection, table: str, columns: tuple[str, ...]) -> Iterable[tuple]:
@@ -87,7 +101,7 @@ async def _truncate_all(conn: asyncpg.Connection) -> None:
     # One TRUNCATE call so the CASCADE wave runs once. Includes RESTART
     # IDENTITY to reset any sequences (none of our PKs use serial today,
     # but defensive — Postgres ignores it for non-sequence PKs).
-    tables = ", ".join(INGEST_ORDER)
+    tables = ", ".join(INGEST_ORDER + TRUNCATE_EXTRA)
     await conn.execute(f"TRUNCATE TABLE {tables} RESTART IDENTITY CASCADE")
 
 
@@ -109,6 +123,7 @@ async def ingest(database_url: str, corpus_path: Path) -> None:
         raise SystemExit(f"corpus not found: {corpus_path}")
     log.info("source: %s", corpus_path)
     log.info("target: %s", _redact(database_url))
+    log.info("skipping tables (web subset): %s", ", ".join(TRUNCATE_EXTRA))
 
     sqlite_conn = sqlite3.connect(f"file:{corpus_path}?mode=ro", uri=True)
     try:

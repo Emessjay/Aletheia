@@ -83,6 +83,23 @@ Two hosts, two storage layers:
 Phase 2 (this PR) is the corpus-to-Postgres migration. Phase 3 wires
 Supabase Auth and moves web user-data off sql.js.
 
+### Web ingest trim (Supabase free tier)
+
+Two corpus tables are deliberately skipped in the web Postgres ingest
+to stay under Supabase's free-tier disk quota:
+
+- `word` (~1M rows; Strong's interlinear)
+- `xref` (~344k rows; Treasury of Scripture Knowledge cross-refs)
+
+The schema still defines them (so queries don't blow up), the tables
+are empty on Postgres, and the frontend renders an "available in
+the desktop app" hint at the interlinear and xref surfaces. Tauri's
+bundled SQLite has the full corpus; nothing changes there.
+
+To re-enable on web, either (a) upgrade to Supabase Pro (8GB) and
+add `word`, `xref` back to `INGEST_ORDER`, or (b) migrate to a
+larger Postgres tier elsewhere.
+
 ### FTS routing (option a — server-side rewrite)
 
 The frontend speaks SQLite FTS5 — `WHERE verse_fts MATCH $1`,

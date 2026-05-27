@@ -42,13 +42,49 @@ def test_ingest_loads_every_corpus_table():
     # Every base table the corpus actively populates should have rows
     # post-ingest. `citation` exists in the schema but is empty in the
     # current source (verified via sqlite3); we don't assert on it.
+    # `word` and `xref` are deliberately skipped on the web ingest to
+    # fit Supabase's free-tier disk cap (see ingest_corpus.py for the
+    # rationale) — they're asserted empty in
+    # test_ingest_skips_trimmed_tables below.
     # We don't pin specific counts either, because the SQLite source may
     # be rebuilt over time — only the structural invariant that the
     # table is non-empty.
-    for table in ("book", "chapter", "verse", "word", "work", "section",
-                  "strongs", "xref"):
+    for table in ("book", "chapter", "verse", "work", "section",
+                  "strongs"):
         n = asyncio.run(_count(table))
         assert n > 0, f"{table} is empty after ingest"
+
+
+def test_ingest_skips_trimmed_tables():
+    """word and xref exist in the schema but stay empty after ingest.
+
+    The web ingest deliberately omits `word` (~1M rows) and `xref`
+    (~344k rows) so the Postgres footprint fits Supabase's 500MB free
+    tier. The schema still defines both tables so frontend queries
+    against them return [] rather than erroring; this test pins that
+    contract.
+    """
+    subprocess.run(["alembic", "upgrade", "head"], cwd="server-py", check=True)
+    subprocess.run(
+        ["python", "-m", "app.scripts.ingest_corpus"],
+        cwd="server-py", check=True, env={**os.environ},
+    )
+    for table in ("word", "xref"):
+        # to_regclass is null when the table doesn't exist; this asserts
+        # both "table is defined" and "table is empty" in one shot.
+        async def check(t=table):
+            conn = await asyncpg.connect(os.environ["DATABASE_URL"])
+            try:
+                exists = await conn.fetchval(
+                    "SELECT to_regclass($1) IS NOT NULL", t,
+                )
+                count = await conn.fetchval(f"SELECT COUNT(*) FROM {t}")
+                return exists, count
+            finally:
+                await conn.close()
+        exists, count = asyncio.run(check())
+        assert exists, f"{table} should be defined in the schema"
+        assert count == 0, f"{table} should be empty on the web ingest"
 
 
 def test_ingest_is_idempotent():
@@ -60,7 +96,7 @@ def test_ingest_is_idempotent():
     )
     counts_first = {
         t: asyncio.run(_count(t))
-        for t in ("book", "chapter", "verse", "word")
+        for t in ("book", "chapter", "verse", "strongs")
     }
     subprocess.run(
         ["python", "-m", "app.scripts.ingest_corpus"],
@@ -68,7 +104,7 @@ def test_ingest_is_idempotent():
     )
     counts_second = {
         t: asyncio.run(_count(t))
-        for t in ("book", "chapter", "verse", "word")
+        for t in ("book", "chapter", "verse", "strongs")
     }
     assert counts_first == counts_second, (
         f"ingest produced different counts on second run: "

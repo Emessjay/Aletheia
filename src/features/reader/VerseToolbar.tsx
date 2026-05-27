@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import type { NoteRow, VerseRef } from "@/db/types";
 import { useVerseXrefs } from "@/db/hooks";
+import { getPlatform } from "@/platform";
 import {
   useCreateBookmark,
   useCreateLibrary,
@@ -84,7 +85,7 @@ export function VerseToolbar({ ref_, side, notes, onDone }: Props) {
   );
 }
 
-function CrossRefs({ ref_ }: { ref_: VerseRef }) {
+export function CrossRefs({ ref_ }: { ref_: VerseRef }) {
   const q = useVerseXrefs("en_bsb", ref_.bookSlug, ref_.chapter, ref_.verse);
   if (q.isPending)
     return <span style={{ color: "var(--color-fg-muted)" }}>Loading…</span>;
@@ -94,12 +95,30 @@ function CrossRefs({ ref_ }: { ref_: VerseRef }) {
         {String(q.error)}
       </pre>
     );
-  if (!q.data || q.data.length === 0)
+  if (!q.data || q.data.length === 0) {
+    // The web Postgres ingest deliberately skips the `xref` table to fit the
+    // Supabase free-tier quota — see CLAUDE.md. On web, empty results almost
+    // always mean "data not loaded" rather than "this verse genuinely has no
+    // TSK refs", so surface the desktop hint. Tauri keeps its existing
+    // "No cross-references." copy for verses that legitimately lack entries.
+    const isDesktop = getPlatform().info.isDesktop;
+    if (!isDesktop) {
+      return (
+        <span
+          data-xref-desktop-only
+          style={{ color: "var(--color-fg-muted)" }}
+        >
+          Treasury of Scripture Knowledge cross-references are available in
+          the <strong>desktop app</strong>.
+        </span>
+      );
+    }
     return (
       <span style={{ color: "var(--color-fg-subtle)", fontStyle: "italic" }}>
         No cross-references.
       </span>
     );
+  }
   return (
     <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
       {q.data.map((x, i) => (
