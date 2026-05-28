@@ -39,37 +39,36 @@ def test_ingest_loads_every_corpus_table():
         f"ingest failed: stdout={result.stdout} stderr={result.stderr}"
     )
 
-    # Every base table the corpus actively populates should have rows
-    # post-ingest. `citation` exists in the schema but is empty in the
-    # current source (verified via sqlite3); we don't assert on it.
-    # `word` and `xref` are deliberately skipped on the web ingest to
-    # fit Supabase's free-tier disk cap (see ingest_corpus.py for the
-    # rationale) — they're asserted empty in
-    # test_ingest_skips_trimmed_tables below.
+    # Every base table the web ingest actively populates should have rows
+    # post-ingest. The four trimmed tables (`word`, `xref`, `section`,
+    # `citation`) are deliberately skipped to fit Supabase's free-tier disk
+    # cap (see ingest_corpus.py for the rationale) — they're asserted empty
+    # in test_ingest_skips_trimmed_tables below. `work` is kept because it's
+    # tiny (~340 rows) and various downstream queries reference it.
     # We don't pin specific counts either, because the SQLite source may
     # be rebuilt over time — only the structural invariant that the
     # table is non-empty.
-    for table in ("book", "chapter", "verse", "work", "section",
-                  "strongs"):
+    for table in ("book", "chapter", "verse", "work", "strongs"):
         n = asyncio.run(_count(table))
         assert n > 0, f"{table} is empty after ingest"
 
 
 def test_ingest_skips_trimmed_tables():
-    """word and xref exist in the schema but stay empty after ingest.
+    """The trimmed tables exist in the schema but stay empty after ingest.
 
-    The web ingest deliberately omits `word` (~1M rows) and `xref`
-    (~344k rows) so the Postgres footprint fits Supabase's 500MB free
-    tier. The schema still defines both tables so frontend queries
-    against them return [] rather than erroring; this test pins that
-    contract.
+    The web ingest deliberately omits `word` (~1M rows), `xref` (~344k
+    rows), `section` (~122k rows of Schaff/Aquinas patristic bodies), and
+    `citation` (FK → section; empty in the source anyway) so the Postgres
+    footprint fits Supabase's 500MB free tier. The schema still defines all
+    four tables so frontend queries against them return [] rather than
+    erroring; this test pins that contract.
     """
     subprocess.run(["alembic", "upgrade", "head"], cwd="server-py", check=True)
     subprocess.run(
         ["python", "-m", "app.scripts.ingest_corpus"],
         cwd="server-py", check=True, env={**os.environ},
     )
-    for table in ("word", "xref"):
+    for table in ("word", "xref", "section", "citation"):
         # to_regclass is null when the table doesn't exist; this asserts
         # both "table is defined" and "table is empty" in one shot.
         async def check(t=table):

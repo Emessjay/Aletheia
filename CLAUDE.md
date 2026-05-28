@@ -85,20 +85,35 @@ Supabase Auth and moves web user-data off sql.js.
 
 ### Web ingest trim (Supabase free tier)
 
-Two corpus tables are deliberately skipped in the web Postgres ingest
-to stay under Supabase's free-tier disk quota:
+Four corpus tables are deliberately skipped in the web Postgres ingest
+to stay under Supabase's free-tier disk quota (they sit in
+`TRUNCATE_EXTRA` — truncated but never reloaded):
 
 - `word` (~1M rows; Strong's interlinear)
 - `xref` (~344k rows; Treasury of Scripture Knowledge cross-refs)
+- `section` (~122k rows; Schaff/Aquinas patristic bodies)
+- `citation` (FK to section; empty in source anyway)
 
 The schema still defines them (so queries don't blow up), the tables
 are empty on Postgres, and the frontend renders an "available in
 the desktop app" hint at the interlinear and xref surfaces. Tauri's
 bundled SQLite has the full corpus; nothing changes there.
 
-To re-enable on web, either (a) upgrade to Supabase Pro (8GB) and
-add `word`, `xref` back to `INGEST_ORDER`, or (b) migrate to a
-larger Postgres tier elsewhere.
+The Patristics top-level tab is hidden on the web build (registry-load
+filtering in `src/tabs/registry.tsx`, keyed off
+`getPlatform().info.isDesktop`); direct `/patristics/*` URL hits fall
+through to the 404 catch-all. Bible reader, search, highlights, notes,
+libraries, audio, and Strong's lexicon continue to function on web.
+Tauri's bundled SQLite has the full corpus and the patristics tab works
+unchanged on desktop. (The Commentaries tab also reads `section`; on web
+it renders its existing empty state.)
+
+With `section` dropped, `verse` (~191k rows) becomes the largest web
+table, leaving comfortable headroom under 500MB for user-data growth.
+To re-enable patristics/interlinear/xref on web, either (a) upgrade to
+Supabase Pro (8GB) and move `word`, `xref`, `section`, `citation` from
+`TRUNCATE_EXTRA` back into `INGEST_ORDER` (and drop the registry
+filter), or (b) migrate to a larger Postgres tier elsewhere.
 
 ### FTS routing (option a — server-side rewrite)
 

@@ -3,6 +3,7 @@
 // builds the router from each tab's `routes` list.
 
 import type { ReactNode } from "react";
+import { getPlatform } from "@/platform";
 import { DesignRoute } from "@/features/design/DesignRoute";
 import { ReaderRoute } from "@/features/reader/ReaderRoute";
 import { LibrariesRoute } from "@/features/libraries/LibrariesRoute";
@@ -32,7 +33,7 @@ export interface MainTab {
   };
 }
 
-export const MAIN_TABS: MainTab[] = [
+const ALL_TABS: MainTab[] = [
   {
     id: "read",
     label: "Read",
@@ -95,6 +96,18 @@ export const MAIN_TABS: MainTab[] = [
     routes: [{ path: "attributions", element: <AttributionsRoute /> }],
   },
 ];
+
+// The Patristics tab (Schaff ANF/NPNF + Aquinas) reads the `work` / `section`
+// / `citation` tables. On the web build `section` + `citation` are dropped
+// from the Postgres ingest to fit Supabase's free-tier disk cap (see
+// app/scripts/ingest_corpus.py), so every patristics route would surface an
+// empty page. Hide the tab on web; the nav link disappears and direct
+// `/patristics/*` URL hits fall through to the existing 404 catch-all. Tauri
+// reads the full corpus from its bundled SQLite, so the tab stays on desktop.
+const isDesktop = getPlatform().info.isDesktop;
+export const MAIN_TABS: MainTab[] = ALL_TABS.filter(
+  (t) => isDesktop || t.id !== "patristics",
+);
 
 /** True if `pathname` falls under any of `tab.matchPrefix`. */
 export function isTabActive(tab: MainTab, pathname: string): boolean {

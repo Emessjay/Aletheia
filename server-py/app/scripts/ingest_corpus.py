@@ -65,24 +65,35 @@ TABLE_COLUMNS: dict[str, tuple[str, ...]] = {
 # (we TRUNCATE...CASCADE first anyway, but it keeps the COPY order predictable
 # even with FK checks left on).
 #
-# `word` (~1M rows; Strong's interlinear) and `xref` (~344k rows; Treasury of
-# Scripture Knowledge cross-refs) are deliberately omitted: together they blow
-# past Supabase's 500MB free-tier disk cap. The schema still defines both
-# tables (so queries don't error); the frontend renders an "available in the
-# desktop app" hint when it sees empty results. Tauri reads the full corpus
-# from its bundled SQLite and is unaffected.
+# The web build is Bible-reader-only. Four corpus tables are deliberately
+# omitted from the Postgres ingest because together they blow past Supabase's
+# 500MB free-tier disk cap (see TRUNCATE_EXTRA below):
+#   • `word`     (~1M rows;   Strong's interlinear)
+#   • `xref`     (~344k rows; Treasury of Scripture Knowledge cross-refs)
+#   • `section`  (~122k rows; Schaff ANF/NPNF + Aquinas patristic bodies — the
+#                 dominant non-essential table by data volume, plus a GIN
+#                 tsvector index)
+#   • `citation` (FK → section; already empty in the source SQLite, listed
+#                 explicitly for clarity)
+# The schema still defines all four (so queries don't error — they just return
+# empty results); the frontend hides the Patristics tab on web and renders an
+# "available in the desktop app" hint at the interlinear / cross-ref surfaces.
+# With `section` gone the largest remaining web table is `verse` (~191k rows),
+# leaving comfortable headroom for user-data tables to grow. Tauri reads the
+# full corpus from its bundled SQLite and is unaffected.
 INGEST_ORDER: tuple[str, ...] = (
     "book", "chapter", "verse",
-    "work", "section", "citation",
+    "work",
     "strongs", "meta",
 )
 
 # Tables truncated but not reloaded. Kept in the TRUNCATE list so a re-run
-# against a database that previously had `word`/`xref` data (e.g. a non-
+# against a database that previously had data in these tables (e.g. a non-
 # Supabase target where someone manually loaded them) still leaves the
 # tables empty afterward — the trim is a Postgres-only consideration and
-# must hold regardless of prior state.
-TRUNCATE_EXTRA: tuple[str, ...] = ("word", "xref")
+# must hold regardless of prior state. `citation` is FK-dependent on
+# `section`, so both are dropped together.
+TRUNCATE_EXTRA: tuple[str, ...] = ("word", "xref", "section", "citation")
 
 
 def _iter_rows(sqlite_conn: sqlite3.Connection, table: str, columns: tuple[str, ...]) -> Iterable[tuple]:
