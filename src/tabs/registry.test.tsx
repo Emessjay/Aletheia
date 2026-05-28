@@ -1,8 +1,9 @@
 /**
- * The Patristics tab reads the `work` / `section` / `citation` tables. On the
- * web build `section` + `citation` are dropped from the Postgres ingest to fit
- * Supabase's free tier, so the tab is hidden — its routes would otherwise
- * surface empty pages. On Tauri (full bundled corpus) it stays visible.
+ * The Patristics and Commentaries tabs both read the `work` / `section` /
+ * `citation` tables. On the web build `section` + `citation` are dropped from
+ * the Postgres ingest to fit Supabase's free tier, so both tabs are hidden —
+ * their routes would otherwise surface empty pages. On Tauri (full bundled
+ * corpus) they stay visible.
  *
  * `MAIN_TABS` applies the filter at module-load time off
  * `getPlatform().info.isDesktop`, so each branch is exercised by resetting the
@@ -23,22 +24,24 @@ async function loadTabIds(isDesktop: boolean): Promise<string[]> {
   return MAIN_TABS.map((t) => t.id);
 }
 
-describe("MAIN_TABS patristics gating", () => {
+describe("MAIN_TABS section-table tab gating", () => {
   beforeEach(() => {
     vi.resetModules();
   });
 
-  it("hides the patristics tab on web", async () => {
+  it("hides the patristics and commentaries tabs on web", async () => {
     const ids = await loadTabIds(false);
     expect(ids).not.toContain("patristics");
+    expect(ids).not.toContain("commentaries");
     // The Bible reader and the other web-supported tabs stay.
     expect(ids).toContain("read");
     expect(ids).toContain("notes");
   });
 
-  it("keeps the patristics tab on the desktop build", async () => {
+  it("keeps the patristics and commentaries tabs on the desktop build", async () => {
     const ids = await loadTabIds(true);
     expect(ids).toContain("patristics");
+    expect(ids).toContain("commentaries");
     expect(ids).toContain("read");
   });
 });

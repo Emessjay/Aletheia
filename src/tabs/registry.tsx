@@ -97,16 +97,18 @@ const ALL_TABS: MainTab[] = [
   },
 ];
 
-// The Patristics tab (Schaff ANF/NPNF + Aquinas) reads the `work` / `section`
-// / `citation` tables. On the web build `section` + `citation` are dropped
-// from the Postgres ingest to fit Supabase's free-tier disk cap (see
-// app/scripts/ingest_corpus.py), so every patristics route would surface an
-// empty page. Hide the tab on web; the nav link disappears and direct
-// `/patristics/*` URL hits fall through to the existing 404 catch-all. Tauri
-// reads the full corpus from its bundled SQLite, so the tab stays on desktop.
+// Both the Patristics tab (Schaff ANF/NPNF + Aquinas) and the Commentaries
+// tab read the `work` / `section` / `citation` tables. On the web build
+// `section` + `citation` are dropped from the Postgres ingest to fit
+// Supabase's free-tier disk cap (see app/scripts/ingest_corpus.py), so every
+// route on either tab would surface an empty page. Hide both on web; the nav
+// links disappear and direct `/patristics/*` or `/commentaries/*` URL hits
+// fall through to the existing 404 catch-all. Tauri reads the full corpus
+// from its bundled SQLite, so both tabs stay on desktop.
+const HIDDEN_ON_WEB = new Set(["patristics", "commentaries"]);
 const isDesktop = getPlatform().info.isDesktop;
 export const MAIN_TABS: MainTab[] = ALL_TABS.filter(
-  (t) => isDesktop || t.id !== "patristics",
+  (t) => isDesktop || !HIDDEN_ON_WEB.has(t.id),
 );
 
 /** True if `pathname` falls under any of `tab.matchPrefix`. */

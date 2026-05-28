@@ -7,7 +7,6 @@ import {
   type SecondaryLang,
 } from "@/domain/tabs";
 import { sideOf, type SideKey } from "@/domain/sides";
-import { getPlatform } from "@/platform";
 import type { VerseSelection } from "./ReaderRoute";
 import { InterlinearWord } from "./InterlinearWord";
 import { toRoman } from "./roman";
@@ -79,32 +78,6 @@ export function InterlinearColumn({
 
   const tokenLang: "he" | "grc" = primary === "he" ? "he" : "grc";
   const rtl = primary === "he";
-
-  // The web Postgres ingest deliberately skips the `word` table to fit the
-  // Supabase free-tier quota — see CLAUDE.md. When no verse in this chapter
-  // has any aligned tokens AND we're on web, the data is missing wholesale
-  // rather than absent on a specific verse (Apocrypha etc.); surface a
-  // friendly notice instead of silently rendering verse text in an
-  // interlinear-shaped frame. Tauri reads from its bundled SQLite and keeps
-  // existing behavior for genuinely-untagged verses.
-  const isDesktop = getPlatform().info.isDesktop;
-  const hasAnyWords = chapter.verses.some(
-    (v) => (chapter.wordsByVerse[v.id] ?? []).length > 0,
-  );
-  if (!isDesktop && !hasAnyWords) {
-    return (
-      <section style={{ maxWidth }} data-interlinear-desktop-only>
-        <Header
-          label={label}
-          bookName={chapter.book.name}
-          chapterNum={chapter.chapter.number}
-        />
-        <p style={{ color: "var(--color-fg-muted)" }}>
-          Strong's interlinear is available in the <strong>desktop app</strong>.
-        </p>
-      </section>
-    );
-  }
 
   return (
     <section style={{ maxWidth }}>
