@@ -24,9 +24,11 @@ A post's moderation status is one of:
                 moderation, deliberately *not* pre-approval: a Bible-study group
                 shouldn't need a moderator awake before anyone can speak, but it
                 does need a fast path to take bad content down.
-    removed   — a moderator/owner took it down; hidden from ordinary members,
-                retained in the table for audit and still visible to moderators
-                so the action can be reviewed and reversed.
+    removed   — a moderator/owner took it down; hidden from other members, but
+                still shown to the post's own author (so they can see their own
+                comment was taken down, the way YouTube still shows you your own
+                removed comment) and to moderators (so the action can be reviewed
+                and reversed). Retained in the table for audit.
 
 Legal transitions (the actor-authority check is applied first, separately):
 
@@ -126,19 +128,23 @@ def can_reply(role: Optional[Role], parent_status: PostStatus) -> bool:
     return is_member(role) and parent_status != PostStatus.REMOVED
 
 
-def can_view_post(role: Optional[Role], status: PostStatus) -> bool:
-    """Whether an actor with this role may see a post in the given status.
+def can_view_post(
+    role: Optional[Role], status: PostStatus, is_author: bool = False
+) -> bool:
+    """Whether an actor may see a post in the given status.
 
     - Non-members see nothing: group feeds are members-only.
     - ``visible`` and ``flagged`` posts are shown to every member (a flagged post
       stays in the feed with an indicator until a moderator acts on it).
-    - ``removed`` posts are shown only to moderators/owners, so they can review
-      and potentially restore them; ordinary members see them as gone.
+    - ``removed`` posts are shown to moderators/owners (so they can review and
+      restore them) and to the post's own author (so they can see that their own
+      comment was taken down, the way YouTube still shows you your own removed
+      comment). To every other member a removed post is simply gone.
     """
     if not is_member(role):
         return False
     if status == PostStatus.REMOVED:
-        return role in MODERATOR_ROLES
+        return role in MODERATOR_ROLES or is_author
     return True
 
 
@@ -147,6 +153,12 @@ def visible_statuses_for(role: Optional[Role]) -> frozenset[PostStatus]:
 
     Returned as a set so the route layer can build a single ``status = ANY($n)``
     filter rather than re-deriving the rule per row.
+
+    This is the role-only baseline (the non-author case). A member's own removed
+    post is *also* visible to them, but that is row-dependent — it compares the
+    viewer to each post's ``author_id`` — so the feed query expresses it as an
+    extra ``OR (status = 'removed' AND author_id = $viewer)`` clause rather than
+    folding it into this set.
     """
     if not is_member(role):
         return frozenset()

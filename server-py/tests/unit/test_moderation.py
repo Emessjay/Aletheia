@@ -69,10 +69,25 @@ def test_every_member_sees_live_and_flagged(role, status):
     assert can_view_post(role, status) is True
 
 
-def test_only_moderators_see_removed_posts():
+def test_removed_posts_visible_to_moderators_and_the_author_only():
+    # A member who is not the author: the removed post is gone.
     assert can_view_post(Role.MEMBER, PostStatus.REMOVED) is False
+    # The author, even as a plain member, still sees their own removed post
+    # (the YouTube model — you can see your own comment was taken down).
+    assert can_view_post(Role.MEMBER, PostStatus.REMOVED, is_author=True) is True
+    # Moderators and owners always see removed posts, author or not.
     assert can_view_post(Role.MODERATOR, PostStatus.REMOVED) is True
     assert can_view_post(Role.OWNER, PostStatus.REMOVED) is True
+    # Authorship never overrides the members-only wall: a non-member sees nothing.
+    assert can_view_post(None, PostStatus.REMOVED, is_author=True) is False
+
+
+def test_author_visibility_does_not_change_live_or_flagged_posts():
+    # is_author only matters for removed posts; visible/flagged are seen by all
+    # members regardless, so the flag must not accidentally widen anything.
+    for status in (PostStatus.VISIBLE, PostStatus.FLAGGED):
+        assert can_view_post(Role.MEMBER, status, is_author=True) is True
+        assert can_view_post(Role.MEMBER, status, is_author=False) is True
 
 
 def test_visible_statuses_for_matches_view_rule():
@@ -82,11 +97,14 @@ def test_visible_statuses_for_matches_view_rule():
     )
     assert visible_statuses_for(Role.MODERATOR) == frozenset(PostStatus)
     assert visible_statuses_for(Role.OWNER) == frozenset(PostStatus)
-    # The set helper and the per-row predicate must never disagree.
+    # The set helper is the role-only (non-author) baseline; it must agree with
+    # the per-row predicate for a non-author viewer. The author-sees-own-removed
+    # case is row-dependent and intentionally lives outside this set (covered by
+    # test_removed_posts_visible_to_moderators_and_the_author_only).
     for role in ALL_ROLES + [None]:
         allowed = visible_statuses_for(role)
         for status in PostStatus:
-            assert (status in allowed) == can_view_post(role, status)
+            assert (status in allowed) == can_view_post(role, status, is_author=False)
 
 
 # --------------------------------------------------------------------------- #
