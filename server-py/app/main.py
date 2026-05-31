@@ -27,6 +27,7 @@ from .config import resolve_audio_cache, resolve_static_dir
 from .db import create_pool, resolve_database_url
 from .routes.audio import audio_router
 from .routes.corpus import corpus_router
+from .routes.group import group_router
 from .routes.user import user_router
 from .static import mount_static
 
@@ -75,6 +76,7 @@ def create_app() -> FastAPI:
     app.include_router(corpus_router(), prefix="/api/corpus")
     app.include_router(audio_router(), prefix="/api/audio")
     app.include_router(user_router(), prefix="/api/user")
+    app.include_router(group_router(), prefix="/api")
 
     # Mount the SPA catch-all LAST. The handler itself returns JSON 404 for
     # any unmatched /api/* path so the SPA fallback never swallows API calls.
