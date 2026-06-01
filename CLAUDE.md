@@ -274,6 +274,52 @@ pass; tests mock the supabase client at the boundary
 (`vi.mock("@/auth/client", …)`), so the dummy values never need to be
 real.
 
+## Reader: continuous scroll
+
+The Bible reader doesn't show one chapter at a time — it keeps a bounded
+"chapter stack" in the DOM and lets the user scroll between chapters
+continuously. ReaderRoute composes one `<ChapterSection>` per loaded
+chapter; everything chapter-scoped (verses, annotations, interlinear,
+selection, the `data-verse-anchor` targets used by the `#v<N>` flash)
+lives inside the section component.
+
+- **Stack model** — `src/features/reader/useChapterStack.ts`. Pure
+  reducer + canon-derived `nextChapterKey` / `prevChapterKey` (advances
+  within a book, crosses to the next book's chapter 1 at the tail,
+  returns null at the canon boundary). Cap is `MAX_CHAPTERS = 7`;
+  appending past the cap drops the topmost chapter, prepending drops
+  the bottommost.
+- **Triggers** — two `IntersectionObserver`s in ReaderRoute. One watches
+  per-section visibility (used to pick the "current" chapter for URL +
+  audio sync); the other watches sentinel elements above the first
+  section and below the last to fire prepend / append.
+- **Scroll anchor on prepend** — `useLayoutEffect` captures the
+  topmost section's bounding rect *before* the new chapter renders,
+  then adjusts `scrollTop` after so the user's reading position
+  doesn't shift. Don't lean on CSS `scroll-anchoring: auto` — it
+  fights our fixed-bottom audio bar on Safari.
+- **URL sync** — `history.replaceState` (not router push) on the
+  current chapter, throttled to ~4 Hz. A single Back press takes
+  the user wherever they came from, regardless of how many chapters
+  they scrolled through.
+- **Audio freeze while playing** — `AudioPlayer` surfaces playback
+  state via `onPlayingChange`. While audio is playing the
+  "operating chapter" for the player is frozen on whatever file is
+  actually playing; scroll only re-targets the player when audio is
+  paused or stopped. Prevents yanking the listener mid-narration.
+- **Hash flash** — the existing `#v<N>` scroll-and-flash from
+  `verseFlash.css` is preserved, scoped via per-section
+  `data-verse-anchor` so the same verse number in different
+  loaded chapters doesn't collide on the DOM `id` namespace.
+- **Selection containment** — highlight gestures that cross chapter
+  boundaries are intentionally ignored. Documented in
+  ChapterSection; a future enhancement could span sections, but the
+  current bar is single-chapter only.
+
+The Tauri build uses the same stack — there's no platform branching in
+ReaderRoute. The stack just reads from `getPlatform().corpus` like the
+rest of the reader.
+
 ## Worktree-per-feature
 
 Before starting work on any non-trivial feature, create a git worktree for it
