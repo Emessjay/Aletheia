@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useLayoutEffect, useMemo, useState } from "react";
+import "./verseFlash.css";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { useLocation, useParams, Navigate } from "react-router-dom";
 import { findBook, getChapter, getChapterCount, type ChapterPayload } from "@/db/queries";
@@ -287,16 +288,26 @@ export function ReaderRoute() {
     const id = location.hash.slice(1);
     let raf = 0;
     let attempts = 0;
+    let flashTimer = 0;
     const tryScroll = () => {
       const el = document.getElementById(id);
       if (el) {
         el.scrollIntoView({ behavior: "smooth", block: "center" });
+        el.classList.remove("verse-flash");
+        void el.offsetWidth; // force reflow so animation restarts on repeat clicks
+        el.classList.add("verse-flash");
+        flashTimer = window.setTimeout(() => el.classList.remove("verse-flash"), 2500);
         return;
       }
       if (attempts++ < 60) raf = requestAnimationFrame(tryScroll);
     };
     raf = requestAnimationFrame(tryScroll);
-    return () => cancelAnimationFrame(raf);
+    return () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(flashTimer);
+      const el = document.getElementById(id);
+      el?.classList.remove("verse-flash");
+    };
   }, [location.hash, location.pathname, primaryChapterReady]);
 
   if (!valid) return <Navigate to="/reader/bible/john/1" replace />;

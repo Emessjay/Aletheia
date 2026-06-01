@@ -1,0 +1,15 @@
+.verse-flash {
+  animation: verse-flash 2.5s ease-out forwards;
+}
+@keyframes verse-flash {
+  0%, 25% {
+    text-decoration: underline solid var(--color-accent);
+    text-decoration-thickness: 2px;
+    text-underline-offset: 3px;
+  }
+  100% {
+    text-decoration: underline solid transparent;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 3px;
+  }
+}
