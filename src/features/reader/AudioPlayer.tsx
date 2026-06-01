@@ -41,6 +41,10 @@ interface Props {
 }
 
 const STORAGE_KEY = "reader.audio.translation";
+// Survives only for the current tab session — cleared on mount of the next
+// chapter or on tab close. Not localStorage so a returning user doesn't get
+// surprise autoplay.
+const AUTOPLAY_NEXT_KEY = "reader.audio.autoplay-next";
 
 export function AudioPlayer({
   available,
@@ -105,10 +109,20 @@ export function AudioPlayer({
   // bar from briefly showing a stale time during the swap. pendingPlay also
   // clears so an in-flight download from a previous chapter doesn't auto-
   // play the new one once it lands.
+  //
+  // Exception: if onEnded or the virtual-chapter boundary set AUTOPLAY_NEXT_KEY
+  // before navigating here, consume it now and kick off pendingPlay so the
+  // existing download-and-play path resumes playback without any user action.
   useEffect(() => {
     setPlaying(false);
     setError(null);
-    setPendingPlay(false);
+    const autoplay = sessionStorage.getItem(AUTOPLAY_NEXT_KEY);
+    if (autoplay) {
+      sessionStorage.removeItem(AUTOPLAY_NEXT_KEY);
+      setPendingPlay(true);
+    } else {
+      setPendingPlay(false);
+    }
   }, [translation, bookSlug, chapter]);
 
   const srcUrl = isDownloaded && sourcePath.data
@@ -241,6 +255,7 @@ export function AudioPlayer({
       // seek effect will jump to the new startSec automatically).
       e.currentTarget.pause();
       if (nextChapter !== null) {
+        sessionStorage.setItem(AUTOPLAY_NEXT_KEY, "1");
         navigate(`/reader/${workSlug}/${bookSlug}/${nextChapter}`);
       }
     }
@@ -249,6 +264,7 @@ export function AudioPlayer({
   const onEnded = () => {
     setPlaying(false);
     if (nextChapter !== null) {
+      sessionStorage.setItem(AUTOPLAY_NEXT_KEY, "1");
       navigate(`/reader/${workSlug}/${bookSlug}/${nextChapter}`);
     }
   };
