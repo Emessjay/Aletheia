@@ -34,6 +34,10 @@ interface Props {
   chapter: number;
   /** Next chapter number, if one exists — used for auto-advance. */
   nextChapter: number | null;
+  /** Notified whenever playback starts/stops. The continuous-scroll reader uses
+   *  this to freeze the audio "operating chapter" while narration is playing so
+   *  scrolling doesn't yank the listener to another file mid-sentence. */
+  onPlayingChange?: (playing: boolean) => void;
 }
 
 const STORAGE_KEY = "reader.audio.translation";
@@ -44,6 +48,7 @@ export function AudioPlayer({
   bookSlug,
   chapter,
   nextChapter,
+  onPlayingChange,
 }: Props) {
   const navigate = useNavigate();
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -72,6 +77,12 @@ export function AudioPlayer({
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, translation);
   }, [translation]);
+
+  // Surface playback state to the parent. Covers every transition: onPlay,
+  // onPause, onEnded, and the chapter/translation-change reset below.
+  useEffect(() => {
+    onPlayingChange?.(playing);
+  }, [playing, onPlayingChange]);
 
   const hasAudio = bookHasAudio(translation, bookSlug);
   const ca = useMemo(

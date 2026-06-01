@@ -407,6 +407,39 @@ const FALLBACK_LANGUAGE: Partial<Record<CorpusLanguage, CorpusLanguage>> = {
   en_bsb: "en_web",
 };
 
+/**
+ * Canon shape for the continuous-scroll reader: book slugs in canonical order
+ * plus a chapter count per book. The continuous-scroll stack uses this to
+ * derive the next/previous chapter across book boundaries (see
+ * `useChapterStack.ts`). Honors the same fallback union as
+ * `listBooksByLanguage` so the deuterocanon (BSB → WEB fallback) is included.
+ */
+export interface CanonShape {
+  bookOrder: string[];
+  chapterCount: Record<string, number>;
+}
+
+export async function getCanon(
+  language: CorpusLanguage,
+): Promise<CanonShape> {
+  const books = await listBooksByLanguage(language);
+  const chapterCount: Record<string, number> = {};
+  const ids = books.map((b) => b.id);
+  if (ids.length > 0) {
+    const placeholders = ids.map((_, i) => `$${i + 1}`).join(",");
+    const rows = await corpusSelect<{ book_id: number; count: number }>(
+      `SELECT book_id, COUNT(*) AS count
+         FROM chapter
+        WHERE book_id IN (${placeholders})
+        GROUP BY book_id`,
+      [...ids],
+    );
+    const byId = new Map(rows.map((r) => [r.book_id, r.count]));
+    for (const b of books) chapterCount[b.slug] = byId.get(b.id) ?? 0;
+  }
+  return { bookOrder: books.map((b) => b.slug), chapterCount };
+}
+
 export async function findBook(
   language: CorpusLanguage,
   slug: string,

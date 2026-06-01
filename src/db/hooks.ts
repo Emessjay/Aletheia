@@ -6,6 +6,7 @@ import type {
   WorkRow,
 } from "./types";
 import {
+  getCanon,
   getChapter,
   getCommentaryBookIntro,
   getSection,
@@ -100,6 +101,19 @@ export function useBooks(language: CorpusLanguage) {
   return useQuery({
     queryKey: ["corpus", "books", language],
     queryFn: () => listBooksByLanguage(language),
+  });
+}
+
+/**
+ * Canonical book order + per-book chapter counts for the active primary
+ * translation. Feeds the continuous-scroll reader's next/previous-chapter
+ * derivation. The canon is immutable for a session, so cache it forever.
+ */
+export function useCanon(language: CorpusLanguage) {
+  return useQuery({
+    queryKey: ["corpus", "canon", language],
+    queryFn: () => getCanon(language),
+    staleTime: Infinity,
   });
 }
 

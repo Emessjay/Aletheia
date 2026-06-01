@@ -139,7 +139,6 @@ export function InterlinearColumn({
                 style={{ cursor: "pointer" }}
               >
                 <sup
-                  id={`v${v.number}`}
                   data-verse-anchor={v.number}
                   className={vnumClass}
                 >
