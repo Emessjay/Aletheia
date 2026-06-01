@@ -141,6 +141,48 @@ describe("webUserData — highlight CRUD", () => {
   });
 });
 
+describe("webUserData — bug reports", () => {
+  beforeEach(() => {
+    mockGetAccessToken.mockResolvedValue("t");
+  });
+
+  it("create POSTs to /bug-reports, attaches the JWT, and decodes snake→camel", async () => {
+    fetchSpy.mockResolvedValue(
+      jsonResponse({
+        id: "bug_1",
+        user_id: "u-123",
+        platform: "web",
+        description: "search returns nothing",
+        created_at: 1717000000000,
+      }),
+    );
+
+    const created = await webUserData.bugReports.create({
+      platform: "web",
+      description: "search returns nothing",
+    });
+
+    const [url, init] = fetchSpy.mock.calls[0]!;
+    expect(String(url)).toMatch(/\/api\/user\/bug-reports$/);
+    expect((init as RequestInit).method).toBe("POST");
+    expect(JSON.parse((init as RequestInit).body as string)).toEqual({
+      platform: "web",
+      description: "search returns nothing",
+    });
+    const headers = new Headers((init as RequestInit).headers);
+    expect(headers.get("authorization")).toBe("Bearer t");
+
+    // camelCase on the way out.
+    expect(created).toEqual({
+      id: "bug_1",
+      userId: "u-123",
+      platform: "web",
+      description: "search returns nothing",
+      createdAt: 1717000000000,
+    });
+  });
+});
+
 describe("webUserData — kv namespace", () => {
   beforeEach(() => {
     mockGetAccessToken.mockResolvedValue("t");

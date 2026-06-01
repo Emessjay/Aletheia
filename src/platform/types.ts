@@ -122,6 +122,24 @@ export interface KvAdapter {
   set(key: string, value: string): Promise<void>;
 }
 
+export interface BugReportCreate {
+  id?: string;
+  platform: "web" | "local";
+  description: string;
+}
+
+export interface BugReportRow {
+  id: string;
+  userId: string;
+  platform: "web" | "local";
+  description: string;
+  createdAt: number;
+}
+
+export interface BugReportsAdapter {
+  create(input: BugReportCreate): Promise<BugReportRow>;
+}
+
 export interface UserDataAdapter {
   libraries: LibrariesAdapter;
   highlights: HighlightsAdapter;
@@ -129,6 +147,7 @@ export interface UserDataAdapter {
   bookmarks: BookmarksAdapter;
   annotations: AnnotationsAdapter;
   kv: KvAdapter;
+  bugReports: BugReportsAdapter;
 }
 
 /** Result of resolving an audio source file's absolute path. */
