@@ -19,6 +19,9 @@ import { getAccessToken } from "@/auth/client";
 import type {
   BookmarkCreate,
   BookmarksAdapter,
+  BugReportCreate,
+  BugReportRow,
+  BugReportsAdapter,
   ChapterAnnotationsResult,
   HighlightCreate,
   HighlightsAdapter,
@@ -399,6 +402,40 @@ const annotations = {
   },
 };
 
+interface RawBugReport {
+  id: string;
+  user_id: string;
+  platform: "web" | "local";
+  description: string;
+  created_at: number;
+}
+
+function decodeBugReport(r: RawBugReport): BugReportRow {
+  return {
+    id: r.id,
+    userId: r.user_id,
+    platform: r.platform,
+    description: r.description,
+    createdAt: r.created_at,
+  };
+}
+
+const bugReports: BugReportsAdapter = {
+  async create(input: BugReportCreate) {
+    const body: Record<string, unknown> = {
+      platform: input.platform,
+      description: input.description,
+    };
+    if (input.id !== undefined) body.id = input.id;
+    const row = await apiRequest<RawBugReport>("/bug-reports", {
+      method: "POST",
+      body,
+    });
+    if (!row) throw new Error("bugReports.create: empty response");
+    return decodeBugReport(row);
+  },
+};
+
 const kv: KvAdapter = {
   async get(key: string) {
     const res = await apiRequest<{ value: string }>(
@@ -422,4 +459,5 @@ export const webUserData: UserDataAdapter = {
   bookmarks,
   annotations,
   kv,
+  bugReports,
 };

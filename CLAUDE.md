@@ -115,7 +115,10 @@ keyed off `getPlatform().info.isDesktop`; direct `/patristics/*` and
 `/commentaries/*` URL hits fall through to the 404 catch-all. Bible
 reader, search, highlights, notes, libraries, audio, Strong's lexicon,
 and Strong's interlinear all function on web. Tauri's bundled SQLite
-has the full corpus and both tabs work unchanged on desktop.
+has the full corpus and both tabs work unchanged on desktop. Mirror
+case: the `bug-report` tab is web-*only* (in `DESKTOP_HIDDEN`,
+the inverse of `HIDDEN_ON_WEB`) — desktop users have direct file
+access, so their bug channel is handled separately.
 
 To re-enable patristics/commentaries/xref on web, either (a) upgrade
 to Supabase Pro (8GB) and move `xref`, `section`, `citation` from

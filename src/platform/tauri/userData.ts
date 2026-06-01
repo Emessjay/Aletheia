@@ -13,6 +13,8 @@ import { newId } from "@/lib/ulid";
 import type {
   BookmarkCreate,
   BookmarksAdapter,
+  BugReportCreate,
+  BugReportsAdapter,
   ChapterAnnotationsResult,
   ChapterRefArg,
   HighlightCreate,
@@ -325,6 +327,19 @@ const kv: KvAdapter = {
   },
 };
 
+// ── Bug reports (web-only) ───────────────────────────────────────────────
+// The "Report a bug" tab is filtered out of the desktop nav at the registry
+// level (DESKTOP_HIDDEN), so this method is unreachable on Tauri. We still
+// implement the typed interface for completeness; throwing keeps the surface
+// minimal and makes any accidental call loud rather than silently writing to
+// a table that doesn't exist in the local SQLite schema.
+
+const bugReports: BugReportsAdapter = {
+  async create(_input: BugReportCreate) {
+    throw new Error("bug reports are web-only");
+  },
+};
+
 export const tauriUserData: UserDataAdapter = {
   libraries,
   highlights,
@@ -332,4 +347,5 @@ export const tauriUserData: UserDataAdapter = {
   bookmarks,
   annotations,
   kv,
+  bugReports,
 };

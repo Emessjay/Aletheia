@@ -13,6 +13,7 @@ import { PatristicsRoute } from "@/features/patristics/PatristicsRoute";
 import { PatristicsWorkRedirect } from "@/features/patristics/PatristicsWorkRedirect";
 import { SettingsRoute } from "@/features/settings/SettingsRoute";
 import { AttributionsRoute } from "@/features/attributions/AttributionsRoute";
+import { BugReportRoute } from "@/features/bugReport/BugReportRoute";
 
 export interface MainTab {
   /** Stable id (used as React key). */
@@ -75,6 +76,13 @@ const ALL_TABS: MainTab[] = [
     routes: [{ path: "libraries", element: <LibrariesRoute /> }],
   },
   {
+    id: "bug-report",
+    label: "Report a bug",
+    navTo: "/bug-report",
+    matchPrefix: "/bug-report",
+    routes: [{ path: "bug-report", element: <BugReportRoute /> }],
+  },
+  {
     id: "settings",
     label: "Settings",
     navTo: "/settings",
@@ -106,10 +114,15 @@ const ALL_TABS: MainTab[] = [
 // fall through to the existing 404 catch-all. Tauri reads the full corpus
 // from its bundled SQLite, so both tabs stay on desktop.
 const HIDDEN_ON_WEB = new Set(["patristics", "commentaries"]);
+// The "Report a bug" tab is web-only — desktop users have direct file access
+// and their bug channel is a separate decision (out of scope here). Hidden on
+// Tauri; direct `/bug-report` URL hits there fall through to the 404 catch-all.
+const DESKTOP_HIDDEN = new Set(["bug-report"]);
 const isDesktop = getPlatform().info.isDesktop;
-export const MAIN_TABS: MainTab[] = ALL_TABS.filter(
-  (t) => isDesktop || !HIDDEN_ON_WEB.has(t.id),
-);
+export const MAIN_TABS: MainTab[] = ALL_TABS.filter((t) => {
+  if (isDesktop) return !DESKTOP_HIDDEN.has(t.id);
+  return !HIDDEN_ON_WEB.has(t.id);
+});
 
 /** True if `pathname` falls under any of `tab.matchPrefix`. */
 export function isTabActive(tab: MainTab, pathname: string): boolean {
