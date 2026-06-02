@@ -30,9 +30,14 @@ if str(_SERVER_PY) not in sys.path:
 # data/Aletheia.sqlite is the 0-byte placeholder (intentionally untracked —
 # 600 MB lives only in the main checkout), so fall back to the main checkout
 # automatically when the worktree's copy is empty.
-def _resolve_corpus_path() -> None:
-    if os.environ.get("ALETHEIA_CORPUS_PATH"):
-        return
+#
+# Returns the resolved Path when a real SQLite is found (and sets
+# ALETHEIA_CORPUS_PATH as a side-effect), or None when no corpus is available.
+def _resolve_corpus_path() -> "Path | None":
+    existing = os.environ.get("ALETHEIA_CORPUS_PATH")
+    if existing:
+        p = Path(existing)
+        return p if p.exists() and p.stat().st_size > 0 else None
     repo_root = _SERVER_PY.parent
     candidates = [
         repo_root / "data" / "Aletheia.sqlite",
@@ -41,10 +46,11 @@ def _resolve_corpus_path() -> None:
     for c in candidates:
         if c.exists() and c.stat().st_size > 0:
             os.environ["ALETHEIA_CORPUS_PATH"] = str(c)
-            return
+            return c
+    return None
 
 
-_resolve_corpus_path()
+_CORPUS_PATH = _resolve_corpus_path()
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -90,8 +96,12 @@ def _has_corpus_data(url: str) -> bool:
 def _migrate_and_ingest(_python_on_path):
     """Run alembic + ingest_corpus once per test session.
 
-    Skips the ingest if the verse table is already populated — repeated
-    local runs against a persistent docker postgres can reuse the data.
+    Always runs alembic (every test needs a migrated schema).  Ingest is
+    conditional: skipped when no real corpus SQLite is available (CI) or
+    when the verse table is already populated (repeated local runs).
+
+    Sets ALETHEIA_CORPUS_INGESTED=1 after a successful ingest so that
+    corpus-data test modules can skip cleanly when ingest was not run.
     """
     url = os.environ.get("DATABASE_URL")
     if not url:
@@ -101,10 +111,16 @@ def _migrate_and_ingest(_python_on_path):
         cwd=str(_SERVER_PY),
         check=True,
     )
+    if not _CORPUS_PATH:
+        # No corpus SQLite available in this environment — skip ingest.
+        # Corpus-data tests gate themselves on ALETHEIA_CORPUS_INGESTED.
+        return
     if _has_corpus_data(url):
+        os.environ["ALETHEIA_CORPUS_INGESTED"] = "1"
         return
     subprocess.run(
         [sys.executable, "-m", "app.scripts.ingest_corpus"],
         cwd=str(_SERVER_PY),
         check=True,
     )
+    os.environ["ALETHEIA_CORPUS_INGESTED"] = "1"
