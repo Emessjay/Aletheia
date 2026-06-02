@@ -85,20 +85,46 @@ Supabase Auth and moves web user-data off sql.js.
 
 ### Web ingest trim (Supabase free tier)
 
-Two corpus tables are deliberately skipped in the web Postgres ingest
-to stay under Supabase's free-tier disk quota:
+Three corpus tables are deliberately skipped in the web Postgres ingest
+to stay under Supabase's free-tier disk quota (they sit in
+`TRUNCATE_EXTRA` in `server-py/app/scripts/ingest_corpus.py` —
+truncated but never reloaded):
 
-- `word` (~1M rows; Strong's interlinear)
 - `xref` (~344k rows; Treasury of Scripture Knowledge cross-refs)
+- `section` (~122k rows; Schaff ANF/NPNF + Aquinas patristic bodies —
+  also the storage for ingested Bible commentaries like Matthew Henry /
+  Calvin / JFB / Wesley / Clarke, so both the Patristics *and*
+  Commentaries tabs depend on it)
+- `citation` (FK to section; empty in source anyway)
 
 The schema still defines them (so queries don't blow up), the tables
-are empty on Postgres, and the frontend renders an "available in
-the desktop app" hint at the interlinear and xref surfaces. Tauri's
-bundled SQLite has the full corpus; nothing changes there.
+are empty on Postgres, and the `CrossRefs` popup in the verse toolbar
+renders an "available in the desktop app" hint when it sees empty
+data. Tauri's bundled SQLite has the full corpus; nothing changes
+there.
 
-To re-enable on web, either (a) upgrade to Supabase Pro (8GB) and
-add `word`, `xref` back to `INGEST_ORDER`, or (b) migrate to a
-larger Postgres tier elsewhere.
+`word` (~1M rows; Strong's interlinear) **is** ingested on web — the
+Hebrew/Greek interlinear columns work in the deployed build. After
+re-adding `word`, the deployed DB lands around ~312MB, comfortably
+under the 500MB free-tier cap with ~190MB of headroom for user-data
+growth.
+
+The Patristics *and* Commentaries top-level tabs are hidden on the
+web build via the `HIDDEN_ON_WEB` set in `src/tabs/registry.tsx`,
+keyed off `getPlatform().info.isDesktop`; direct `/patristics/*` and
+`/commentaries/*` URL hits fall through to the 404 catch-all. Bible
+reader, search, highlights, notes, libraries, audio, Strong's lexicon,
+and Strong's interlinear all function on web. Tauri's bundled SQLite
+has the full corpus and both tabs work unchanged on desktop. Mirror
+case: the `bug-report` tab is web-*only* (in `DESKTOP_HIDDEN`,
+the inverse of `HIDDEN_ON_WEB`) — desktop users have direct file
+access, so their bug channel is handled separately.
+
+To re-enable patristics/commentaries/xref on web, either (a) upgrade
+to Supabase Pro (8GB) and move `xref`, `section`, `citation` from
+`TRUNCATE_EXTRA` back into `INGEST_ORDER` (and remove `patristics`
+and `commentaries` from `HIDDEN_ON_WEB`), or (b) migrate to a larger
+Postgres tier elsewhere.
 
 ### FTS routing (option a — server-side rewrite)
 
@@ -247,6 +273,52 @@ import time. CI sets dummy values so vitest + `tsc -b` + `vite build`
 pass; tests mock the supabase client at the boundary
 (`vi.mock("@/auth/client", …)`), so the dummy values never need to be
 real.
+
+## Reader: continuous scroll
+
+The Bible reader doesn't show one chapter at a time — it keeps a bounded
+"chapter stack" in the DOM and lets the user scroll between chapters
+continuously. ReaderRoute composes one `<ChapterSection>` per loaded
+chapter; everything chapter-scoped (verses, annotations, interlinear,
+selection, the `data-verse-anchor` targets used by the `#v<N>` flash)
+lives inside the section component.
+
+- **Stack model** — `src/features/reader/useChapterStack.ts`. Pure
+  reducer + canon-derived `nextChapterKey` / `prevChapterKey` (advances
+  within a book, crosses to the next book's chapter 1 at the tail,
+  returns null at the canon boundary). Cap is `MAX_CHAPTERS = 7`;
+  appending past the cap drops the topmost chapter, prepending drops
+  the bottommost.
+- **Triggers** — two `IntersectionObserver`s in ReaderRoute. One watches
+  per-section visibility (used to pick the "current" chapter for URL +
+  audio sync); the other watches sentinel elements above the first
+  section and below the last to fire prepend / append.
+- **Scroll anchor on prepend** — `useLayoutEffect` captures the
+  topmost section's bounding rect *before* the new chapter renders,
+  then adjusts `scrollTop` after so the user's reading position
+  doesn't shift. Don't lean on CSS `scroll-anchoring: auto` — it
+  fights our fixed-bottom audio bar on Safari.
+- **URL sync** — `history.replaceState` (not router push) on the
+  current chapter, throttled to ~4 Hz. A single Back press takes
+  the user wherever they came from, regardless of how many chapters
+  they scrolled through.
+- **Audio freeze while playing** — `AudioPlayer` surfaces playback
+  state via `onPlayingChange`. While audio is playing the
+  "operating chapter" for the player is frozen on whatever file is
+  actually playing; scroll only re-targets the player when audio is
+  paused or stopped. Prevents yanking the listener mid-narration.
+- **Hash flash** — the existing `#v<N>` scroll-and-flash from
+  `verseFlash.css` is preserved, scoped via per-section
+  `data-verse-anchor` so the same verse number in different
+  loaded chapters doesn't collide on the DOM `id` namespace.
+- **Selection containment** — highlight gestures that cross chapter
+  boundaries are intentionally ignored. Documented in
+  ChapterSection; a future enhancement could span sections, but the
+  current bar is single-chapter only.
+
+The Tauri build uses the same stack — there's no platform branching in
+ReaderRoute. The stack just reads from `getPlatform().corpus` like the
+rest of the reader.
 
 ## Worktree-per-feature
 

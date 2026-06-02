@@ -34,9 +34,17 @@ interface Props {
   chapter: number;
   /** Next chapter number, if one exists — used for auto-advance. */
   nextChapter: number | null;
+  /** Notified whenever playback starts/stops. The continuous-scroll reader uses
+   *  this to freeze the audio "operating chapter" while narration is playing so
+   *  scrolling doesn't yank the listener to another file mid-sentence. */
+  onPlayingChange?: (playing: boolean) => void;
 }
 
 const STORAGE_KEY = "reader.audio.translation";
+// Survives only for the current tab session — cleared on mount of the next
+// chapter or on tab close. Not localStorage so a returning user doesn't get
+// surprise autoplay.
+const AUTOPLAY_NEXT_KEY = "reader.audio.autoplay-next";
 
 export function AudioPlayer({
   available,
@@ -44,6 +52,7 @@ export function AudioPlayer({
   bookSlug,
   chapter,
   nextChapter,
+  onPlayingChange,
 }: Props) {
   const navigate = useNavigate();
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -73,6 +82,12 @@ export function AudioPlayer({
     localStorage.setItem(STORAGE_KEY, translation);
   }, [translation]);
 
+  // Surface playback state to the parent. Covers every transition: onPlay,
+  // onPause, onEnded, and the chapter/translation-change reset below.
+  useEffect(() => {
+    onPlayingChange?.(playing);
+  }, [playing, onPlayingChange]);
+
   const hasAudio = bookHasAudio(translation, bookSlug);
   const ca = useMemo(
     () => (hasAudio ? chapterAudio(translation, bookSlug, chapter) : null),
@@ -94,10 +109,20 @@ export function AudioPlayer({
   // bar from briefly showing a stale time during the swap. pendingPlay also
   // clears so an in-flight download from a previous chapter doesn't auto-
   // play the new one once it lands.
+  //
+  // Exception: if onEnded or the virtual-chapter boundary set AUTOPLAY_NEXT_KEY
+  // before navigating here, consume it now and kick off pendingPlay so the
+  // existing download-and-play path resumes playback without any user action.
   useEffect(() => {
     setPlaying(false);
     setError(null);
-    setPendingPlay(false);
+    const autoplay = sessionStorage.getItem(AUTOPLAY_NEXT_KEY);
+    if (autoplay) {
+      sessionStorage.removeItem(AUTOPLAY_NEXT_KEY);
+      setPendingPlay(true);
+    } else {
+      setPendingPlay(false);
+    }
   }, [translation, bookSlug, chapter]);
 
   const srcUrl = isDownloaded && sourcePath.data
@@ -177,6 +202,35 @@ export function AudioPlayer({
     }
   };
 
+  // When pendingPlay is set (typically via the autoplay-next handoff) but the
+  // chapter's MP3 isn't cached yet, fire the download proactively. onPlayPause
+  // already handles this for the manual-click flow; the autoplay path needs the
+  // same kick. The play effect below waits for isDownloaded + canplay regardless,
+  // so once the download lands playback starts on its own.
+  useEffect(() => {
+    if (!pendingPlay) return;
+    if (isDownloaded || isDownloading) return;
+    if (!ca) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        await download.mutateAsync({
+          translation,
+          bookSlug,
+          url: ca.sourceUrl,
+          filename: ca.sourceFilename,
+        });
+      } catch (e) {
+        if (cancelled) return;
+        setPendingPlay(false);
+        setError(`Download failed: ${e instanceof Error ? e.message : String(e)}`);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [pendingPlay, isDownloaded, isDownloading, ca, translation, bookSlug, download]);
+
   // Drive the deferred play() once everything is in place: the download has
   // landed (isDownloaded), the src has bound (srcUrl), and the element has
   // enough data to begin playback (canplay). Waiting on canplay rather than
@@ -230,6 +284,7 @@ export function AudioPlayer({
       // seek effect will jump to the new startSec automatically).
       e.currentTarget.pause();
       if (nextChapter !== null) {
+        sessionStorage.setItem(AUTOPLAY_NEXT_KEY, "1");
         navigate(`/reader/${workSlug}/${bookSlug}/${nextChapter}`);
       }
     }
@@ -238,6 +293,7 @@ export function AudioPlayer({
   const onEnded = () => {
     setPlaying(false);
     if (nextChapter !== null) {
+      sessionStorage.setItem(AUTOPLAY_NEXT_KEY, "1");
       navigate(`/reader/${workSlug}/${bookSlug}/${nextChapter}`);
     }
   };

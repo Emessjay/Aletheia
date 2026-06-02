@@ -81,7 +81,7 @@ def _wipe_user_data_for_test_users():
     try:
         with conn:
             with conn.cursor() as cur:
-                for table in ("library", "bookmark", "highlight", "note", "kv"):
+                for table in ("library", "bookmark", "highlight", "note", "kv", "bug_report"):
                     cur.execute(
                         "SELECT to_regclass(%s) IS NOT NULL", (f"public.{table}",)
                     )

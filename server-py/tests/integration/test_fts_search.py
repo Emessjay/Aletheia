@@ -25,6 +25,12 @@ pytestmark = [
 ]
 
 
+@pytest.fixture(scope="module", autouse=True)
+def _require_corpus_ingested():
+    if not os.environ.get("ALETHEIA_CORPUS_INGESTED"):
+        pytest.skip("corpus not ingested (source SQLite unavailable in this env)")
+
+
 @pytest.fixture(scope="module")
 def app_with_postgres():
     from app.main import app

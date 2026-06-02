@@ -93,7 +93,6 @@ export function VerseInline({
         style={onSelect ? { cursor: "pointer" } : undefined}
       >
         <sup
-          id={`v${verse.number}`}
           data-verse-anchor={verse.number}
           className="al-verse-num-inline"
           aria-hidden={withDropCap ? true : undefined}

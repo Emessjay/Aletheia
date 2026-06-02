@@ -192,3 +192,45 @@ export function parseReference(input: string): ParsedReference | null {
 export function bookSlugs(): string[] {
   return BOOKS.map((b) => b.slug);
 }
+
+// Display names keyed by the same BSB/KJV-apocrypha slugs `BOOKS` uses. The
+// corpus is the canonical source of book names (`book.name`), but the reader's
+// continuous-scroll chapter headings need a name *before* a chapter's data has
+// loaded — and the ChapterSection smoke test renders with no backend at all.
+// This map fills that gap; callers prefer the loaded `book.name` when present.
+const BOOK_NAMES: Record<string, string> = {
+  gen: "Genesis", exod: "Exodus", lev: "Leviticus", num: "Numbers",
+  deut: "Deuteronomy", josh: "Joshua", judg: "Judges", ruth: "Ruth",
+  "1sam": "1 Samuel", "2sam": "2 Samuel", "1kgs": "1 Kings", "2kgs": "2 Kings",
+  "1chr": "1 Chronicles", "2chr": "2 Chronicles", ezra: "Ezra",
+  neh: "Nehemiah", esth: "Esther", job: "Job", ps: "Psalms",
+  prov: "Proverbs", eccl: "Ecclesiastes", song: "Song of Songs",
+  isa: "Isaiah", jer: "Jeremiah", lam: "Lamentations", ezek: "Ezekiel",
+  dan: "Daniel", hos: "Hosea", joel: "Joel", amos: "Amos", obad: "Obadiah",
+  jonah: "Jonah", mic: "Micah", nah: "Nahum", hab: "Habakkuk",
+  zeph: "Zephaniah", hag: "Haggai", zech: "Zechariah", mal: "Malachi",
+  matt: "Matthew", mark: "Mark", luke: "Luke", john: "John", acts: "Acts",
+  rom: "Romans", "1cor": "1 Corinthians", "2cor": "2 Corinthians",
+  gal: "Galatians", eph: "Ephesians", phil: "Philippians", col: "Colossians",
+  "1thes": "1 Thessalonians", "2thes": "2 Thessalonians", "1tim": "1 Timothy",
+  "2tim": "2 Timothy", titus: "Titus", phlm: "Philemon", heb: "Hebrews",
+  jas: "James", "1pet": "1 Peter", "2pet": "2 Peter", "1john": "1 John",
+  "2john": "2 John", "3john": "3 John", jude: "Jude", rev: "Revelation",
+  "1es": "1 Esdras", "2es": "2 Esdras", tob: "Tobit", jdt: "Judith",
+  wis: "Wisdom of Solomon", sir: "Sirach", bar: "Baruch",
+  lje: "Letter of Jeremiah", s3y: "Prayer of Azariah", sus: "Susanna",
+  bel: "Bel and the Dragon", man: "Prayer of Manasseh", "1mac": "1 Maccabees",
+  "2mac": "2 Maccabees", "3mac": "3 Maccabees", "4mac": "4 Maccabees",
+  ps151: "Psalm 151",
+};
+
+/**
+ * Best-effort display name for a book slug. Returns the canonical name when the
+ * slug is known; otherwise title-cases the slug so an unrecognised id still
+ * renders something readable rather than a raw slug.
+ */
+export function bookDisplayName(slug: string): string {
+  const known = BOOK_NAMES[slug.toLowerCase()];
+  if (known) return known;
+  return slug.charAt(0).toUpperCase() + slug.slice(1);
+}

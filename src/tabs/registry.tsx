@@ -3,6 +3,7 @@
 // builds the router from each tab's `routes` list.
 
 import type { ReactNode } from "react";
+import { getPlatform } from "@/platform";
 import { DesignRoute } from "@/features/design/DesignRoute";
 import { ReaderRoute } from "@/features/reader/ReaderRoute";
 import { LibrariesRoute } from "@/features/libraries/LibrariesRoute";
@@ -14,6 +15,7 @@ import { SettingsRoute } from "@/features/settings/SettingsRoute";
 import { AttributionsRoute } from "@/features/attributions/AttributionsRoute";
 import { StudyGroupsRoute } from "@/features/study-groups/StudyGroupsRoute";
 import { StudyGroupDetailRoute } from "@/features/study-groups/StudyGroupDetailRoute";
+import { BugReportRoute } from "@/features/bugReport/BugReportRoute";
 
 export interface MainTab {
   /** Stable id (used as React key). */
@@ -34,7 +36,7 @@ export interface MainTab {
   };
 }
 
-export const MAIN_TABS: MainTab[] = [
+const ALL_TABS: MainTab[] = [
   {
     id: "read",
     label: "Read",
@@ -86,6 +88,13 @@ export const MAIN_TABS: MainTab[] = [
     ],
   },
   {
+    id: "bug-report",
+    label: "Report a bug",
+    navTo: "/bug-report",
+    matchPrefix: "/bug-report",
+    routes: [{ path: "bug-report", element: <BugReportRoute /> }],
+  },
+  {
     id: "settings",
     label: "Settings",
     navTo: "/settings",
@@ -107,6 +116,25 @@ export const MAIN_TABS: MainTab[] = [
     routes: [{ path: "attributions", element: <AttributionsRoute /> }],
   },
 ];
+
+// Both the Patristics tab (Schaff ANF/NPNF + Aquinas) and the Commentaries
+// tab read the `work` / `section` / `citation` tables. On the web build
+// `section` + `citation` are dropped from the Postgres ingest to fit
+// Supabase's free-tier disk cap (see app/scripts/ingest_corpus.py), so every
+// route on either tab would surface an empty page. Hide both on web; the nav
+// links disappear and direct `/patristics/*` or `/commentaries/*` URL hits
+// fall through to the existing 404 catch-all. Tauri reads the full corpus
+// from its bundled SQLite, so both tabs stay on desktop.
+const HIDDEN_ON_WEB = new Set(["patristics", "commentaries"]);
+// The "Report a bug" tab is web-only — desktop users have direct file access
+// and their bug channel is a separate decision (out of scope here). Hidden on
+// Tauri; direct `/bug-report` URL hits there fall through to the 404 catch-all.
+const DESKTOP_HIDDEN = new Set(["bug-report"]);
+const isDesktop = getPlatform().info.isDesktop;
+export const MAIN_TABS: MainTab[] = ALL_TABS.filter((t) => {
+  if (isDesktop) return !DESKTOP_HIDDEN.has(t.id);
+  return !HIDDEN_ON_WEB.has(t.id);
+});
 
 /** True if `pathname` falls under any of `tab.matchPrefix`. */
 export function isTabActive(tab: MainTab, pathname: string): boolean {
