@@ -13,6 +13,8 @@ import { PatristicsRoute } from "@/features/patristics/PatristicsRoute";
 import { PatristicsWorkRedirect } from "@/features/patristics/PatristicsWorkRedirect";
 import { SettingsRoute } from "@/features/settings/SettingsRoute";
 import { AttributionsRoute } from "@/features/attributions/AttributionsRoute";
+import { StudyGroupsRoute } from "@/features/study-groups/StudyGroupsRoute";
+import { StudyGroupDetailRoute } from "@/features/study-groups/StudyGroupDetailRoute";
 import { BugReportRoute } from "@/features/bugReport/BugReportRoute";
 
 export interface MainTab {
@@ -74,6 +76,16 @@ const ALL_TABS: MainTab[] = [
     navTo: "/libraries",
     matchPrefix: "/libraries",
     routes: [{ path: "libraries", element: <LibrariesRoute /> }],
+  },
+  {
+    id: "study-groups",
+    label: "Groups",
+    navTo: "/study-groups",
+    matchPrefix: "/study-groups",
+    routes: [
+      { path: "study-groups", element: <StudyGroupsRoute /> },
+      { path: "study-groups/:groupId", element: <StudyGroupDetailRoute /> },
+    ],
   },
   {
     id: "bug-report",

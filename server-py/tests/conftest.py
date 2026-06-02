@@ -118,6 +118,8 @@ def _migrate_and_ingest(_python_on_path):
     if _has_corpus_data(url):
         os.environ["ALETHEIA_CORPUS_INGESTED"] = "1"
         return
+    if not os.environ.get("ALETHEIA_CORPUS_PATH"):
+        return
     subprocess.run(
         [sys.executable, "-m", "app.scripts.ingest_corpus"],
         cwd=str(_SERVER_PY),
