@@ -13,10 +13,16 @@ import os
 import pytest
 from httpx import AsyncClient, ASGITransport
 
-pytestmark = pytest.mark.skipif(
-    not os.environ.get("DATABASE_URL"),
-    reason="DATABASE_URL not set; integration tests require a running Postgres",
-)
+pytestmark = [
+    pytest.mark.skipif(
+        not os.environ.get("DATABASE_URL"),
+        reason="DATABASE_URL not set; integration tests require a running Postgres",
+    ),
+    pytest.mark.skipif(
+        not os.environ.get("ALETHEIA_CORPUS_PATH"),
+        reason="ALETHEIA_CORPUS_PATH not set; corpus SQLite unavailable in CI",
+    ),
+]
 
 
 @pytest.fixture(scope="module")
