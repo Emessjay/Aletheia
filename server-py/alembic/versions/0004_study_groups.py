@@ -15,15 +15,15 @@ Conventions carried over from 0002:
   - Soft-delete via ``deleted_at`` (author withdrawal), kept distinct from the
     moderator-driven ``status = 'removed'``.
 
-Revision ID: 0003
-Revises: 0002
+Revision ID: 0004
+Revises: 0003
 Create Date: 2026-05-31
 """
 from alembic import op
 
 
-revision = "0003"
-down_revision = "0002"
+revision = "0004"
+down_revision = "0003"
 branch_labels = None
 depends_on = None
 
