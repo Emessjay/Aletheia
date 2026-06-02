@@ -202,6 +202,35 @@ export function AudioPlayer({
     }
   };
 
+  // When pendingPlay is set (typically via the autoplay-next handoff) but the
+  // chapter's MP3 isn't cached yet, fire the download proactively. onPlayPause
+  // already handles this for the manual-click flow; the autoplay path needs the
+  // same kick. The play effect below waits for isDownloaded + canplay regardless,
+  // so once the download lands playback starts on its own.
+  useEffect(() => {
+    if (!pendingPlay) return;
+    if (isDownloaded || isDownloading) return;
+    if (!ca) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        await download.mutateAsync({
+          translation,
+          bookSlug,
+          url: ca.sourceUrl,
+          filename: ca.sourceFilename,
+        });
+      } catch (e) {
+        if (cancelled) return;
+        setPendingPlay(false);
+        setError(`Download failed: ${e instanceof Error ? e.message : String(e)}`);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [pendingPlay, isDownloaded, isDownloading, ca, translation, bookSlug, download]);
+
   // Drive the deferred play() once everything is in place: the download has
   // landed (isDownloaded), the src has bound (srcUrl), and the element has
   // enough data to begin playback (canplay). Waiting on canplay rather than
