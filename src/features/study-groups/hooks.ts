@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/auth/AuthProvider";
 import * as api from "./api";
+import type { GroupPost } from "./types";
 
 export function useGroups() {
   return useQuery({
@@ -45,19 +47,77 @@ export function useFeed(
   });
 }
 
+type NewPost = {
+  work_slug: string;
+  book_slug: string;
+  chapter: number;
+  verse: number;
+  body: string;
+  parent_id?: string;
+};
+
 export function useCreatePost(groupId: string) {
   const qc = useQueryClient();
+  const { session } = useAuth();
+  const feedKey = ["study-groups", groupId, "feed"];
   return useMutation({
-    mutationFn: (post: {
-      work_slug: string;
-      book_slug: string;
-      chapter: number;
-      verse: number;
-      body: string;
-      parent_id?: string;
-    }) => api.createPost(groupId, post),
-    onSuccess: () =>
-      qc.invalidateQueries({ queryKey: ["study-groups", groupId, "feed"] }),
+    mutationFn: (post: NewPost) => api.createPost(groupId, post),
+    // Optimistic insert: a new top-level post shows up in the feed instantly,
+    // before the server confirms, and rolls back if the request fails. Replies
+    // live in the thread view (not the feed), so they fall back to the
+    // onSettled refetch rather than being inserted optimistically here.
+    onMutate: async (post: NewPost) => {
+      if (post.parent_id) return;
+      await qc.cancelQueries({ queryKey: feedKey });
+      const snapshots = qc.getQueriesData<GroupPost[]>({ queryKey: feedKey });
+
+      const now = Date.now();
+      const optimistic: GroupPost = {
+        id: `optimistic:${now}-${Math.random().toString(36).slice(2)}`,
+        group_id: groupId,
+        parent_id: null,
+        author_id: session?.user?.id ?? "unknown",
+        work_slug: post.work_slug,
+        book_slug: post.book_slug,
+        chapter: post.chapter,
+        verse: post.verse,
+        translation: null,
+        body: post.body,
+        status: "visible",
+        moderated_by: null,
+        moderated_at: null,
+        created_at: now,
+        updated_at: now,
+        deleted_at: null,
+        reply_count: 0,
+      };
+
+      // Insert only into feeds whose anchor matches this post's location. A
+      // verse-less (chapter-level) anchor matches any verse in the chapter.
+      for (const [key, data] of snapshots) {
+        const anchor = key[3] as
+          | { work_slug: string; book_slug: string; chapter: number; verse?: number }
+          | undefined;
+        if (
+          anchor &&
+          anchor.work_slug === post.work_slug &&
+          anchor.book_slug === post.book_slug &&
+          anchor.chapter === post.chapter &&
+          (anchor.verse === undefined || anchor.verse === post.verse)
+        ) {
+          // feed is ORDER BY created_at DESC (newest first) — prepend.
+          qc.setQueryData<GroupPost[]>(key, [optimistic, ...(data ?? [])]);
+        }
+      }
+      return { snapshots };
+    },
+    onError: (_err, _post, ctx) => {
+      // Roll back every feed cache we touched to its pre-mutation snapshot.
+      ctx?.snapshots.forEach(([key, data]) => qc.setQueryData(key, data));
+    },
+    // Reconcile with server truth either way — this replaces the optimistic
+    // temp row (optimistic:<uuid>) with the real persisted post.
+    onSettled: () => qc.invalidateQueries({ queryKey: feedKey }),
   });
 }
 
