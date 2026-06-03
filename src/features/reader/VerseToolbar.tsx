@@ -29,6 +29,10 @@ export function VerseToolbar({ ref_, side, notes, onDone }: Props) {
   const [bookmarkOpen, setBookmarkOpen] = useState(false);
   const [xrefOpen, setXrefOpen] = useState(false);
   const [discussOpen, setDiscussOpen] = useState(false);
+  // Study groups are web-only (FastAPI + Postgres + Supabase); the desktop
+  // build is local-first and has no token, so hide Discuss there — same
+  // gating as the AuthMenu and the tab registry's DESKTOP_HIDDEN.
+  const isDesktop = getPlatform().info.isDesktop;
 
   return (
     <div
@@ -60,12 +64,14 @@ export function VerseToolbar({ ref_, side, notes, onDone }: Props) {
         Cross-refs
       </ToolbarButton>
 
-      <ToolbarButton
-        active={discussOpen}
-        onClick={() => setDiscussOpen((v) => !v)}
-      >
-        Discuss
-      </ToolbarButton>
+      {!isDesktop && (
+        <ToolbarButton
+          active={discussOpen}
+          onClick={() => setDiscussOpen((v) => !v)}
+        >
+          Discuss
+        </ToolbarButton>
+      )}
 
       <ToolbarButton onClick={onDone}>Done</ToolbarButton>
 
@@ -91,7 +97,7 @@ export function VerseToolbar({ ref_, side, notes, onDone }: Props) {
         </div>
       ) : null}
 
-      {discussOpen ? (
+      {discussOpen && !isDesktop ? (
         <div style={{ flexBasis: "100%", paddingTop: 8 }}>
           <DiscussVersePanel ref_={ref_} />
         </div>

@@ -129,7 +129,11 @@ const HIDDEN_ON_WEB = new Set(["patristics", "commentaries"]);
 // The "Report a bug" tab is web-only — desktop users have direct file access
 // and their bug channel is a separate decision (out of scope here). Hidden on
 // Tauri; direct `/bug-report` URL hits there fall through to the 404 catch-all.
-const DESKTOP_HIDDEN = new Set(["bug-report"]);
+// Study groups are web-only too: they live on the FastAPI + Postgres +
+// Supabase stack, which the local-first desktop build doesn't have. Worse,
+// the desktop AuthProvider reports "authenticated" without ever holding a
+// Supabase token, so every groups call there dies with "auth required".
+const DESKTOP_HIDDEN = new Set(["bug-report", "study-groups"]);
 const isDesktop = getPlatform().info.isDesktop;
 export const MAIN_TABS: MainTab[] = ALL_TABS.filter((t) => {
   if (isDesktop) return !DESKTOP_HIDDEN.has(t.id);
