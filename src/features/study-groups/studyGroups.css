@@ -1,0 +1,285 @@
+/*
+ * Study-groups visual design. Choices, not defaults:
+ *  - everything draws from the app's parchment palette (theme tokens), so
+ *    light/dark and user themes apply to the groups surfaces for free;
+ *  - cards sit on --color-bg-elevated with --color-rule hairlines, matching
+ *    the reader's popover language (radius-pop / shadow-pop);
+ *  - the accent red is reserved for primary actions and destructive/error
+ *    text — flagged posts get the warm --color-selection wash instead of
+ *    an alarm color, since flagging is a review state, not a verdict;
+ *  - phone-width (≤520px): page padding tightens, the compose/post controls
+ *    grow to comfortable tap targets, and header rows stack instead of
+ *    scrolling horizontally.
+ */
+
+.sg-page {
+  padding: 32px;
+  max-width: 700px;
+}
+
+.sg-meta {
+  font-size: 13px;
+  color: var(--color-fg-muted);
+}
+
+.sg-subtle {
+  color: var(--color-fg-subtle);
+}
+
+.sg-error {
+  color: var(--color-accent);
+  font-size: 13px;
+}
+
+.sg-code {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  background: var(--color-bg-inset);
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+}
+
+/* --- controls ------------------------------------------------------- */
+
+.sg-btn {
+  font: inherit;
+  font-size: 14px;
+  color: var(--color-fg);
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-rule-strong);
+  border-radius: var(--radius-pop);
+  padding: 4px 12px;
+  cursor: pointer;
+  min-height: 30px;
+}
+
+.sg-btn:hover:not(:disabled) {
+  border-color: var(--color-accent-muted);
+}
+
+.sg-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.sg-btn--primary {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-bg);
+}
+
+.sg-btn--primary:hover:not(:disabled) {
+  background: var(--color-accent-muted);
+}
+
+.sg-btn--danger {
+  color: var(--color-accent);
+}
+
+/* Link-shaped button: an action that reads as navigation (passage picks). */
+.sg-linklike {
+  font: inherit;
+  font-size: 14px;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--color-accent);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.sg-input,
+.sg-textarea {
+  font: inherit;
+  font-size: 15px;
+  color: var(--color-fg);
+  background: var(--color-bg-inset);
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+}
+
+.sg-input:focus,
+.sg-textarea:focus {
+  outline: none;
+  border-color: var(--color-accent-muted);
+}
+
+.sg-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+}
+
+.sg-fieldset {
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-pop);
+  background: var(--color-bg-elevated);
+  padding: 16px;
+}
+
+.sg-fieldset > legend {
+  font-size: 13px;
+  color: var(--color-fg-muted);
+  padding: 0 6px;
+}
+
+.sg-row {
+  display: flex;
+  gap: 8px;
+}
+
+.sg-row > .sg-input {
+  flex: 1;
+  min-width: 0;
+}
+
+/* --- feed ----------------------------------------------------------- */
+
+.sg-feed-header {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.sg-feed-header > h3 {
+  font-size: 15px;
+  margin: 0;
+}
+
+.sg-post {
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-pop);
+  background: var(--color-bg-elevated);
+  box-shadow: var(--shadow-pop);
+  padding: 12px 14px;
+  margin-bottom: 10px;
+}
+
+.sg-post--flagged {
+  background: var(--color-selection);
+}
+
+.sg-post--removed {
+  opacity: 0.55;
+  border-style: dashed;
+}
+
+.sg-post-author {
+  font-weight: 600;
+}
+
+.sg-post-body {
+  margin: 4px 0 8px;
+  white-space: pre-wrap;
+}
+
+.sg-post-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 13px;
+}
+
+.sg-post-actions > .sg-btn {
+  font-size: 12px;
+  padding: 2px 10px;
+  min-height: 26px;
+}
+
+.sg-status {
+  margin-left: 8px;
+  font-weight: 600;
+}
+
+.sg-status--flagged {
+  color: var(--color-hl-orange-rule);
+}
+
+.sg-status--removed {
+  color: var(--color-accent);
+}
+
+/* --- groups list ----------------------------------------------------- */
+
+.sg-group-list {
+  list-style: none;
+  padding: 0;
+  margin: 16px 0;
+}
+
+.sg-group-list > li {
+  padding: 10px 2px;
+  border-bottom: 1px solid var(--color-rule);
+}
+
+.sg-group-list a {
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--color-fg);
+  text-decoration: none;
+}
+
+.sg-group-list a:hover {
+  color: var(--color-accent);
+}
+
+.sg-role-badge {
+  margin-left: 8px;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-fg-subtle);
+}
+
+.sg-discussed {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.sg-discussed > li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 0;
+  font-size: 14px;
+}
+
+/* --- phone width ------------------------------------------------------ */
+
+@media (max-width: 520px) {
+  .sg-page {
+    padding: 16px;
+  }
+
+  /* Comfortable tap targets once there's no mouse. */
+  .sg-btn,
+  .sg-input {
+    min-height: 42px;
+  }
+
+  .sg-post-actions > .sg-btn {
+    min-height: 36px;
+  }
+
+  /* Header rows stack rather than squeeze. */
+  .sg-feed-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .sg-discussed > li {
+    flex-direction: column;
+    gap: 2px;
+    padding: 8px 0;
+  }
+
+  .sg-row {
+    flex-direction: column;
+  }
+}
