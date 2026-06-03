@@ -27,6 +27,16 @@ COPY src ./src
 # The bulk of data/ (Aletheia.sqlite, audio MP3s, sources) is intentionally
 # absent — phase 2 reads the corpus from Postgres at request time.
 COPY data/audio ./data/audio
+# Supabase keys are baked into the bundle at BUILD time (Vite inlines
+# import.meta.env.VITE_*). Railway exposes service variables to Docker
+# builds only for declared ARGs — without these two lines the bundle ships
+# the stubbed auth client and every sign-in says "auth not configured".
+# The anon key is the publishable one (already shipped to browsers), so
+# passing it as a build arg leaks nothing.
+ARG VITE_SUPABASE_URL
+ARG VITE_SUPABASE_ANON_KEY
+ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL \
+    VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY
 RUN npm run build
 
 # ---------- Stage 2: runtime ----------
