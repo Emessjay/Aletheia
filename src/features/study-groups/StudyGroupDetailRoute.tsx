@@ -17,6 +17,7 @@ import {
   type FeedAnchor,
 } from "./anchor";
 import type { GroupPost } from "./types";
+import { PostBody } from "./PostBody";
 import "./studyGroups.css";
 
 export function StudyGroupDetailRoute() {
@@ -238,7 +239,7 @@ function PostCard({
           </span>
         )}
       </div>
-      <p className="sg-post-body">{post.body}</p>
+      <PostBody body={post.body} groupId={post.group_id} />
       <div className="sg-post-actions">
         {post.reply_count != null && post.reply_count > 0 && (
           <span className="sg-subtle">
