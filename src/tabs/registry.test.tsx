@@ -44,4 +44,13 @@ describe("MAIN_TABS section-table tab gating", () => {
     expect(ids).toContain("commentaries");
     expect(ids).toContain("read");
   });
+
+  // Study groups live on the web stack (FastAPI + Postgres + Supabase). The
+  // desktop build is local-first and reports "authenticated" without ever
+  // holding a Supabase token, so the tab must not render there — every call
+  // would fail with "auth required".
+  it("shows study groups on web but hides them on the desktop build", async () => {
+    expect(await loadTabIds(false)).toContain("study-groups");
+    expect(await loadTabIds(true)).not.toContain("study-groups");
+  });
 });
