@@ -177,6 +177,18 @@
   white-space: pre-wrap;
 }
 
+/* Autolinked scripture citation inside a post body. */
+.sg-ref-link {
+  color: var(--color-accent);
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 2px;
+}
+
+.sg-ref-link:hover {
+  text-decoration-style: solid;
+}
+
 .sg-post-actions {
   display: flex;
   gap: 8px;
