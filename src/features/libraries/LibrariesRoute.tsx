@@ -20,7 +20,7 @@ export function LibrariesRoute() {
   const { status } = useAuth();
 
   return (
-    <article style={wrap}>
+    <article className="al-page">
       <header style={{ marginBottom: "2rem" }}>
         <p className="al-eyebrow">Libraries</p>
         <h1
@@ -75,7 +75,7 @@ export function LibrariesRoute() {
             style={{
               background: "transparent",
               border: 0,
-              padding: "8px 10px",
+              padding: "10px 12px",
               font: "inherit",
               color: "var(--color-fg)",
               outline: "none",
@@ -166,6 +166,7 @@ function LibrarySection({ library }: { library: LibraryRow }) {
         </h2>
         <button
           type="button"
+          className="al-tap"
           onClick={() => {
             if (window.confirm(`Delete library "${library.name}"?`)) {
               deleteLib.mutate(library.id);
@@ -199,7 +200,8 @@ function LibrarySection({ library }: { library: LibraryRow }) {
               style={{
                 display: "flex",
                 justifyContent: "space-between",
-                alignItems: "baseline",
+                alignItems: "center",
+                gap: 12,
                 padding: "6px 0",
                 borderBottom: "1px solid var(--color-rule)",
               }}
@@ -235,6 +237,7 @@ function LibrarySection({ library }: { library: LibraryRow }) {
               </Link>
               <button
                 type="button"
+                className="al-tap"
                 onClick={() =>
                   deleteBm.mutate({ id: bm.id, libraryId: library.id })
                 }
@@ -261,9 +264,3 @@ function LibrarySection({ library }: { library: LibraryRow }) {
 function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
-
-const wrap: React.CSSProperties = {
-  maxWidth: "var(--measure)",
-  margin: "0 auto",
-  padding: "2.5rem 2rem 6rem",
-};

@@ -90,7 +90,10 @@ export function AppShell() {
               style={{
                 background: "transparent",
                 border: 0,
-                padding: 4,
+                // 42px hit box; negative margin keeps the visual footprint
+                // where it was so the header layout doesn't shift.
+                padding: 12,
+                margin: -8,
                 color: "var(--color-fg-muted)",
                 cursor: "pointer",
                 lineHeight: 0,
@@ -146,7 +149,8 @@ export function AppShell() {
             style={{
               background: "transparent",
               border: 0,
-              padding: 0,
+              padding: compact ? 12 : 0,
+              margin: compact ? -8 : 0,
               font: "inherit",
               fontSize: 13,
               color: "var(--color-fg-muted)",
@@ -228,7 +232,7 @@ export function AppShell() {
                         fontSize: 12,
                         letterSpacing: "0.14em",
                         textTransform: "uppercase",
-                        padding: "10px 16px",
+                        padding: "14px 18px",
                         color: active ? "var(--color-fg)" : "var(--color-fg-muted)",
                         background: active ? "var(--color-bg-inset)" : "transparent",
                         borderLeft: active

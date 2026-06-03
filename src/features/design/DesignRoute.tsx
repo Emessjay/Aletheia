@@ -4,7 +4,7 @@ import { ThemeEditor } from "./ThemeEditor";
 
 export function DesignRoute() {
   return (
-    <div style={{ maxWidth: "44em", margin: "0 auto", padding: "2.5rem 2rem 6rem" }}>
+    <div className="al-page al-page--wide">
       <SectionHeading>Theme editor</SectionHeading>
       <ThemeEditor />
 
@@ -199,7 +199,7 @@ function StrongsPopoverMock() {
   return (
     <div
       style={{
-        width: 320,
+        width: "min(320px, 100%)",
         background: "var(--color-bg)",
         border: "1px solid var(--color-rule)",
         borderRadius: 3,
@@ -251,7 +251,7 @@ function PaletteMock() {
   return (
     <div
       style={{
-        width: 480,
+        width: "min(480px, 100%)",
         background: "var(--color-bg)",
         border: "1px solid var(--color-rule-strong)",
         boxShadow: "var(--shadow-pop)",
@@ -369,7 +369,7 @@ function SidebarMock() {
 
 function MultiLingual() {
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 20 }}>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 20 }}>
       <div>
         <div className="al-eyebrow" style={{ marginBottom: 6 }}>Hebrew</div>
         <p lang="he" style={{ fontSize: 20 }}>
@@ -409,7 +409,7 @@ function KbdRow() {
     </kbd>
   );
   return (
-    <div style={{ display: "flex", gap: 18, alignItems: "center", color: "var(--color-fg-muted)" }}>
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 18, alignItems: "center", color: "var(--color-fg-muted)" }}>
       <span>
         <Kbd>⌘</Kbd> <Kbd>K</Kbd> — command palette
       </span>

@@ -466,3 +466,39 @@ kbd {
 .al-hl-pink   { background: var(--color-hl-pink);   border-bottom-color: var(--color-hl-pink-rule); }
 .al-hl-purple { background: var(--color-hl-purple); border-bottom-color: var(--color-hl-purple-rule); }
 .al-hl-orange { background: var(--color-hl-orange); border-bottom-color: var(--color-hl-orange-rule); }
+
+/* Menu-screen page chrome (Settings / Design / Libraries / Attributions).
+   Shared wrapper so the phone-width padding lives in one place — the same
+   ≤520px breakpoint studyGroups.css established. */
+.al-page {
+  max-width: var(--measure);
+  margin: 0 auto;
+  padding: 2.5rem 2rem 6rem;
+}
+.al-page--wide {
+  max-width: 44em;
+}
+
+/* Text-style controls (underlined toggles, "Reset", "Delete", "Remove")
+   keep their compact desktop look but grow a finger-sized hit area at
+   phone width. inline-flex centers the label inside the enlarged box, so
+   underlines (drawn on an inner span) stay attached to the text. */
+.al-tap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (max-width: 520px) {
+  .al-page {
+    padding: 1.5rem 1rem 4rem;
+  }
+  .al-tap {
+    min-height: 42px;
+    min-width: 42px;
+  }
+  .al-page input[type="range"] {
+    min-height: 42px;
+    width: 100%;
+  }
+}

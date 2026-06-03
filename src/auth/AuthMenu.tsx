@@ -100,11 +100,17 @@ export function AuthMenu() {
 const buttonStyle: React.CSSProperties = {
   background: "transparent",
   border: 0,
-  padding: 0,
+  padding: "8px 0",
   font: "inherit",
   fontSize: 13,
   color: "var(--color-fg-muted)",
   cursor: "pointer",
+  // A long email must not widen the header past the viewport — that drags
+  // every screen into horizontal scroll on a phone.
+  maxWidth: "max(96px, 32vw)",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
 };
 
 const menuItemStyle: React.CSSProperties = {
