@@ -26,6 +26,13 @@ export function HomeRoute() {
           : "/reader/bible/gen/1";
         navigate(target, { replace: true });
       } catch (e) {
+        // A signed-out visitor has no saved position — that's the
+        // fresh-install path, not an error. Anonymous browsing is allowed,
+        // so land them at the default instead of an error on the front door.
+        if (e instanceof Error && e.name === "AuthRequiredError") {
+          navigate("/reader/bible/gen/1", { replace: true });
+          return;
+        }
         setError(String(e));
       }
     })();
