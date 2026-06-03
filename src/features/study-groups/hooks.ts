@@ -11,6 +11,27 @@ import type { GroupPost } from "./types";
 // false) — so idle tabs don't hammer the API.
 const POLL_MS = 5_000;
 
+export function useProfile() {
+  return useQuery({
+    queryKey: ["profile"],
+    queryFn: api.getProfile,
+    staleTime: 5 * 60_000,
+  });
+}
+
+export function useSetProfile() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (displayName: string) => api.setProfile(displayName),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["profile"] });
+      // author_name is joined into feeds/threads at read time — refresh
+      // them so the rename shows on existing posts without a reload.
+      qc.invalidateQueries({ queryKey: ["study-groups"] });
+    },
+  });
+}
+
 export function useGroups() {
   return useQuery({
     queryKey: ["study-groups"],
@@ -68,6 +89,9 @@ type NewPost = {
 export function useCreatePost(groupId: string) {
   const qc = useQueryClient();
   const { session } = useAuth();
+  // Subscribed (not just a cache read) so the optimistic post can carry the
+  // author's display name even when the feed is the first page visited.
+  const profile = useProfile();
   const feedKey = ["study-groups", groupId, "feed"];
   return useMutation({
     mutationFn: (post: NewPost) => api.createPost(groupId, post),
@@ -99,6 +123,7 @@ export function useCreatePost(groupId: string) {
         updated_at: now,
         deleted_at: null,
         reply_count: 0,
+        author_name: profile.data?.display_name ?? null,
       };
 
       // Insert only into feeds whose anchor matches this post's location. A

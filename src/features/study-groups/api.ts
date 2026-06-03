@@ -1,5 +1,5 @@
 import { getAccessToken } from "@/auth/client";
-import type { StudyGroup, GroupPost, DiscussedPassage } from "./types";
+import type { StudyGroup, GroupPost, DiscussedPassage, Profile } from "./types";
 
 class AuthRequiredError extends Error {
   constructor() {
@@ -50,6 +50,23 @@ async function req<T>(
     throw new Error(`${res.status}: ${text}`);
   }
   return res.json() as Promise<T>;
+}
+
+export async function getProfile(): Promise<Profile | null> {
+  try {
+    return await req<Profile>("/user/profile");
+  } catch (err) {
+    // No profile yet is a normal state, not an error.
+    if (err instanceof Error && err.message.startsWith("404")) return null;
+    throw err;
+  }
+}
+
+export function setProfile(displayName: string) {
+  return req<Profile>("/user/profile", {
+    method: "PUT",
+    body: { display_name: displayName },
+  });
 }
 
 export function listGroups() {

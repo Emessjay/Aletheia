@@ -21,6 +21,7 @@ from .bookmarks import bookmarks_router
 from .annotations import annotations_router
 from .kv import kv_router
 from .bug_reports import bug_reports_router
+from .profile import profile_router
 
 
 def user_router() -> APIRouter:
@@ -32,4 +33,5 @@ def user_router() -> APIRouter:
     router.include_router(annotations_router(), prefix="/annotations")
     router.include_router(kv_router(), prefix="/kv")
     router.include_router(bug_reports_router(), prefix="/bug-reports")
+    router.include_router(profile_router(), prefix="/profile")
     return router

@@ -41,6 +41,12 @@ _REPLY_COUNT = (
     " WHERE r.parent_id = p.id AND r.deleted_at IS NULL "
     "   AND r.status <> 'removed') AS reply_count"
 )
+# Author display name, resolved at read time. Deliberately a join over a
+# denormalized name column on group_post: a rename in `profile` instantly
+# applies to every existing post. NULL (no profile yet) is a valid value —
+# the frontend falls back to a truncated UUID.
+_PROFILE_JOIN = "LEFT JOIN profile pr ON pr.user_id = p.author_id"
+_AUTHOR_NAME = "pr.display_name AS author_name"
 
 
 class PostCreate(BaseModel):
@@ -120,7 +126,13 @@ def posts_router() -> APIRouter:
                 pid, group_id, parent_id, user_id, work_slug, book_slug,
                 chapter, verse, translation, body.body, now,
             )
-        return dict(row)
+            # RETURNING can't join; the author is always the caller, so one
+            # indexed lookup keeps the response shape consistent with reads.
+            result = dict(row)
+            result["author_name"] = await conn.fetchval(
+                "SELECT display_name FROM profile WHERE user_id = $1", user_id
+            )
+        return result
 
     @router.get("/groups/{group_id}/feed")
     async def list_feed(
@@ -147,8 +159,10 @@ def posts_router() -> APIRouter:
             rows = await conn.fetch(
                 f"""
                 SELECT {", ".join("p." + c for c in _POST_COLS.split(", "))},
+                       {_AUTHOR_NAME},
                        {_REPLY_COUNT}
                   FROM group_post p
+                  {_PROFILE_JOIN}
                  WHERE p.group_id = $1
                    AND p.parent_id IS NULL
                    AND p.work_slug = $2 AND p.book_slug = $3 AND p.chapter = $4
@@ -171,8 +185,13 @@ def posts_router() -> APIRouter:
         pool = await get_pool(request.app.state)
         async with pool.acquire() as conn:
             post = await conn.fetchrow(
-                f"SELECT {_POST_COLS} FROM group_post "
-                "WHERE id = $1 AND deleted_at IS NULL",
+                f"""
+                SELECT {", ".join("p." + c for c in _POST_COLS.split(", "))},
+                       {_AUTHOR_NAME}
+                  FROM group_post p
+                  {_PROFILE_JOIN}
+                 WHERE p.id = $1 AND p.deleted_at IS NULL
+                """,
                 post_id,
             )
             if post is None:
@@ -184,8 +203,10 @@ def posts_router() -> APIRouter:
             statuses, viewer = _status_param(role, user_id)
             replies = await conn.fetch(
                 f"""
-                SELECT {", ".join("p." + c for c in _POST_COLS.split(", "))}
+                SELECT {", ".join("p." + c for c in _POST_COLS.split(", "))},
+                       {_AUTHOR_NAME}
                   FROM group_post p
+                  {_PROFILE_JOIN}
                  WHERE p.parent_id = $1
                    AND p.deleted_at IS NULL
                    AND (p.status = ANY($2::text[])
