@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, useSearchParams, Link } from "react-router-dom";
 import { useAuth } from "@/auth/AuthProvider";
+import { bookDisplayName } from "@/domain/reference";
 import {
   useGroup,
   useFeed,
@@ -9,10 +10,22 @@ import {
   useModeratePost,
   useDiscussed,
 } from "./hooks";
+import {
+  anchorFromSearchParams,
+  anchorToSearchParams,
+  readerUrl,
+  type FeedAnchor,
+} from "./anchor";
 import type { GroupPost } from "./types";
 
 export function StudyGroupDetailRoute() {
   const { groupId } = useParams<{ groupId: string }>();
+  // The feed anchor lives in the query string so a discussion is
+  // bookmarkable and the reader's "Discuss" action can deep link here.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const anchor = anchorFromSearchParams(searchParams);
+  const setAnchor = (next: FeedAnchor) =>
+    setSearchParams(anchorToSearchParams(next));
   const group = useGroup(groupId ?? "");
 
   if (!groupId) return <p>Missing group ID.</p>;
@@ -38,13 +51,24 @@ export function StudyGroupDetailRoute() {
         <code>{group.data.invite_code}</code>
       </div>
 
-      <DiscussedSection groupId={groupId} />
-      <FeedSection groupId={groupId} role={group.data.role} />
+      <DiscussedSection groupId={groupId} onPick={setAnchor} />
+      <FeedSection
+        groupId={groupId}
+        role={group.data.role}
+        anchor={anchor}
+        onAnchorChange={setAnchor}
+      />
     </div>
   );
 }
 
-function DiscussedSection({ groupId }: { groupId: string }) {
+function DiscussedSection({
+  groupId,
+  onPick,
+}: {
+  groupId: string;
+  onPick: (anchor: FeedAnchor) => void;
+}) {
   const discussed = useDiscussed(groupId);
 
   if (discussed.isPending || !discussed.data?.length) return null;
@@ -65,9 +89,28 @@ function DiscussedSection({ groupId }: { groupId: string }) {
               fontSize: 14,
             }}
           >
-            <span>
-              {d.book_slug} {d.chapter}:{d.verse}
-            </span>
+            {/* Jump the feed below to this passage. */}
+            <button
+              onClick={() =>
+                onPick({
+                  work_slug: d.work_slug,
+                  book_slug: d.book_slug,
+                  chapter: d.chapter,
+                  verse: d.verse,
+                })
+              }
+              style={{
+                background: "none",
+                border: "none",
+                padding: 0,
+                font: "inherit",
+                color: "var(--color-accent, inherit)",
+                cursor: "pointer",
+                textDecoration: "underline",
+              }}
+            >
+              {bookDisplayName(d.book_slug)} {d.chapter}:{d.verse}
+            </button>
             <span style={{ opacity: 0.6 }}>
               {d.post_count} posts &middot; {d.participant_count} people
             </span>
@@ -81,38 +124,49 @@ function DiscussedSection({ groupId }: { groupId: string }) {
 function FeedSection({
   groupId,
   role,
+  anchor,
+  onAnchorChange,
 }: {
   groupId: string;
   role: "owner" | "moderator" | "member";
+  anchor: FeedAnchor;
+  onAnchorChange: (anchor: FeedAnchor) => void;
 }) {
-  const [verse, setVerse] = useState(1);
-  const anchor = {
-    work_slug: "bible",
-    book_slug: "gen",
-    chapter: 1,
-    verse,
-  };
   const feed = useFeed(groupId, anchor);
   const createPost = useCreatePost(groupId);
   const [body, setBody] = useState("");
+  const passage = `${bookDisplayName(anchor.book_slug)} ${anchor.chapter}:${anchor.verse}`;
 
   return (
     <div>
-      <h3 style={{ fontSize: 15, marginBottom: 8 }}>
-        Feed &mdash; Genesis 1:{verse}
-      </h3>
-      <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-        <label style={{ fontSize: 13 }}>
-          Verse:
-          <input
-            type="number"
-            min={1}
-            max={31}
-            value={verse}
-            onChange={(e) => setVerse(Number(e.target.value) || 1)}
-            style={{ width: 50, marginLeft: 4, padding: "4px 6px" }}
-          />
-        </label>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "baseline",
+          gap: 10,
+          marginBottom: 12,
+          flexWrap: "wrap",
+        }}
+      >
+        <h3 style={{ fontSize: 15, margin: 0 }}>Feed &mdash; {passage}</h3>
+        <button
+          onClick={() => onAnchorChange({ ...anchor, verse: anchor.verse - 1 })}
+          disabled={anchor.verse <= 1}
+          aria-label="Previous verse"
+          style={{ fontSize: 12 }}
+        >
+          &larr; Prev verse
+        </button>
+        <button
+          onClick={() => onAnchorChange({ ...anchor, verse: anchor.verse + 1 })}
+          aria-label="Next verse"
+          style={{ fontSize: 12 }}
+        >
+          Next verse &rarr;
+        </button>
+        <Link to={readerUrl(anchor)} style={{ fontSize: 13 }}>
+          Open in reader &rarr;
+        </Link>
       </div>
 
       <div style={{ marginBottom: 16 }}>
