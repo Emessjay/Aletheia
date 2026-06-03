@@ -10,7 +10,7 @@
  * rejected promise drives the rollback path.
  */
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 
@@ -20,13 +20,15 @@ vi.mock("@/auth/AuthProvider", () => ({
 
 vi.mock("./api", () => ({
   createPost: vi.fn(),
+  getFeed: vi.fn(),
 }));
 
 import * as api from "./api";
-import { useCreatePost } from "./hooks";
+import { useCreatePost, useFeed } from "./hooks";
 import type { GroupPost } from "./types";
 
 const mockCreatePost = vi.mocked(api.createPost);
+const mockGetFeed = vi.mocked(api.getFeed);
 
 const ANCHOR = { work_slug: "bible", book_slug: "gen", chapter: 1, verse: 1 };
 const FEED_KEY = ["study-groups", "g1", "feed", ANCHOR];
@@ -72,6 +74,7 @@ function setup() {
 describe("useCreatePost optimistic updates", () => {
   beforeEach(() => {
     mockCreatePost.mockReset();
+    mockGetFeed.mockReset();
   });
 
   it("prepends the new post to the feed immediately, before the server responds", async () => {
@@ -103,5 +106,50 @@ describe("useCreatePost optimistic updates", () => {
     const feed = qc.getQueryData<GroupPost[]>(FEED_KEY)!;
     expect(feed).toHaveLength(1);
     expect(feed[0].id).toBe("existing-1");
+  });
+});
+
+/**
+ * Real-time-ish updates (polling): an open feed re-fetches on a ~5s interval
+ * with no user action, so another member's post shows up without a manual
+ * refresh. Driven with fake timers — each advance past the interval must
+ * trigger another getFeed call.
+ */
+describe("useFeed polling", () => {
+  beforeEach(() => {
+    mockGetFeed.mockReset();
+  });
+
+  it("re-fetches the feed on the poll interval without user action", async () => {
+    vi.useFakeTimers();
+    try {
+      mockGetFeed.mockResolvedValue([existingPost()]);
+      const qc = new QueryClient({
+        defaultOptions: { queries: { retry: false } },
+      });
+      const wrapper = ({ children }: { children: ReactNode }) => (
+        <QueryClientProvider client={qc}>{children}</QueryClientProvider>
+      );
+      renderHook(() => useFeed("g1", ANCHOR), { wrapper });
+
+      // Initial fetch on mount.
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      expect(mockGetFeed).toHaveBeenCalledTimes(1);
+
+      // Each interval tick re-fetches, with no user interaction.
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(5_000);
+      });
+      expect(mockGetFeed).toHaveBeenCalledTimes(2);
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(5_000);
+      });
+      expect(mockGetFeed).toHaveBeenCalledTimes(3);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

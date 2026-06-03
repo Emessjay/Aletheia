@@ -3,6 +3,14 @@ import { useAuth } from "@/auth/AuthProvider";
 import * as api from "./api";
 import type { GroupPost } from "./types";
 
+// Real-time-ish updates: open feed/thread views poll so another member's
+// post shows up within ~5s without a manual refresh. Polling over
+// SSE/websockets because the payloads are small, the server is a single
+// stateless FastAPI process, and React Query already pauses the interval
+// when the window loses focus (refetchIntervalInBackground defaults to
+// false) — so idle tabs don't hammer the API.
+const POLL_MS = 5_000;
+
 export function useGroups() {
   return useQuery({
     queryKey: ["study-groups"],
@@ -44,6 +52,7 @@ export function useFeed(
     queryFn: () => api.getFeed(groupId, anchor),
     enabled: !!groupId,
     staleTime: 10_000,
+    refetchInterval: POLL_MS,
   });
 }
 
@@ -126,6 +135,8 @@ export function useThread(postId: string) {
     queryKey: ["study-groups", "thread", postId],
     queryFn: () => api.getThread(postId),
     enabled: !!postId,
+    // Replies land in open threads on the same cadence as the feed.
+    refetchInterval: POLL_MS,
   });
 }
 
