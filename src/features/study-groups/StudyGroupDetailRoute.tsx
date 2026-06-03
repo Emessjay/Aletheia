@@ -191,8 +191,11 @@ function PostCard({
       }}
     >
       <div style={{ fontSize: 12, opacity: 0.6, marginBottom: 4 }}>
-        {post.author_id.slice(0, 8)}… &middot;{" "}
-        {new Date(post.created_at).toLocaleString()}
+        {/* Display name when the author has set one; UUID stub otherwise. */}
+        <span style={{ fontWeight: 600 }}>
+          {post.author_name ?? `${post.author_id.slice(0, 8)}…`}
+        </span>{" "}
+        &middot; {new Date(post.created_at).toLocaleString()}
         {post.status !== "visible" && (
           <span
             style={{

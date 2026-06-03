@@ -21,6 +21,7 @@ vi.mock("@/auth/AuthProvider", () => ({
 vi.mock("./api", () => ({
   createPost: vi.fn(),
   getFeed: vi.fn(),
+  getProfile: vi.fn(),
 }));
 
 import * as api from "./api";
@@ -29,6 +30,7 @@ import type { GroupPost } from "./types";
 
 const mockCreatePost = vi.mocked(api.createPost);
 const mockGetFeed = vi.mocked(api.getFeed);
+const mockGetProfile = vi.mocked(api.getProfile);
 
 const ANCHOR = { work_slug: "bible", book_slug: "gen", chapter: 1, verse: 1 };
 const FEED_KEY = ["study-groups", "g1", "feed", ANCHOR];
@@ -75,6 +77,8 @@ describe("useCreatePost optimistic updates", () => {
   beforeEach(() => {
     mockCreatePost.mockReset();
     mockGetFeed.mockReset();
+    mockGetProfile.mockReset();
+    mockGetProfile.mockResolvedValue(null);
   });
 
   it("prepends the new post to the feed immediately, before the server responds", async () => {
@@ -94,6 +98,26 @@ describe("useCreatePost optimistic updates", () => {
     expect(feed[0].author_id).toBe("me");
     expect(feed[0].id).toMatch(/^optimistic:/);
     expect(feed[1].id).toBe("existing-1");
+  });
+
+  it("carries the author's display name on the optimistic post when set", async () => {
+    mockCreatePost.mockReturnValue(new Promise<GroupPost>(() => {}));
+    mockGetProfile.mockResolvedValue({ display_name: "Patrick" });
+    const { qc, result } = setup();
+    // useCreatePost subscribes to the profile — wait for it to load before
+    // posting, as a user landing on the page would have.
+    await waitFor(() => {
+      expect(qc.getQueryData(["profile"])).toEqual({ display_name: "Patrick" });
+    });
+
+    result.current.mutate(NEW_POST);
+
+    await waitFor(() => {
+      expect(qc.getQueryData<GroupPost[]>(FEED_KEY)).toHaveLength(2);
+    });
+    expect(qc.getQueryData<GroupPost[]>(FEED_KEY)![0].author_name).toBe(
+      "Patrick",
+    );
   });
 
   it("rolls the optimistic post back out of the feed when the request fails", async () => {

@@ -27,6 +27,12 @@ export interface GroupPost {
   updated_at: number;
   deleted_at: number | null;
   reply_count?: number;
+  // Resolved at read time from the author's profile; null until they set one.
+  author_name?: string | null;
+}
+
+export interface Profile {
+  display_name: string;
 }
 
 export interface DiscussedPassage {

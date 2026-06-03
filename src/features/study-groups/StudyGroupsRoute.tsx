@@ -2,7 +2,13 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/auth/AuthProvider";
 import { SignInCta } from "@/auth/SignInCta";
-import { useGroups, useCreateGroup, useJoinGroup } from "./hooks";
+import {
+  useGroups,
+  useCreateGroup,
+  useJoinGroup,
+  useProfile,
+  useSetProfile,
+} from "./hooks";
 
 export function StudyGroupsRoute() {
   const { status } = useAuth();
@@ -19,6 +25,66 @@ export function StudyGroupsRoute() {
   return <GroupsListView />;
 }
 
+/**
+ * "Posting as <name>" — the user's public display name on group posts.
+ * Until one is set, their posts show a truncated UUID, so nudge here.
+ */
+function DisplayNameEditor() {
+  const profile = useProfile();
+  const setProfile = useSetProfile();
+  const [draft, setDraft] = useState<string | null>(null);
+  const editing = draft !== null;
+
+  if (profile.isPending) return null;
+
+  const current = profile.data?.display_name ?? null;
+
+  return (
+    <div style={{ margin: "8px 0 20px", fontSize: 14 }}>
+      {!editing && (
+        <span>
+          Posting as{" "}
+          <strong>{current ?? "(no display name yet)"}</strong>{" "}
+          <button onClick={() => setDraft(current ?? "")}>
+            {current ? "Edit" : "Set display name"}
+          </button>
+        </span>
+      )}
+      {editing && (
+        <span style={{ display: "inline-flex", gap: 8 }}>
+          <input
+            type="text"
+            placeholder="Display name"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            maxLength={50}
+            style={{ padding: "4px 8px" }}
+          />
+          <button
+            onClick={() => {
+              if (!draft.trim()) return;
+              setProfile.mutate(draft.trim(), {
+                onSuccess: () => setDraft(null),
+              });
+            }}
+            disabled={setProfile.isPending || !draft.trim()}
+          >
+            {setProfile.isPending ? "Saving…" : "Save"}
+          </button>
+          <button onClick={() => setDraft(null)} disabled={setProfile.isPending}>
+            Cancel
+          </button>
+        </span>
+      )}
+      {setProfile.isError && (
+        <p style={{ color: "var(--error, red)", marginTop: 4 }}>
+          {setProfile.error.message}
+        </p>
+      )}
+    </div>
+  );
+}
+
 function GroupsListView() {
   const groups = useGroups();
   const createMut = useCreateGroup();
@@ -29,6 +95,8 @@ function GroupsListView() {
   return (
     <div style={{ padding: 32, maxWidth: 600 }}>
       <h2>Study Groups</h2>
+
+      <DisplayNameEditor />
 
       {groups.isPending && <p>Loading…</p>}
       {groups.isError && (
