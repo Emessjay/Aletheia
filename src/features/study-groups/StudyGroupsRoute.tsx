@@ -9,12 +9,13 @@ import {
   useProfile,
   useSetProfile,
 } from "./hooks";
+import "./studyGroups.css";
 
 export function StudyGroupsRoute() {
   const { status } = useAuth();
   if (status === "anonymous") {
     return (
-      <div style={{ padding: 32, maxWidth: 480 }}>
+      <div className="sg-page" style={{ maxWidth: 480 }}>
         <h2>Study Groups</h2>
         <p>Discuss Scripture with others — verse by verse.</p>
         <SignInCta label="Sign in to join or create a study group" />
@@ -45,22 +46,23 @@ function DisplayNameEditor() {
         <span>
           Posting as{" "}
           <strong>{current ?? "(no display name yet)"}</strong>{" "}
-          <button onClick={() => setDraft(current ?? "")}>
+          <button className="sg-btn" onClick={() => setDraft(current ?? "")}>
             {current ? "Edit" : "Set display name"}
           </button>
         </span>
       )}
       {editing && (
-        <span style={{ display: "inline-flex", gap: 8 }}>
+        <span className="sg-row" style={{ display: "inline-flex" }}>
           <input
             type="text"
+            className="sg-input"
             placeholder="Display name"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             maxLength={50}
-            style={{ padding: "4px 8px" }}
           />
           <button
+            className="sg-btn sg-btn--primary"
             onClick={() => {
               if (!draft.trim()) return;
               setProfile.mutate(draft.trim(), {
@@ -71,13 +73,17 @@ function DisplayNameEditor() {
           >
             {setProfile.isPending ? "Saving…" : "Save"}
           </button>
-          <button onClick={() => setDraft(null)} disabled={setProfile.isPending}>
+          <button
+            className="sg-btn"
+            onClick={() => setDraft(null)}
+            disabled={setProfile.isPending}
+          >
             Cancel
           </button>
         </span>
       )}
       {setProfile.isError && (
-        <p style={{ color: "var(--error, red)", marginTop: 4 }}>
+        <p className="sg-error" style={{ marginTop: 4 }}>
           {setProfile.error.message}
         </p>
       )}
@@ -93,44 +99,30 @@ function GroupsListView() {
   const [joinCode, setJoinCode] = useState("");
 
   return (
-    <div style={{ padding: 32, maxWidth: 600 }}>
+    <div className="sg-page" style={{ maxWidth: 600 }}>
       <h2>Study Groups</h2>
 
       <DisplayNameEditor />
 
       {groups.isPending && <p>Loading…</p>}
       {groups.isError && (
-        <p style={{ color: "var(--error, red)" }}>
+        <p className="sg-error">
           Failed to load groups: {groups.error.message}
         </p>
       )}
 
       {groups.data && groups.data.length === 0 && (
-        <p style={{ opacity: 0.7 }}>
+        <p className="sg-meta">
           You're not in any groups yet. Create one or join with an invite code.
         </p>
       )}
 
       {groups.data && groups.data.length > 0 && (
-        <ul style={{ listStyle: "none", padding: 0, margin: "16px 0" }}>
+        <ul className="sg-group-list">
           {groups.data.map((g) => (
-            <li key={g.id} style={{ marginBottom: 12 }}>
-              <Link
-                to={`/study-groups/${g.id}`}
-                style={{ fontSize: 18, fontWeight: 500 }}
-              >
-                {g.name}
-              </Link>
-              <span
-                style={{
-                  marginLeft: 8,
-                  fontSize: 12,
-                  opacity: 0.6,
-                  textTransform: "uppercase",
-                }}
-              >
-                {g.role}
-              </span>
+            <li key={g.id}>
+              <Link to={`/study-groups/${g.id}`}>{g.name}</Link>
+              <span className="sg-role-badge">{g.role}</span>
             </li>
           ))}
         </ul>
@@ -144,18 +136,19 @@ function GroupsListView() {
           gap: 16,
         }}
       >
-        <fieldset style={{ border: "1px solid var(--border, #ccc)", padding: 16 }}>
+        <fieldset className="sg-fieldset">
           <legend>Create a group</legend>
-          <div style={{ display: "flex", gap: 8 }}>
+          <div className="sg-row">
             <input
               type="text"
+              className="sg-input"
               placeholder="Group name"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               maxLength={100}
-              style={{ flex: 1, padding: "6px 10px" }}
             />
             <button
+              className="sg-btn sg-btn--primary"
               onClick={() => {
                 if (!newName.trim()) return;
                 createMut.mutate(newName.trim(), {
@@ -168,24 +161,26 @@ function GroupsListView() {
             </button>
           </div>
           {createMut.isError && (
-            <p style={{ color: "var(--error, red)", marginTop: 8 }}>
+            <p className="sg-error" style={{ marginTop: 8 }}>
               {createMut.error.message}
             </p>
           )}
         </fieldset>
 
-        <fieldset style={{ border: "1px solid var(--border, #ccc)", padding: 16 }}>
+        <fieldset className="sg-fieldset">
           <legend>Join with invite code</legend>
-          <div style={{ display: "flex", gap: 8 }}>
+          <div className="sg-row">
             <input
               type="text"
+              className="sg-input"
               placeholder="Invite code"
               value={joinCode}
               onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
               maxLength={32}
-              style={{ flex: 1, padding: "6px 10px", fontFamily: "monospace" }}
+              style={{ fontFamily: "var(--font-mono)" }}
             />
             <button
+              className="sg-btn sg-btn--primary"
               onClick={() => {
                 if (!joinCode.trim()) return;
                 joinMut.mutate(joinCode.trim(), {
@@ -198,7 +193,7 @@ function GroupsListView() {
             </button>
           </div>
           {joinMut.isError && (
-            <p style={{ color: "var(--error, red)", marginTop: 8 }}>
+            <p className="sg-error" style={{ marginTop: 8 }}>
               {joinMut.error.message}
             </p>
           )}

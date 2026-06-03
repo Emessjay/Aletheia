@@ -10,6 +10,7 @@ import { SignInCta } from "@/auth/SignInCta";
 import type { VerseRef } from "@/db/types";
 import { useGroups } from "./hooks";
 import { discussUrl } from "./anchor";
+import "./studyGroups.css";
 
 export function DiscussVersePanel({ ref_ }: { ref_: VerseRef }) {
   const { status } = useAuth();
@@ -25,13 +26,9 @@ function GroupPicker({ ref_ }: { ref_: VerseRef }) {
   const groups = useGroups();
 
   if (groups.isPending)
-    return <span style={{ color: "var(--color-fg-muted)" }}>Loading your groups…</span>;
+    return <span className="sg-meta">Loading your groups…</span>;
   if (groups.isError)
-    return (
-      <span style={{ color: "var(--error, red)", fontSize: 13 }}>
-        {groups.error.message}
-      </span>
-    );
+    return <span className="sg-error">{groups.error.message}</span>;
   if (groups.data.length === 0)
     return (
       <span style={{ fontSize: 13 }}>
