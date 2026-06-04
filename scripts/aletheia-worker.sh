@@ -80,7 +80,7 @@ effort=$(grep '^effort=' "$state_file" | head -1 | cut -d= -f2-)
 effort="${effort:-medium}"
 # Optional model override; if unset, claude picks the default (Opus).
 # Lightweights set model=sonnet to run cheaper.
-model=$(grep '^model=' "$state_file" | head -1 | cut -d= -f2-)
+model=$(grep '^model=' "$state_file" | head -1 | cut -d= -f2- || true)
 
 # Pick the session id field. Workers and lightweights use the canonical
 # session_id; the debugger half of a pair uses debugger_session_id so the

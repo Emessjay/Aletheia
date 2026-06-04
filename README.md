@@ -19,7 +19,10 @@ Sign up, create a group, share the invite code, and post on a verse.
 - **Jack Porter** wrote the corpus pipeline and license vetting, the reader
   engine (parallel columns, continuous scroll), audio narration (streaming,
   caching, autoplay), the Strong's lexicon features, the SQLite to Postgres
-  web migration, the Railway deployment, and the bug report tab.
+  web migration, the Railway deployment, and the bug report tab. In
+  addition, Jack set the project's visual design direction and
+  licensing/vision guardrails, and built and ran the multi-agent
+  development workflow that produced much of the codebase.
 - **Patrick Ramsay** wrote the multi-user layer (study group schema,
   moderation state machine, group/post/flag API, feed UI, polling,
   optimistic updates, display names, Discuss from reader, invite code
@@ -74,15 +77,25 @@ Sign up, create a group, share the invite code, and post on a verse.
 
 ## Where agents helped most and where we pushed back
 
-Claude was best when just writing the backend code. He could one-shot most
-code requested. His biggest weakness is that he sometimes tries to override
-tests, and (as one would expect) has difficulty fixing UI and UX problems.
-At one point there was a problem because the CI was red, and Claude wanted
-to patch Jack's conftest, so I had to rein it in a little. I had it leave
-Jack a comment with the diagnosis instead, and Jack shipped his own fix the
-next day. There was also a
-lot of difficulty getting it to resolve some UI problems on the phone, such
-as making the buttons possible to click.
+Jack: I particularly liked Claude's input on the graphical design.
+Clarifying a little bit about the aesthetic went a long way in terms of
+making the UI polished/not obviously vibe coded. Mostly, I found that it
+struggled with formatting text in a nice, human-friendly way (which makes
+sense, as it doesn't have visual organs). I also had to object to it quite
+often when it lost sight of the vision of the project (for example, by
+using restrictively-licensed sources). I ended up working around this by
+injecting a prompt in every session that caused it to read my CLAUDE.md and
+summarize it.
+
+Patrick: Claude was best when just writing the backend code. He could
+one-shot most code requested. His biggest weakness is that he sometimes
+tries to override tests, and (as one would expect) has difficulty fixing UI
+and UX problems. At one point there was a problem because the CI was red,
+and Claude wanted to patch Jack's conftest, so I had to rein it in a little.
+I had it leave Jack a comment with the diagnosis instead, and Jack shipped
+his own fix the next day. There was also a lot of difficulty getting it to
+resolve some UI problems on the phone, such as making the buttons possible
+to click.
 
 ## Running locally
 
