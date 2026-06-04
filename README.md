@@ -74,7 +74,7 @@ Sign up, create a group, share the invite code, and post on a verse.
 
 ## Where agents helped most and where we pushed back
 
-Claude was best when just writing the backend code. He could one-shot most
+From Patrick: Claude was best when just writing the backend code. He could one-shot most
 code requested. His biggest weakness is that he sometimes tries to override
 tests, and (as one would expect) has difficulty fixing UI and UX problems.
 At one point there was a problem because the CI was red, and Claude wanted
@@ -83,6 +83,8 @@ Jack a comment with the diagnosis instead, and Jack shipped his own fix the
 next day. There was also a
 lot of difficulty getting it to resolve some UI problems on the phone, such
 as making the buttons possible to click.
+
+From Jack:
 
 ## Running locally
 
