@@ -7,7 +7,7 @@ import {
   useState,
 } from "react";
 import "./verseFlash.css";
-import { useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
 import { useLocation, useParams, Navigate } from "react-router-dom";
 import { findBook, getChapterCount } from "@/db/queries";
 import { useCanon } from "@/db/hooks";
@@ -541,6 +541,40 @@ export function ReaderRoute() {
     enabled: valid && !bookQuery.isPending && bookQuery.data !== null,
   });
 
+  // ── Translation fallback ────────────────────────────────────────────────────
+  // The primary translation may simply not contain this book (Hebrew open on a
+  // New Testament chapter, Greek NT on Genesis). That is not a 404: keep the
+  // active tabs that can render the book, and if none can, fall back to the
+  // default translation (BSB — which itself unions in the WEB apocrypha, so it
+  // covers every real book slug). Only a slug no translation knows is NotFound.
+  const bookMissing = valid && !bookQuery.isPending && bookQuery.data === null;
+  const fallbackCandidates = useMemo<CorpusLanguage[]>(() => {
+    const langs = activeLangs.filter((l) => l !== primaryLang);
+    if (primaryLang !== "en_bsb" && !langs.includes("en_bsb")) {
+      langs.push("en_bsb");
+    }
+    return langs;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeLangs.join(","), primaryLang]);
+  const candidateQueries = useQueries({
+    queries: fallbackCandidates.map((lang) => ({
+      queryKey: ["corpus", "book", lang, book],
+      queryFn: () => findBook(lang, book),
+      enabled: bookMissing,
+    })),
+  });
+  const candidatesReady =
+    bookMissing && candidateQueries.every((q) => !q.isPending);
+  const availableLangs = candidatesReady
+    ? fallbackCandidates.filter((_, i) => candidateQueries[i].data != null)
+    : null;
+  const retainReaderLangs = useSettingsStore((s) => s.retainReaderLangs);
+  const availableKey = availableLangs?.join(",") ?? null;
+  useEffect(() => {
+    if (!availableKey) return; // pending, or nothing can render this book
+    retainReaderLangs(availableKey.split(",") as CorpusLanguage[]);
+  }, [availableKey, retainReaderLangs]);
+
   const onOpenHighlight = useCallback((h: HighlightRow, rect: DOMRect) => {
     window.getSelection()?.removeAllRanges();
     setHlUi({
@@ -561,7 +595,16 @@ export function ReaderRoute() {
   }, []);
 
   if (!valid) return <Navigate to="/reader/bible/john/1" replace />;
-  if (!bookQuery.isPending && bookQuery.data === null) return <NotFoundRoute />;
+  if (bookMissing) {
+    // NotFound only once we know no translation has this book. While the
+    // candidate checks run (or right before the tab-fallback effect flips the
+    // store and primaryLang re-resolves), render nothing rather than a flash
+    // of 404.
+    if (availableLangs !== null && availableLangs.length === 0) {
+      return <NotFoundRoute />;
+    }
+    return null;
+  }
   if (
     !chapterCountQuery.isPending &&
     chapterCountQuery.data !== null &&
