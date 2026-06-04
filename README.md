@@ -1,141 +1,127 @@
 # Aletheia
 
-A polyglot Bible study app with a bundled, license-clean corpus.
+**Live:** https://readaletheia.com
+**GitHub:** https://github.com/Emessjay/Aletheia
+**Tier targeted: Gold**
 
-Read the Hebrew Masoretic Text, the Greek Septuagint and Byzantine New
-Testament, and three English translations side by side. Look up every Hebrew
-and Greek word against Strong's, follow Treasury of Scripture Knowledge
-cross-references, read patristic commentary, and listen to public-domain
-audio narration — all offline, against a SQLite corpus shipped inside the
-app.
+Aletheia is a Bible study app for small groups. You can read six public
+domain translations in parallel (English, Greek, Hebrew) with Strong's
+lexicon lookups, audio narration, highlights, notes, and bookmarks. Study
+groups are invite-only spaces where every post is anchored to a verse.
+Members reply, flag, and moderate, and a "most discussed passages" board
+shows where the conversation is. All corpus sources are public domain.
 
-## Screenshots
+The reader works without an account. Everything social requires sign-up.
+Sign up, create a group, share the invite code, and post on a verse.
 
-Screenshots will follow.
+## Team
 
-- `docs/screenshots/reader.png` — primary reader view
-- `docs/screenshots/lexicon.png` — Strong's lookup
-- `docs/screenshots/patristics.png` — patristic commentary alongside the text
-- `docs/screenshots/design.png` — theme editor
+- **Jack Porter** wrote the corpus pipeline and license vetting, the reader
+  engine (parallel columns, continuous scroll), audio narration (streaming,
+  caching, autoplay), the Strong's lexicon features, the SQLite to Postgres
+  web migration, the Railway deployment, and the bug report tab.
+- **Patrick Ramsay** wrote the multi-user layer (study group schema,
+  moderation state machine, group/post/flag API, feed UI, polling,
+  optimistic updates, display names, Discuss from reader, invite code
+  rotation, unflag), the auth hardening (ES256 JWT verification, Postgres
+  RLS), the bug report security pass, the production connection pool fix,
+  and the phone layout work across the app.
 
-## Features
+## Where the nontrivial logic lives
 
-- Parallel reader for BSB, KJV (with Apocrypha), Brenton English LXX,
-  Brenton Greek LXX, WLC Hebrew, and the Robinson-Pierpont Byzantine Greek
-  New Testament.
-- Commentary view with the Schaff ANF/NPNF patristic editions and the
-  *Summa Theologica* (Latin + English).
-- Strong's lookups on the English side, backed by the unabridged BDB
-  Hebrew lexicon and Strong's Greek dictionary.
-- Cross-references from the Treasury of Scripture Knowledge.
-- Audio narration for English translations (Bob Souer BSB, Michael Paul
-  Johnson WEB, LibriVox KJV solos), streamed on first play and cached
-  locally.
-- Highlights, bookmarks into themed libraries, and per-verse notes — all
-  stored locally with ULID keys and tombstones so a sync layer can drop in
-  later.
-- Themeable: every color is a CSS custom property and there is a built-in
-  visual theme editor.
-- Offline-first. The bundled corpus is the source of truth; nothing
-  required at runtime calls the network.
+1. **Moderation state machine and authority matrix** in
+   `server-py/app/groups/moderation.py`. Every flag, remove, restore, and
+   unflag decision goes through two pure functions. One checks who may act
+   (role and authorship), the other checks what state may follow (a
+   transition table over visible/flagged/removed). Flagged posts stay
+   visible while they wait for a moderator. Removed posts stay visible to
+   their own author and to moderators so the record of what happened is
+   kept. An author deleting their own post is recorded separately from a
+   moderator removing it. The module has no database or framework
+   dependency, so the unit tests cover every role, status, and action
+   combination.
+2. **Most discussed passages digest** in
+   `server-py/app/routes/group/digest.py`. A rollup of posts and replies
+   by verse anchor over a trailing window. It excludes removed and deleted
+   content, requires a minimum post count, and ranks by volume, then
+   distinct authors, then recency. The docstring explains each decision.
+3. **SQLite FTS5 to Postgres tsvector rewrite** in `server-py/app/db.py`
+   (`rewrite_fts`). The frontend sends SQLite FTS5 queries because that is
+   the desktop build's native dialect. Rather than maintain two search
+   implementations, the server rewrites `MATCH`, `snippet()`, and
+   `ORDER BY rank` into `websearch_to_tsquery`, `ts_headline`, and
+   `ts_rank` against generated tsvector columns.
 
-## Quickstart
+## Design decisions
 
-Requires Node 20+, the Rust toolchain, and (for iOS builds) Xcode 17+.
-Pre-built binaries will be published once releases stabilize; for now,
-build from source.
+- Private user data (highlights, notes) is scoped by `WHERE user_id = $n`
+  on every query. Group content is shared, so access depends on holding a
+  `group_membership` row, checked by `get_role()` before anything else.
+  Non-members get a 404 rather than a 403 so the API does not reveal
+  whether a private group exists.
+- We use Supabase Auth instead of rolling our own. The server verifies the
+  Supabase JWT (ES256 via JWKS) and uses the `sub` claim as the user id,
+  so our code never handles passwords. We also enabled Postgres row level
+  security with a deny-all policy on every table, so the Supabase REST API
+  cannot read our tables even with the public anon key.
+- The live feed polls every 5 seconds instead of using websockets.
+  Payloads are small, the server is one stateless FastAPI process, and
+  React Query pauses polling in unfocused tabs. Websockets would mean
+  managing connection state for a feed that updates a few times an hour.
+- Display names are joined at read time instead of being copied onto each
+  post. A rename applies to every existing post immediately. A copied
+  `author_name` would go stale the first time someone renamed themselves.
 
-**Build the corpus once:**
+## Where agents helped most and where we pushed back
 
-```sh
-./scripts/fetch_sources.sh
-cd tools/ingest
-swift run aletheia-ingest \
-    --source-root ../../data/sources \
-    --output ../../data/Aletheia.sqlite
+Claude was best when just writing the backend code. He could one-shot most
+code requested. His biggest weakness is that he sometimes tries to override
+tests, and (as one would expect) has difficulty fixing UI and UX problems.
+At one point there was a problem because the CI was red, and Claude wanted
+to patch Jack's conftest, so I had to rein it in a little. I had it leave
+Jack a comment with the diagnosis instead, and Jack shipped his own fix the
+next day. There was also a
+lot of difficulty getting it to resolve some UI problems on the phone, such
+as making the buttons possible to click.
+
+## Running locally
+
+```bash
+docker compose up -d postgres
+pip install -r server-py/requirements.txt
+cp .env.example .env                # set SUPABASE_* for auth-gated features
+(cd server-py && DATABASE_URL=postgresql://aletheia:aletheia@localhost:5432/aletheia alembic upgrade head)
+DATABASE_URL=postgresql://aletheia:aletheia@localhost:5432/aletheia python3 -m app.scripts.ingest_corpus
+npm install && npm run build
+DATABASE_URL=postgresql://aletheia:aletheia@localhost:5432/aletheia uvicorn app.main:app --app-dir server-py
 ```
 
-**Run the desktop app:**
+Run the frontend tests with `npm test` (vitest, 185 tests) and the backend
+tests with `DATABASE_URL=... python3 -m pytest server-py -q` (about 100
+across unit, integration, and acceptance). CI runs both on every push and
+PR against a Postgres service container, and the deploy waits for green.
 
-```sh
-npm install
-./scripts/dev-instance.sh
-```
+## Gold
 
-`./scripts/dev-instance.sh` is the canonical launcher — it picks an unused
-Vite port and Tauri instance ID so multiple dev windows can run in parallel
-without colliding. Do not invoke `npm run tauri dev` directly.
+- For the pick-one requirement we chose real-time-ish updates. Open feeds
+  and threads poll every 5 seconds. The polling design decision above
+  explains why polling fits this app better than push.
+- Custom features
+  - **Scripture autolink.** Verse references typed in post bodies become
+    links into the reader.
+  - **Discuss from reader.** A verse's toolbar jumps into the group feed
+    anchored to that verse, and back.
+  - **Invite code rotation.** Moderators can replace the invite code if it
+    gets shared too widely. The old code stops working immediately and
+    existing members keep their access.
+  - **Unflag.** A flagger can withdraw a standing flag. The post returns
+    to visible only when the last flag is withdrawn and no moderator has
+    acted.
+- Phone support. Translations stack per verse below 520px, controls are
+  44px, text inputs are 16px so iOS Safari does not zoom on focus. We
+  audited every screen on a real phone.
 
-**Production build (macOS):**
+## About the app itself
 
-```sh
-npm run tauri build
-```
-
-On Linux and Windows the same `npm run tauri build` command produces a
-native bundle in `src-tauri/target/release/bundle/`.
-
-## Architecture
-
-**Desktop app.** A React + TypeScript + Vite frontend wrapped by Tauri 2.
-The Tauri shell exposes a `corpus_db_path` command and copies the bundled
-SQLite corpus into the platform's app-data directory on first launch so
-SQLite can open it with proper WAL semantics. User data (highlights,
-bookmarks, notes) lives in a separate local SQLite (`aletheia_user.db`)
-with ULID keys and soft-delete tombstones.
-
-**Ingest pipeline.** A Swift Package under [tools/ingest/](tools/ingest/)
-ingests every raw upstream source (BSB plain text, eBible.org USFM, byztxt,
-BDB, Strong's, Treasury of Scripture Knowledge, Jacob-Gray *Summa*, and
-the Schaff patristics) into the single bundled `data/Aletheia.sqlite`. The
-corpus is read-only at runtime and rebuilt offline whenever sources or
-schema change.
-
-**Web / Railway deployment.** A hosted variant is on the roadmap — the
-goal is to make the same reader available in a browser without the desktop
-install step. The corpus and React frontend are unchanged; only the Tauri
-shell is replaced with a thin server.
-
-## Corpus licensing
-
-Everything in `data/Aletheia.sqlite` is public domain or under a no-strings
-permissive license. ShareAlike, NonCommercial, and copyrighted critical
-editions (SBLGNT, NA28, BHS, Rahlfs-Hanhart, Göttingen, CCAT/CATSS) are
-explicitly out of scope. The full policy and the list of vetted vs.
-rejected sources lives in [CLAUDE.md](CLAUDE.md).
-
-## Continuous integration
-
-CI lives at [.github/workflows/ci.yml](.github/workflows/ci.yml) and runs on
-every push to `main` and on every pull request. It installs the Node and
-Python dependencies, typechecks (`npx tsc -b`), runs the vitest and pytest
-suites, and builds the production frontend bundle. A non-zero exit at any
-step fails the job.
-
-Railway auto-deploys `main` on push, so a red CI must block the deploy.
-That gate is enforced on the GitHub side via **branch protection**, not by
-the workflow itself:
-
-1. In the GitHub repo, open **Settings → Branches → Branch protection rules**.
-2. Add or edit the rule for `main`.
-3. Enable **Require status checks to pass before merging** and select the
-   `ci` check from this workflow.
-4. Enable **Require branches to be up to date before merging** so the same
-   gate also applies to direct pushes to `main`.
-
-This is a one-time UI step; the workflow itself needs no additional
-configuration to be enabled.
-
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the worktree convention, how to
-run the tests, what we'll accept into the corpus, and how to add a new
-translation or top-level tab. By participating you agree to the
-[Code of Conduct](CODE_OF_CONDUCT.md).
-
-## License
-
-Aletheia is released into the public domain under the
-[CC0 1.0 Universal](LICENSE) dedication — no attribution required, no
-strings attached. The bundled corpus is also public domain; see the
-licensing section above.
+Corpus sources, licensing policy, and the desktop (Tauri) build are
+documented in [docs/ABOUT.md](docs/ABOUT.md).
