@@ -4,7 +4,10 @@ import type { BookRow, Testament } from "@/db/types";
 
 const TESTAMENT_LABELS: Record<Testament, string> = {
   old: "Old Testament",
-  deutero: "Deuterocanon",
+  // The corpus section is the KJV Apocrypha, which is broader than the
+  // Catholic deuterocanon (1–2 Esdras and the Prayer of Manasseh are
+  // apocrypha but not deuterocanonical) — label it as both.
+  deutero: "Apocrypha/Deuterocanon",
   new: "New Testament",
 };
 
