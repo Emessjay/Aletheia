@@ -531,4 +531,19 @@ kbd {
     padding-left: 1rem !important;
     padding-right: 1rem !important;
   }
+  /* Translations tab bar: the eyebrow label takes its own line so the
+     wrapped tab rows all share the same left edge (inline, the first row
+     started after the label and later rows didn't — ragged). Tabs get
+     phone-sized labels and breathing room; their underline rides an inner
+     span, so the extra padding doesn't detach it. */
+  .al-langbar {
+    gap: 4px 18px !important;
+  }
+  .al-langbar-label {
+    flex-basis: 100%;
+  }
+  .al-langbar-tab {
+    font-size: 15px !important;
+    padding: 8px 0 !important;
+  }
 }

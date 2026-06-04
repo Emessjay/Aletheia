@@ -147,6 +147,7 @@ export function LanguageToggle() {
 
   return (
     <div
+      className="al-langbar"
       style={{
         display: "flex",
         gap: 12,
@@ -158,6 +159,7 @@ export function LanguageToggle() {
       }}
     >
       <span
+        className="al-langbar-label"
         style={{
           fontSize: 11,
           letterSpacing: "0.14em",
@@ -194,6 +196,7 @@ export function LanguageToggle() {
             onDoubleClick={() => {
               if (tab.kind === "interlinear") splitTab(idx);
             }}
+            className="al-langbar-tab"
             style={{
               background: isMergeTarget
                 ? "var(--color-bg-inset)"
@@ -204,9 +207,6 @@ export function LanguageToggle() {
               fontSize: 14,
               cursor: isDragging ? "grabbing" : "pointer",
               color: on ? "var(--color-fg)" : "var(--color-fg-subtle)",
-              borderBottom: on
-                ? "1px solid var(--color-accent)"
-                : "1px solid transparent",
               outline: isMergeTarget
                 ? "1px dashed var(--color-accent)"
                 : "none",
@@ -223,7 +223,16 @@ export function LanguageToggle() {
               userSelect: "none",
             }}
           >
-            {labelFor(tab)}
+            <span
+              style={{
+                paddingBottom: 2,
+                borderBottom: on
+                  ? "1px solid var(--color-accent)"
+                  : "1px solid transparent",
+              }}
+            >
+              {labelFor(tab)}
+            </span>
           </button>
         );
       })}
