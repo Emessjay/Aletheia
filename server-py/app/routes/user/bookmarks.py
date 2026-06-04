@@ -62,6 +62,10 @@ def bookmarks_router() -> APIRouter:
         now = now_ms()
         row_id = body.id or new_id()
         async with pool.acquire() as conn:
+            # Idempotent create: the partial unique index from migration 0007
+            # (one live bookmark per user/library/anchor) turns a double-tap
+            # into DO NOTHING, and we hand back the existing row so the
+            # client sees the same shape either way.
             row = await conn.fetchrow(
                 f"""
                 INSERT INTO bookmark (id, user_id, library_id, work_slug,
@@ -69,12 +73,40 @@ def bookmarks_router() -> APIRouter:
                                       label, created_at, updated_at,
                                       deleted_at)
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $10, NULL)
+                ON CONFLICT (user_id, library_id, work_slug,
+                             COALESCE(book_slug, ''),
+                             COALESCE(chapter, -1),
+                             COALESCE(verse, -1),
+                             COALESCE(translation, ''))
+                      WHERE deleted_at IS NULL
+                DO NOTHING
                 RETURNING {_SELECT_COLS}
                 """,
                 row_id, user_id, body.library_id, body.work_slug,
                 body.book_slug, body.chapter, body.verse, body.translation,
                 body.label, now,
             )
+            if row is None:
+                row = await conn.fetchrow(
+                    f"""
+                    SELECT {_SELECT_COLS}
+                      FROM bookmark
+                     WHERE user_id = $1 AND library_id = $2
+                       AND work_slug = $3
+                       AND COALESCE(book_slug, '') = COALESCE($4, '')
+                       AND COALESCE(chapter, -1) = COALESCE($5, -1)
+                       AND COALESCE(verse, -1) = COALESCE($6, -1)
+                       AND COALESCE(translation, '') = COALESCE($7, '')
+                       AND deleted_at IS NULL
+                    """,
+                    user_id, body.library_id, body.work_slug, body.book_slug,
+                    body.chapter, body.verse, body.translation,
+                )
+            if row is None:
+                # Vanishingly unlikely (the conflicting row was deleted
+                # between the two statements) — surface rather than crash
+                # on dict(None).
+                raise HTTPException(status_code=409, detail="bookmark conflict")
         return dict(row)
 
     @router.delete("/{bookmark_id}")
