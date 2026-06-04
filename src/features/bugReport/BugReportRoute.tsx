@@ -182,8 +182,9 @@ const legendStyle: React.CSSProperties = {
 const radioRowStyle: React.CSSProperties = {
   display: "flex",
   alignItems: "center",
-  gap: 8,
-  fontSize: 14,
+  gap: 10,
+  padding: "6px 0",
+  fontSize: 15,
   color: "var(--color-fg)",
   cursor: "pointer",
 };
@@ -191,9 +192,10 @@ const radioRowStyle: React.CSSProperties = {
 const textareaStyle: React.CSSProperties = {
   background: "var(--color-bg)",
   border: "1px solid var(--color-rule-strong)",
-  padding: "9px 11px",
+  padding: "10px 12px",
   font: "inherit",
-  fontSize: 14,
+  // 16px keeps iOS Safari from auto-zooming the viewport on focus.
+  fontSize: 16,
   color: "var(--color-fg)",
   resize: "vertical",
 };
@@ -211,12 +213,12 @@ const errorStyle: React.CSSProperties = {
 function submitButtonStyle(busy: boolean): React.CSSProperties {
   return {
     alignSelf: "flex-start",
-    padding: "8px 16px",
+    padding: "12px 18px",
     background: "var(--color-fg)",
     color: "var(--color-bg)",
     border: 0,
     cursor: busy ? "wait" : "pointer",
-    fontSize: 13,
+    fontSize: 14,
     letterSpacing: "0.08em",
     textTransform: "uppercase",
   };

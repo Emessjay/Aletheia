@@ -196,6 +196,7 @@ function ToolbarButton({
   return (
     <button
       type="button"
+      className="al-tap"
       onClick={onClick}
       style={{
         background: "transparent",
@@ -204,13 +205,19 @@ function ToolbarButton({
         font: "inherit",
         fontSize: 13,
         color: active ? "var(--color-fg)" : "var(--color-fg-muted)",
-        borderBottom: active
-          ? "1px solid var(--color-accent)"
-          : "1px solid transparent",
         cursor: "pointer",
       }}
     >
-      {children}
+      <span
+        style={{
+          paddingBottom: 2,
+          borderBottom: active
+            ? "1px solid var(--color-accent)"
+            : "1px solid transparent",
+        }}
+      >
+        {children}
+      </span>
     </button>
   );
 }
@@ -262,7 +269,8 @@ function NoteEditor({
           padding: "8px 10px",
           color: "var(--color-fg)",
           font: "inherit",
-          fontSize: 15,
+          // 16px keeps iOS Safari from auto-zooming the viewport on focus.
+          fontSize: 16,
           resize: "vertical",
           outline: "none",
         }}
@@ -270,6 +278,7 @@ function NoteEditor({
       <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
         <button
           type="button"
+          className="al-tap"
           onClick={save}
           style={{
             background: "transparent",
@@ -289,6 +298,7 @@ function NoteEditor({
         {existing ? (
           <button
             type="button"
+            className="al-tap"
             onClick={() => deleteMut.mutate({ id: existing.id, ref: ref_ })}
             style={{
               background: "transparent",
@@ -365,11 +375,12 @@ function BookmarkPicker({
               });
               onClose();
             }}
+            className="al-tap"
             style={{
               background: "transparent",
               border: "1px solid var(--color-rule-strong)",
               borderRadius: 0,
-              padding: "3px 8px",
+              padding: "3px 10px",
               font: "inherit",
               fontSize: 13,
               cursor: "pointer",
@@ -391,15 +402,17 @@ function BookmarkPicker({
             borderBottom: "1px solid var(--color-rule)",
             padding: "4px 6px",
             font: "inherit",
-            fontSize: 14,
+            // 16px: iOS Safari focus-zoom threshold.
+            fontSize: 16,
             color: "var(--color-fg)",
             outline: "none",
             flex: 1,
-            maxWidth: 220,
+            maxWidth: "min(220px, 100%)",
           }}
         />
         <button
           type="button"
+          className="al-tap"
           disabled={!newName.trim()}
           onClick={async () => {
             const name = newName.trim();

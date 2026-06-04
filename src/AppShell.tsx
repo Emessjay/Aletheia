@@ -194,7 +194,11 @@ export function AppShell() {
                 position: "absolute",
                 inset: 0,
                 background: "var(--color-scrim)",
-                zIndex: 50,
+                // Above the reader's content-level popovers (verse toolbar
+                // 150, highlight popover 200, audio bar 90) so an open verse
+                // toolbar can't float on top of the nav drawer; below the
+                // true modals (palette/auth 300, keyboard help 400).
+                zIndex: 260,
               }}
             />
             <div
@@ -204,7 +208,7 @@ export function AppShell() {
                 top: 0,
                 bottom: 0,
                 width: "min(280px, 80vw)",
-                zIndex: 60,
+                zIndex: 270,
                 boxShadow: "var(--shadow-pop)",
                 background: "var(--color-bg-elevated)",
                 display: "flex",
