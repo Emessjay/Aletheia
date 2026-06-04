@@ -297,8 +297,9 @@ function RadioRow({
 
 function CheckRow({ on, onClick }: { on: boolean; onClick: () => void }) {
   // The 28×16 track is an inner span; the button itself is a transparent
-  // padded hit area (and .al-tap grows it to 42px at phone width), so the
-  // toggle stays visually small but is comfortably tappable.
+  // padded hit area (and .al-tap grows it at phone width), so the toggle
+  // stays visually small on desktop but is comfortably tappable. At phone
+  // width the .al-toggle-track rule scales the visual itself up too.
   return (
     <button
       type="button"
@@ -315,6 +316,7 @@ function CheckRow({ on, onClick }: { on: boolean; onClick: () => void }) {
       aria-pressed={on}
     >
       <span
+        className="al-toggle-track"
         style={{
           display: "inline-block",
           background: on ? "var(--color-accent)" : "transparent",

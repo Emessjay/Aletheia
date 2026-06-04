@@ -494,11 +494,22 @@ kbd {
     padding: 1.5rem 1rem 4rem;
   }
   .al-tap {
-    min-height: 42px;
-    min-width: 42px;
+    min-height: 44px;
+    min-width: 44px;
+    /* Visibly bigger, not just a bigger hitbox: the labels are inline-styled
+       at 13–14px per control, so the phone override needs !important. One
+       declaration here beats threading a viewport check through every
+       inline style. */
+    font-size: 15px !important;
+  }
+  /* The settings on/off toggle is a 28×16 inline-styled track; scale the
+     visual up to finger size without disturbing the knob's inline offset
+     math. */
+  .al-toggle-track {
+    transform: scale(1.4);
   }
   .al-page input[type="range"] {
-    min-height: 42px;
+    min-height: 44px;
     width: 100%;
   }
 }
