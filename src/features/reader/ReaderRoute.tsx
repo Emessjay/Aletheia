@@ -576,7 +576,7 @@ export function ReaderRoute() {
     nextChapterKey(stack.chapters[stack.chapters.length - 1], canon) === null;
 
   return (
-    <article ref={articleRef} style={readerWrap}>
+    <article ref={articleRef} className="al-reader-wrap" style={readerWrap}>
       <LanguageToggle />
       <div style={{ margin: "0 0 1.75rem" }}>
         <ChapterPicker

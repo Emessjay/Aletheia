@@ -40,7 +40,7 @@ export function AuthMenu() {
       <button
         type="button"
         onClick={() => showAuth("signin")}
-        style={buttonStyle}
+        className="al-authmenu" style={buttonStyle}
       >
         Sign in
       </button>
@@ -56,7 +56,7 @@ export function AuthMenu() {
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="menu"
         aria-expanded={open}
-        style={buttonStyle}
+        className="al-authmenu" style={buttonStyle}
       >
         {email}
       </button>
