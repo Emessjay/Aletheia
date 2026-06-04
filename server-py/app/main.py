@@ -22,7 +22,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
-from .auth import resolve_jwt_secret
+from .auth import fetch_jwks, resolve_jwt_secret
 from .config import resolve_audio_cache, resolve_static_dir
 from .db import create_pool, resolve_database_url
 from .routes.audio import audio_router
@@ -50,6 +50,12 @@ async def lifespan(app: FastAPI):
     log.info("audio cache: %s", resolve_audio_cache())
     log.info("static dir: %s", app.state.static_dir)
     app.state.pool = await create_pool(database_url)
+    # Supabase's public ES256 signing keys. A blocking call at boot is
+    # deliberate — one small GET before serving beats per-request latency.
+    # None (no Supabase URL, or fetch failure) is non-fatal: the corpus
+    # endpoints don't need auth, and get_current_user_id retries lazily.
+    app.state.jwks = fetch_jwks()
+    log.info("auth jwks: %s", "loaded" if app.state.jwks else "unavailable")
     try:
         yield
     finally:
@@ -68,6 +74,7 @@ def create_app() -> FastAPI:
     # Cached at process start so request handlers don't re-read the env.
     # Unset → /api/user/* returns 503 (the corpus endpoints still work).
     app.state.jwt_secret = resolve_jwt_secret()
+    app.state.jwks = None  # populated by lifespan, or lazily on first ES256 token
 
     @app.get("/api/health")
     async def health() -> JSONResponse:
