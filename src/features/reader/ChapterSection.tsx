@@ -44,6 +44,7 @@ import { VerseInline } from "./VerseInline";
 import { InterlinearWord } from "./InterlinearWord";
 import { InterlinearColumn } from "./InterlinearColumn";
 import { toRoman } from "./roman";
+import { useViewportWidth } from "@/lib/useViewportWidth";
 import {
   chapterKeyId,
   sameKey,
@@ -304,6 +305,33 @@ function MultiTabGrid({
     return [...set].sort((a, b) => a - b);
   }, [chapters]);
 
+  // Below ~520px, N side-by-side columns are unreadable (4 tabs ≈ 60–90px
+  // each) and a long unbreakable Hebrew/Greek word paints straight over the
+  // neighbouring column. Stack the translations per verse instead — the
+  // layout every mobile parallel Bible converges on. Desktop and tablet are
+  // untouched.
+  const stacked = useViewportWidth() < 520 && tabs.length > 1;
+  if (stacked) {
+    return (
+      <StackedVerses
+        tabs={tabs}
+        chapters={chapters}
+        pending={pending}
+        errors={errors}
+        chapterKey={chapterKey}
+        chapterNum={chapterNum}
+        fallbackBookName={fallbackBookName}
+        verseNumbers={verseNumbers}
+        highlights={highlights}
+        notes={notes}
+        selection={selection}
+        onSelectVerse={onSelectVerse}
+        onOpenStrongs={onOpenStrongs}
+        onOpenHighlight={onOpenHighlight}
+      />
+    );
+  }
+
   return (
     <div
       style={{
@@ -427,38 +455,214 @@ function TabColumnCells({
             data-verse-cell={n}
             data-verse-cell-side={colSide ?? undefined}
             data-column={tab.kind === "single" ? tab.lang : tab.primary}
-            style={{ gridColumn, gridRow, minWidth: 0, display: "block" }}
+            style={{
+              gridColumn,
+              gridRow,
+              minWidth: 0,
+              display: "block",
+              // A long Hebrew/Greek token must break rather than paint over
+              // the neighbouring column when the columns get narrow.
+              overflowWrap: "break-word",
+            }}
           >
-            {tab.kind === "single" ? (
-              <SingleVerseCell
-                tab={tab}
-                verse={verse}
-                words={chapter.wordsByVerse[verse.id]}
-                side={colSide}
-                isSelected={isSelected}
-                highlights={highlights}
-                notes={notes}
-                onSelectVerse={onSelectVerse}
-                onOpenStrongs={onOpenStrongs}
-                onOpenHighlight={onOpenHighlight}
-              />
-            ) : (
-              <InterlinearVerseCell
-                tab={tab}
-                verse={verse}
-                words={chapter.wordsByVerse[verse.id] ?? []}
-                side={colSide}
-                isSelected={isSelected}
-                highlights={highlights}
-                notes={notes}
-                onSelectVerse={onSelectVerse}
-                onOpenStrongs={onOpenStrongs}
-              />
-            )}
+            <VerseCell
+              tab={tab}
+              colSide={colSide}
+              verse={verse}
+              words={chapter.wordsByVerse[verse.id]}
+              isSelected={isSelected}
+              highlights={highlights}
+              notes={notes}
+              onSelectVerse={onSelectVerse}
+              onOpenStrongs={onOpenStrongs}
+              onOpenHighlight={onOpenHighlight}
+            />
           </div>
         );
       })}
     </>
+  );
+}
+
+/** The single/interlinear branch shared by the grid and stacked layouts. */
+function VerseCell({
+  tab,
+  colSide,
+  verse,
+  words,
+  isSelected,
+  highlights,
+  notes,
+  onSelectVerse,
+  onOpenStrongs,
+  onOpenHighlight,
+}: {
+  tab: Tab;
+  colSide: SideKey | null;
+  verse: VerseRow;
+  words: WordRow[] | undefined;
+  isSelected: boolean;
+  highlights: HighlightRow[];
+  notes: NoteRow[];
+  onSelectVerse: (n: number | null, side: SideKey | null) => void;
+  onOpenStrongs: (id: string, rect: DOMRect) => void;
+  onOpenHighlight: (highlightId: string, rect: DOMRect) => void;
+}) {
+  return tab.kind === "single" ? (
+    <SingleVerseCell
+      tab={tab}
+      verse={verse}
+      words={words}
+      side={colSide}
+      isSelected={isSelected}
+      highlights={highlights}
+      notes={notes}
+      onSelectVerse={onSelectVerse}
+      onOpenStrongs={onOpenStrongs}
+      onOpenHighlight={onOpenHighlight}
+    />
+  ) : (
+    <InterlinearVerseCell
+      tab={tab}
+      verse={verse}
+      words={words ?? []}
+      side={colSide}
+      isSelected={isSelected}
+      highlights={highlights}
+      notes={notes}
+      onSelectVerse={onSelectVerse}
+      onOpenStrongs={onOpenStrongs}
+    />
+  );
+}
+
+/**
+ * Phone layout for multiple open translations: one column, the translations
+ * stacked under each verse with a small tag identifying each rendering. One
+ * combined chapter header replaces the per-column headers; per-tab loading /
+ * error / not-available states render as compact lines under it.
+ */
+function StackedVerses({
+  tabs,
+  chapters,
+  pending,
+  errors,
+  chapterKey,
+  chapterNum,
+  fallbackBookName,
+  verseNumbers,
+  highlights,
+  notes,
+  selection,
+  onSelectVerse,
+  onOpenStrongs,
+  onOpenHighlight,
+}: Omit<ColumnsLayoutProps, "workSlug" | "bookSlug" | "dropCapsEnabled"> & {
+  verseNumbers: number[];
+}) {
+  const bookName =
+    chapters.find((c) => c !== null)?.book.name ?? fallbackBookName;
+  const labelFor = (tab: Tab) =>
+    tab.kind === "single"
+      ? translationShortLabel(tab.lang)
+      : interlinearLabel(tab.primary, tab.secondary);
+
+  return (
+    <div>
+      <header style={{ marginBottom: "1.25rem" }}>
+        <p className="al-eyebrow">{tabs.map(labelFor).join(" · ")}</p>
+        <p className="al-chapter-label" style={{ marginTop: 4 }}>
+          {`${bookName} · Chapter ${toRoman(chapterNum)}`}
+        </p>
+      </header>
+      {tabs.map((tab, i) =>
+        pending[i] ? (
+          <p key={`s:${i}`} style={{ color: "var(--color-fg-muted)" }}>
+            {labelFor(tab)}: loading…
+          </p>
+        ) : errors[i] ? (
+          <pre key={`s:${i}`} style={{ color: "var(--color-accent)" }}>
+            {`${labelFor(tab)}: ${String(errors[i])}`}
+          </pre>
+        ) : !chapters[i] ? (
+          <p
+            key={`s:${i}`}
+            style={{ color: "var(--color-fg-subtle)", fontStyle: "italic" }}
+          >
+            Not available in {labelFor(tab)}.
+          </p>
+        ) : null,
+      )}
+      {verseNumbers.map((n) => (
+        <div
+          key={`v:${n}`}
+          style={{
+            marginBottom: "1.1em",
+            paddingBottom: "0.35em",
+            borderBottom: "1px solid var(--color-rule)",
+          }}
+        >
+          {tabs.map((tab, colIdx) => {
+            const chapter = chapters[colIdx];
+            const verse = chapter?.verses.find((v) => v.number === n);
+            if (!chapter || !verse) return null;
+            const colSide = sideOf(
+              tab.kind === "single" ? tab.lang : tab.primary,
+            );
+            const isSelected = isSelectedVerse(
+              selection,
+              chapterKey,
+              n,
+              colSide,
+            );
+            return (
+              <div
+                key={
+                  tab.kind === "single"
+                    ? `s:${tab.lang}:${colIdx}`
+                    : `i:${tab.primary}+${tab.secondary}:${colIdx}`
+                }
+                data-verse-cell={n}
+                data-verse-cell-side={colSide ?? undefined}
+                data-column={tab.kind === "single" ? tab.lang : tab.primary}
+                style={{
+                  minWidth: 0,
+                  overflowWrap: "break-word",
+                  marginBottom: "0.45em",
+                }}
+              >
+                <span
+                  style={{
+                    display: "block",
+                    fontSize: 10,
+                    letterSpacing: "0.12em",
+                    textTransform: "uppercase",
+                    color: "var(--color-fg-subtle)",
+                    marginBottom: 1,
+                    // The tag reads left-to-right even above RTL Hebrew.
+                    direction: "ltr",
+                  }}
+                >
+                  {labelFor(tab)}
+                </span>
+                <VerseCell
+                  tab={tab}
+                  colSide={colSide}
+                  verse={verse}
+                  words={chapter.wordsByVerse[verse.id]}
+                  isSelected={isSelected}
+                  highlights={highlights}
+                  notes={notes}
+                  onSelectVerse={onSelectVerse}
+                  onOpenStrongs={onOpenStrongs}
+                  onOpenHighlight={onOpenHighlight}
+                />
+              </div>
+            );
+          })}
+        </div>
+      ))}
+    </div>
   );
 }
 

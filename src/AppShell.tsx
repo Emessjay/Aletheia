@@ -285,7 +285,7 @@ function TopBarLink({
 
 function MenuIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round">
+    <svg className="al-icon" width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round">
       <path d="M3 5h12M3 9h12M3 13h12" />
     </svg>
   );
@@ -293,7 +293,7 @@ function MenuIcon() {
 
 function SearchIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round">
+    <svg className="al-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round">
       <circle cx="7" cy="7" r="4.5" />
       <path d="M10.5 10.5 14 14" />
     </svg>

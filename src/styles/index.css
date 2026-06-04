@@ -512,4 +512,23 @@ kbd {
     min-height: 44px;
     width: 100%;
   }
+  /* Header icon buttons (hamburger, search, theme) read too small at
+     desktop scale on a phone — CSS width/height beats the SVGs' own
+     16/18px presentation attributes. */
+  svg.al-icon {
+    width: 22px;
+    height: 22px;
+  }
+  /* The sign-in / account control keeps its inline-block layout (the
+     email ellipsis needs it), so it can't take .al-tap — bump it here. */
+  .al-authmenu {
+    font-size: 15px;
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+  /* Reader page gutters: 2rem a side is a fifth of a phone screen. */
+  .al-reader-wrap {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
 }
