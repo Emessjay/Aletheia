@@ -132,7 +132,9 @@ async def ingest(database_url: str, corpus_path: Path) -> None:
 
     sqlite_conn = sqlite3.connect(f"file:{corpus_path}?mode=ro", uri=True)
     try:
-        pg = await asyncpg.connect(database_url)
+        # statement_cache_size=0 keeps this valid through Supavisor's
+        # transaction-mode pooler (same rationale as app/db.py::create_pool).
+        pg = await asyncpg.connect(database_url, statement_cache_size=0)
         try:
             t0 = time.monotonic()
             async with pg.transaction():

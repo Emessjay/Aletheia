@@ -47,12 +47,28 @@ def resolve_database_url() -> str | None:
 
 
 async def create_pool(database_url: str) -> asyncpg.Pool:
-    """Open a modestly-sized pool. Fails fast on bad credentials/host."""
+    """Open a modestly-sized pool. Fails fast on bad credentials/host.
+
+    Sized and configured for Supabase's Supavisor pooler in **transaction
+    mode** (port 6543). Session mode (port 5432) pins one server slot per
+    client connection and the free tier caps those at 15 — two app
+    containers overlapping during a rolling deploy (2×10) blew straight
+    past it (EMAXCONNSESSION in production). Transaction mode multiplexes
+    clients over the server pool instead, but it cannot support asyncpg's
+    automatic prepared-statement cache (statements prepared on one server
+    connection aren't visible on the next), so the cache must be off.
+    Costs a re-parse per query against a direct/session connection too —
+    acceptable, and it keeps one configuration valid for every DSN.
+
+    min_size=0 so an idle container (the old one draining during a
+    deploy) holds nothing.
+    """
     return await asyncpg.create_pool(
         dsn=database_url,
-        min_size=2,
+        min_size=0,
         max_size=10,
         command_timeout=30,
+        statement_cache_size=0,
     )
 
 
