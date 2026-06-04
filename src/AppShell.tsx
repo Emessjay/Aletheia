@@ -229,10 +229,10 @@ export function AppShell() {
                       to={tab.navTo}
                       style={{
                         textDecoration: "none",
-                        fontSize: 12,
+                        fontSize: 13,
                         letterSpacing: "0.14em",
                         textTransform: "uppercase",
-                        padding: "14px 18px",
+                        padding: "15px 18px",
                         color: active ? "var(--color-fg)" : "var(--color-fg-muted)",
                         background: active ? "var(--color-bg-inset)" : "transparent",
                         borderLeft: active

@@ -268,14 +268,25 @@
     padding: 16px;
   }
 
-  /* Comfortable tap targets once there's no mouse. */
-  .sg-btn,
-  .sg-input {
-    min-height: 42px;
+  /* Comfortable tap targets once there's no mouse — and visibly larger,
+     not just a bigger hitbox: 15px labels and roomier padding so the
+     buttons look finger-sized, not desktop controls stretched tall. */
+  .sg-btn {
+    min-height: 44px;
+    font-size: 15px;
+    padding: 8px 16px;
+  }
+
+  .sg-input,
+  .sg-textarea {
+    min-height: 44px;
+    /* 16px is the iOS Safari threshold: any focused input below it
+       triggers an automatic viewport zoom, which feels broken. */
+    font-size: 16px;
   }
 
   .sg-post-actions > .sg-btn {
-    min-height: 36px;
+    min-height: 40px;
   }
 
   /* Header rows stack rather than squeeze. */

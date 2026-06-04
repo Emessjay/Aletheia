@@ -158,12 +158,12 @@ export function AuthScreen() {
             disabled={busy}
             style={{
               marginTop: 4,
-              padding: "8px 14px",
+              padding: "12px 14px",
               background: "var(--color-fg)",
               color: "var(--color-bg)",
               border: 0,
               cursor: busy ? "wait" : "pointer",
-              fontSize: 13,
+              fontSize: 14,
               letterSpacing: "0.08em",
               textTransform: "uppercase",
             }}
@@ -179,9 +179,10 @@ export function AuthScreen() {
 const inputStyle: React.CSSProperties = {
   background: "var(--color-bg)",
   border: "1px solid var(--color-rule-strong)",
-  padding: "7px 9px",
+  padding: "10px 12px",
   font: "inherit",
-  fontSize: 14,
+  // 16px keeps iOS Safari from auto-zooming the viewport on focus.
+  fontSize: 16,
   color: "var(--color-fg)",
 };
 
@@ -201,9 +202,9 @@ function TabButton({
       style={{
         background: "transparent",
         border: 0,
-        padding: "6px 0",
+        padding: "10px 0",
         font: "inherit",
-        fontSize: 12,
+        fontSize: 13,
         letterSpacing: "0.14em",
         textTransform: "uppercase",
         color: active ? "var(--color-fg)" : "var(--color-fg-muted)",
