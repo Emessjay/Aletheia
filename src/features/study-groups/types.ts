@@ -29,6 +29,9 @@ export interface GroupPost {
   reply_count?: number;
   // Resolved at read time from the author's profile; null until they set one.
   author_name?: string | null;
+  // Whether the requesting user holds a standing flag on this post — drives
+  // the Flag/Unflag toggle. Absent on create responses (always false there).
+  viewer_flagged?: boolean;
 }
 
 export interface Profile {

@@ -360,3 +360,89 @@ async def test_non_member_rotation_404s_not_403(app_with_postgres):
     async with auth_client(app, CAROL_ID) as client:
         resp = await client.post(f"/api/groups/{group['id']}/rotate-code")
     assert resp.status_code == 404
+
+
+# --------------------------------------------------------------------------- #
+# Unflag                                                                      #
+# --------------------------------------------------------------------------- #
+@pytest.mark.asyncio
+async def test_unflagging_the_last_flag_returns_post_to_visible(
+    app_with_postgres,
+):
+    app = app_with_postgres
+    group = await _create_group(app, ALICE_ID)
+    await _join(app, BOB_ID, group["invite_code"])
+    post = (await _post(app, ALICE_ID, group["id"], GEN_1_1)).json()
+
+    async with auth_client(app, BOB_ID) as client:
+        flagged = await client.post(f"/api/posts/{post['id']}/flag", json={})
+    assert flagged.json()["status"] == "flagged"
+
+    async with auth_client(app, BOB_ID) as client:
+        unflagged = await client.delete(f"/api/posts/{post['id']}/flag")
+    assert unflagged.status_code == 200, unflagged.text
+    assert unflagged.json()["status"] == "visible"
+
+
+@pytest.mark.asyncio
+async def test_unflag_keeps_flagged_while_another_flag_stands(
+    app_with_postgres,
+):
+    app = app_with_postgres
+    group = await _create_group(app, ALICE_ID)
+    await _join(app, BOB_ID, group["invite_code"])
+    await _join(app, CAROL_ID, group["invite_code"])
+    post = (await _post(app, ALICE_ID, group["id"], GEN_1_1)).json()
+
+    for flagger in (BOB_ID, CAROL_ID):
+        async with auth_client(app, flagger) as client:
+            await client.post(f"/api/posts/{post['id']}/flag", json={})
+
+    # Bob withdraws; Carol's flag still stands.
+    async with auth_client(app, BOB_ID) as client:
+        resp = await client.delete(f"/api/posts/{post['id']}/flag")
+    assert resp.json()["status"] == "flagged"
+
+    # Carol withdraws the last one; the post recovers.
+    async with auth_client(app, CAROL_ID) as client:
+        resp = await client.delete(f"/api/posts/{post['id']}/flag")
+    assert resp.json()["status"] == "visible"
+
+
+@pytest.mark.asyncio
+async def test_unflag_requires_a_standing_flag_and_membership(
+    app_with_postgres,
+):
+    app = app_with_postgres
+    group = await _create_group(app, ALICE_ID)
+    await _join(app, BOB_ID, group["invite_code"])
+    post = (await _post(app, ALICE_ID, group["id"], GEN_1_1)).json()
+
+    # A member with no standing flag has nothing to withdraw.
+    async with auth_client(app, BOB_ID) as client:
+        resp = await client.delete(f"/api/posts/{post['id']}/flag")
+    assert resp.status_code == 404
+
+    # A non-member gets the no-leak 404 before the flag lookup.
+    async with auth_client(app, CAROL_ID) as client:
+        resp = await client.delete(f"/api/posts/{post['id']}/flag")
+    assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_feed_reports_viewer_flagged_per_viewer(app_with_postgres):
+    app = app_with_postgres
+    group = await _create_group(app, ALICE_ID)
+    await _join(app, BOB_ID, group["invite_code"])
+    post = (await _post(app, ALICE_ID, group["id"], GEN_1_1)).json()
+
+    async with auth_client(app, BOB_ID) as client:
+        await client.post(f"/api/posts/{post['id']}/flag", json={})
+
+    async with auth_client(app, BOB_ID) as client:
+        feed = await client.get(f"/api/groups/{group['id']}/feed", params=GEN_1_1)
+    assert feed.json()[0]["viewer_flagged"] is True
+
+    async with auth_client(app, ALICE_ID) as client:
+        feed = await client.get(f"/api/groups/{group['id']}/feed", params=GEN_1_1)
+    assert feed.json()[0]["viewer_flagged"] is False

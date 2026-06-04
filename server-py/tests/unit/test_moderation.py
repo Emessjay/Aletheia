@@ -18,6 +18,7 @@ from app.groups.moderation import (
     can_reply,
     can_rotate_invite_code,
     can_view_post,
+    unflag_result,
     is_member,
     transition,
     visible_statuses_for,
@@ -72,6 +73,29 @@ def test_plain_member_may_not_rotate_invite_code():
 
 def test_non_member_may_not_rotate_invite_code():
     assert can_rotate_invite_code(None) is False
+
+
+# --------------------------------------------------------------------------- #
+# Unflag (withdrawing a standing flag)                                        #
+# --------------------------------------------------------------------------- #
+def test_withdrawing_the_last_flag_restores_visible():
+    assert unflag_result(PostStatus.FLAGGED, other_flags_remain=False) is (
+        PostStatus.VISIBLE
+    )
+
+
+def test_withdrawing_one_of_several_flags_stays_flagged():
+    assert unflag_result(PostStatus.FLAGGED, other_flags_remain=True) is (
+        PostStatus.FLAGGED
+    )
+
+
+@pytest.mark.parametrize("status", [PostStatus.VISIBLE, PostStatus.REMOVED])
+def test_unflag_never_moves_a_non_flagged_post(status):
+    # A removed post keeps the moderator's decision; a visible post (flags
+    # previously dismissed by a restore) stays visible. Row deletion is the
+    # route's business — the status must not move either way.
+    assert unflag_result(status, other_flags_remain=False) is status
 
 
 # --------------------------------------------------------------------------- #
