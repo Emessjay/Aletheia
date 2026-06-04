@@ -308,3 +308,55 @@ async def test_most_discussed_ranks_by_volume_and_applies_threshold(app_with_pos
     assert top["verse"] == 1
     assert top["post_count"] == 3
     assert top["participant_count"] == 2
+
+
+# --------------------------------------------------------------------------- #
+# Invite-code rotation                                                        #
+# --------------------------------------------------------------------------- #
+@pytest.mark.asyncio
+async def test_owner_rotates_code_and_old_code_stops_working(app_with_postgres):
+    app = app_with_postgres
+    group = await _create_group(app, ALICE_ID)
+    old_code = group["invite_code"]
+
+    async with auth_client(app, ALICE_ID) as client:
+        resp = await client.post(f"/api/groups/{group['id']}/rotate-code")
+    assert resp.status_code == 200, resp.text
+    new_code = resp.json()["invite_code"]
+    assert new_code != old_code
+
+    # The leaked (old) code no longer admits anyone…
+    stale = await _join(app, BOB_ID, old_code)
+    assert stale.status_code == 404
+    # …but the fresh code does.
+    fresh = await _join(app, BOB_ID, new_code)
+    assert fresh.status_code == 200
+    assert fresh.json()["role"] == "member"
+
+
+@pytest.mark.asyncio
+async def test_member_cannot_rotate_code_but_stays_in_group(app_with_postgres):
+    app = app_with_postgres
+    group = await _create_group(app, ALICE_ID)
+    await _join(app, BOB_ID, group["invite_code"])
+
+    async with auth_client(app, BOB_ID) as client:
+        resp = await client.post(f"/api/groups/{group['id']}/rotate-code")
+    assert resp.status_code == 403
+
+    # The failed attempt must not have changed the code.
+    async with auth_client(app, ALICE_ID) as client:
+        detail = await client.get(f"/api/groups/{group['id']}")
+    assert detail.json()["invite_code"] == group["invite_code"]
+
+
+@pytest.mark.asyncio
+async def test_non_member_rotation_404s_not_403(app_with_postgres):
+    # No-leak posture: a non-member can't learn the group exists from the
+    # status code, so this is 404 (unknown), not 403 (known but forbidden).
+    app = app_with_postgres
+    group = await _create_group(app, ALICE_ID)
+
+    async with auth_client(app, CAROL_ID) as client:
+        resp = await client.post(f"/api/groups/{group['id']}/rotate-code")
+    assert resp.status_code == 404

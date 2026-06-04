@@ -177,6 +177,19 @@ def can_delete_own_post(role: Optional[Role], is_author: bool) -> bool:
     return is_member(role) and is_author
 
 
+def can_rotate_invite_code(role: Optional[Role]) -> bool:
+    """Only an owner or moderator may rotate the group's invite code.
+
+    Rotation mints a fresh code and invalidates the old one — it's the
+    recovery path when a code leaks beyond the intended circle. That is an
+    authority decision (who may cut off future joins), not a post-lifecycle
+    one, so it lives here with the rest of the matrix rather than inline in
+    the route. Plain members can *see* the code (they may legitimately share
+    it) but must not be able to lock others out by churning it.
+    """
+    return role in MODERATOR_ROLES
+
+
 def _check_authority(
     action: ModerationAction, role: Optional[Role], is_author: bool
 ) -> None:

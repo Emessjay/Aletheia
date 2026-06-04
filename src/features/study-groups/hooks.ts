@@ -64,6 +64,16 @@ export function useJoinGroup() {
   });
 }
 
+export function useRotateInviteCode(groupId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.rotateInviteCode(groupId),
+    // The detail view (and any cached list row) shows the code — refetch
+    // rather than patch the cache so member_count etc. stay server-true.
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["study-groups"] }),
+  });
+}
+
 export function useFeed(
   groupId: string,
   anchor: { work_slug: string; book_slug: string; chapter: number; verse?: number },
