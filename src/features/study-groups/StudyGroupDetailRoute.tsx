@@ -7,6 +7,7 @@ import {
   useFeed,
   useCreatePost,
   useFlagPost,
+  useUnflagPost,
   useModeratePost,
   useDiscussed,
 } from "./hooks";
@@ -213,6 +214,7 @@ function PostCard({
 }) {
   const { status } = useAuth();
   const flagMut = useFlagPost();
+  const unflagMut = useUnflagPost();
   const modMut = useModeratePost();
   const isModerator = role === "owner" || role === "moderator";
   const isRemoved = post.status === "removed";
@@ -247,13 +249,23 @@ function PostCard({
           </span>
         )}
         {status === "authenticated" && !isRemoved && (
-          <button
-            className="sg-btn"
-            onClick={() => flagMut.mutate({ postId: post.id })}
-            disabled={flagMut.isPending}
-          >
-            Flag
-          </button>
+          post.viewer_flagged ? (
+            <button
+              className="sg-btn"
+              onClick={() => unflagMut.mutate(post.id)}
+              disabled={unflagMut.isPending}
+            >
+              Unflag
+            </button>
+          ) : (
+            <button
+              className="sg-btn"
+              onClick={() => flagMut.mutate({ postId: post.id })}
+              disabled={flagMut.isPending}
+            >
+              Flag
+            </button>
+          )
         )}
         {isModerator && !isRemoved && (
           <button

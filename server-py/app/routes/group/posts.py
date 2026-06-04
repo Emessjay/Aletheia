@@ -26,6 +26,7 @@ from ...groups.moderation import (
     can_reply,
     can_view_post,
     transition,
+    unflag_result,
     visible_statuses_for,
 )
 from ._common import get_role, http_status_for, new_id, now_ms
@@ -160,7 +161,10 @@ def posts_router() -> APIRouter:
                 f"""
                 SELECT {", ".join("p." + c for c in _POST_COLS.split(", "))},
                        {_AUTHOR_NAME},
-                       {_REPLY_COUNT}
+                       {_REPLY_COUNT},
+                       EXISTS(SELECT 1 FROM post_flag f
+                               WHERE f.post_id = p.id AND f.flagged_by = $6)
+                         AS viewer_flagged
                   FROM group_post p
                   {_PROFILE_JOIN}
                  WHERE p.group_id = $1
@@ -187,12 +191,15 @@ def posts_router() -> APIRouter:
             post = await conn.fetchrow(
                 f"""
                 SELECT {", ".join("p." + c for c in _POST_COLS.split(", "))},
-                       {_AUTHOR_NAME}
+                       {_AUTHOR_NAME},
+                       EXISTS(SELECT 1 FROM post_flag f
+                               WHERE f.post_id = p.id AND f.flagged_by = $2)
+                         AS viewer_flagged
                   FROM group_post p
                   {_PROFILE_JOIN}
                  WHERE p.id = $1 AND p.deleted_at IS NULL
                 """,
-                post_id,
+                post_id, user_id,
             )
             if post is None:
                 raise HTTPException(status_code=404, detail="not found")
@@ -204,7 +211,10 @@ def posts_router() -> APIRouter:
             replies = await conn.fetch(
                 f"""
                 SELECT {", ".join("p." + c for c in _POST_COLS.split(", "))},
-                       {_AUTHOR_NAME}
+                       {_AUTHOR_NAME},
+                       EXISTS(SELECT 1 FROM post_flag f
+                               WHERE f.post_id = p.id AND f.flagged_by = $3)
+                         AS viewer_flagged
                   FROM group_post p
                   {_PROFILE_JOIN}
                  WHERE p.parent_id = $1
@@ -289,6 +299,61 @@ def posts_router() -> APIRouter:
                     f"WHERE id = $3 RETURNING {_POST_COLS}",
                     new_status.value, now_ms(), post_id,
                 )
+        return dict(row)
+
+    @router.delete("/posts/{post_id}/flag")
+    async def unflag_post(
+        post_id: str,
+        request: Request,
+        user_id: UUID = Depends(get_current_user_id),
+    ):
+        """Withdraw the caller's own standing flag — the inverse of flag.
+
+        Deletes the caller's ``post_flag`` row; the post drops back to
+        ``visible`` only if that was the last flag standing and no moderator
+        has acted (see ``unflag_result``). Same FOR UPDATE posture as
+        flag/moderate so two simultaneous flag actions serialize.
+        """
+        pool = await get_pool(request.app.state)
+        async with pool.acquire() as conn:
+            async with conn.transaction():
+                post = await conn.fetchrow(
+                    f"SELECT {_POST_COLS} FROM group_post "
+                    "WHERE id = $1 AND deleted_at IS NULL FOR UPDATE",
+                    post_id,
+                )
+                if post is None:
+                    raise HTTPException(status_code=404, detail="not found")
+                role = await get_role(conn, post["group_id"], user_id)
+                if role is None:
+                    # Not a member -> 404 (no-leak, as everywhere else).
+                    raise HTTPException(status_code=404, detail="not found")
+                deleted = await conn.fetchval(
+                    "DELETE FROM post_flag "
+                    "WHERE post_id = $1 AND flagged_by = $2 RETURNING id",
+                    post_id, user_id,
+                )
+                if deleted is None:
+                    # Only the flag's owner may withdraw it; holding no flag
+                    # means there is nothing of yours here to delete.
+                    raise HTTPException(
+                        status_code=404, detail="no standing flag"
+                    )
+                remaining = await conn.fetchval(
+                    "SELECT COUNT(*) FROM post_flag WHERE post_id = $1",
+                    post_id,
+                )
+                new_status = unflag_result(
+                    PostStatus(post["status"]), remaining > 0
+                )
+                if new_status.value != post["status"]:
+                    row = await conn.fetchrow(
+                        f"UPDATE group_post SET status = $1, updated_at = $2 "
+                        f"WHERE id = $3 RETURNING {_POST_COLS}",
+                        new_status.value, now_ms(), post_id,
+                    )
+                else:
+                    row = post
         return dict(row)
 
     @router.post("/posts/{post_id}/moderate")

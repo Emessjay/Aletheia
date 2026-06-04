@@ -193,6 +193,14 @@ export function useFlagPost() {
   });
 }
 
+export function useUnflagPost() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (postId: string) => api.unflagPost(postId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["study-groups"] }),
+  });
+}
+
 export function useModeratePost() {
   const qc = useQueryClient();
   return useMutation({

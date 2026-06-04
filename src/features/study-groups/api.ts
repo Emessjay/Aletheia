@@ -135,6 +135,10 @@ export function deletePost(postId: string) {
   return req<{ id: string }>(`/posts/${postId}`, { method: "DELETE" });
 }
 
+export function unflagPost(postId: string) {
+  return req<GroupPost>(`/posts/${postId}/flag`, { method: "DELETE" });
+}
+
 export function flagPost(postId: string, reason?: string) {
   return req<GroupPost>(`/posts/${postId}/flag`, {
     method: "POST",

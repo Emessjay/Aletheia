@@ -177,6 +177,23 @@ def can_delete_own_post(role: Optional[Role], is_author: bool) -> bool:
     return is_member(role) and is_author
 
 
+def unflag_result(status: PostStatus, other_flags_remain: bool) -> PostStatus:
+    """The post's status after a member withdraws their own standing flag.
+
+    Withdrawal itself is row-level (the route deletes the caller's
+    ``post_flag`` row); the *status* only moves when the withdrawn flag was
+    the last one standing on a post still in ``flagged``. A ``removed`` post
+    keeps its status — the moderator's decision outranks flag bookkeeping —
+    and a ``visible`` post (e.g. one whose flags a moderator dismissed via
+    restore) simply stays visible. There is no illegal state here by design:
+    the only failure mode is "you hold no flag on this post", which is a
+    row-existence fact the route layer checks, not a lifecycle rule.
+    """
+    if status == PostStatus.FLAGGED and not other_flags_remain:
+        return PostStatus.VISIBLE
+    return status
+
+
 def can_rotate_invite_code(role: Optional[Role]) -> bool:
     """Only an owner or moderator may rotate the group's invite code.
 
