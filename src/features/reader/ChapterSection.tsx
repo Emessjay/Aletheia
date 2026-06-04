@@ -319,8 +319,6 @@ function MultiTabGrid({
         pending={pending}
         errors={errors}
         chapterKey={chapterKey}
-        chapterNum={chapterNum}
-        fallbackBookName={fallbackBookName}
         verseNumbers={verseNumbers}
         highlights={highlights}
         notes={notes}
@@ -548,8 +546,6 @@ function StackedVerses({
   pending,
   errors,
   chapterKey,
-  chapterNum,
-  fallbackBookName,
   verseNumbers,
   highlights,
   notes,
@@ -557,11 +553,12 @@ function StackedVerses({
   onSelectVerse,
   onOpenStrongs,
   onOpenHighlight,
-}: Omit<ColumnsLayoutProps, "workSlug" | "bookSlug" | "dropCapsEnabled"> & {
+}: Omit<
+  ColumnsLayoutProps,
+  "workSlug" | "bookSlug" | "dropCapsEnabled" | "chapterNum" | "fallbackBookName"
+> & {
   verseNumbers: number[];
 }) {
-  const bookName =
-    chapters.find((c) => c !== null)?.book.name ?? fallbackBookName;
   const labelFor = (tab: Tab) =>
     tab.kind === "single"
       ? translationShortLabel(tab.lang)
@@ -569,12 +566,9 @@ function StackedVerses({
 
   return (
     <div>
-      <header style={{ marginBottom: "1.25rem" }}>
-        <p className="al-eyebrow">{tabs.map(labelFor).join(" · ")}</p>
-        <p className="al-chapter-label" style={{ marginTop: 4 }}>
-          {`${bookName} · Chapter ${toRoman(chapterNum)}`}
-        </p>
-      </header>
+      {/* No header here: the page-level chapter heading sits directly above
+          this component, and every cell carries its own translation tag —
+          a combined header just duplicated both (caught on a real phone). */}
       {tabs.map((tab, i) =>
         pending[i] ? (
           <p key={`s:${i}`} style={{ color: "var(--color-fg-muted)" }}>
