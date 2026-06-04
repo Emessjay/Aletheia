@@ -18,6 +18,7 @@ import {
 } from "./anchor";
 import type { GroupPost } from "./types";
 import { PostBody } from "./PostBody";
+import { InviteCode } from "./InviteCode";
 import "./studyGroups.css";
 
 export function StudyGroupDetailRoute() {
@@ -49,8 +50,7 @@ export function StudyGroupDetailRoute() {
       <div className="sg-meta" style={{ marginBottom: 16 }}>
         {group.data.member_count} member
         {group.data.member_count !== 1 ? "s" : ""} &middot; your role:{" "}
-        {group.data.role} &middot; invite code:{" "}
-        <span className="sg-code">{group.data.invite_code}</span>
+        {group.data.role} &middot; <InviteCode group={group.data} />
       </div>
 
       <DiscussedSection groupId={groupId} onPick={setAnchor} />

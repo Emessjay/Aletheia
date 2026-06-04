@@ -16,6 +16,7 @@ from app.groups.moderation import (
     can_create_post,
     can_delete_own_post,
     can_reply,
+    can_rotate_invite_code,
     can_view_post,
     is_member,
     transition,
@@ -53,6 +54,24 @@ def test_nobody_replies_to_a_removed_post(role):
 
 def test_non_member_may_not_reply():
     assert can_reply(None, PostStatus.VISIBLE) is False
+
+
+# --------------------------------------------------------------------------- #
+# Invite-code rotation                                                        #
+# --------------------------------------------------------------------------- #
+@pytest.mark.parametrize("role", MOD_ROLES)
+def test_moderators_and_owners_may_rotate_invite_code(role):
+    assert can_rotate_invite_code(role) is True
+
+
+def test_plain_member_may_not_rotate_invite_code():
+    # Members can see and share the code, but churning it would let any
+    # member lock others out — rotation is a moderator-tier authority.
+    assert can_rotate_invite_code(Role.MEMBER) is False
+
+
+def test_non_member_may_not_rotate_invite_code():
+    assert can_rotate_invite_code(None) is False
 
 
 # --------------------------------------------------------------------------- #

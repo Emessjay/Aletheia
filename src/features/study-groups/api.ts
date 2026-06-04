@@ -90,6 +90,12 @@ export function getGroup(groupId: string) {
   );
 }
 
+export function rotateInviteCode(groupId: string) {
+  return req<StudyGroup>(`/groups/${groupId}/rotate-code`, {
+    method: "POST",
+  });
+}
+
 export function getFeed(
   groupId: string,
   anchor: { work_slug: string; book_slug: string; chapter: number; verse?: number },
