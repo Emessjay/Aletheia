@@ -148,12 +148,24 @@ export function LanguageToggle() {
   return (
     <div
       className="al-langbar"
+      data-testid="reader-langbar"
       style={{
         display: "flex",
         gap: 12,
         alignItems: "baseline",
         flexWrap: "wrap",
-        padding: "0 0 1rem",
+        // Persistent bar: pin to the top of the reader scroll area so the
+        // translation toggles stay reachable while the chapter text scrolls
+        // underneath (Bug 2). Styles are inline (not a CSS class) because the
+        // sticky offset + opaque background are part of the contract. The
+        // opaque background keeps chapter text from bleeding through; z-index
+        // sits above chapter text (which uses no positive z-index) but well
+        // below the verse toolbar (150).
+        position: "sticky",
+        top: 0,
+        zIndex: 20,
+        background: "var(--color-bg)",
+        padding: "0.75rem 0",
         marginBottom: "1.5rem",
         borderBottom: "1px solid var(--color-rule)",
       }}

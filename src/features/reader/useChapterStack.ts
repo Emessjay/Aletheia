@@ -43,7 +43,8 @@ export interface StackState {
 export type StackAction =
   | { type: "append"; key: ChapterKey }
   | { type: "prepend"; key: ChapterKey }
-  | { type: "reset"; key: ChapterKey };
+  | { type: "reset"; key: ChapterKey }
+  | { type: "seed"; keys: ChapterKey[] };
 
 /** Default in-DOM chapter budget. Soft tunable — see spec AC #4. */
 export const MAX_CHAPTERS = 7;
@@ -92,6 +93,69 @@ export function prevChapterKey(key: ChapterKey, canon: Canon): ChapterKey | null
   return { workSlug: key.workSlug, bookSlug: prevBook, chapter: prevCount };
 }
 
+/** Window size for {@link seedChapters}. Defaults to one chapter each side. */
+export interface SeedOptions {
+  /** How many chapters before `initial` to include (default 1). */
+  behind?: number;
+  /** How many chapters after `initial` to include (default 1). */
+  ahead?: number;
+}
+
+/**
+ * Pure "which chapters should be pre-loaded around this one" derivation.
+ *
+ * Returns a canon-ordered list `[…behind, initial, …ahead]` — the initial
+ * chapter with `behind` true canon predecessors before it and `ahead` true
+ * canon successors after it, clamped at the canon head/tail and de-duplicated.
+ * The list is in strict canon order: `nextChapterKey` of each entry is the
+ * following entry.
+ *
+ * ReaderRoute seeds the stack with this on load and after every navigation so
+ * the immediately previous chapter is already mounted (Bug 1: scroll up at
+ * once) and the immediately next chapter's data is already fetched (Bug 3: no
+ * blank gap on scroll-down). The index of `initial` in the returned array is
+ * the load-time scroll anchor: everything before it mounts above the viewport,
+ * everything after below — so the neighbours must be the true canon neighbours
+ * adjacent to `initial`.
+ *
+ * Pure — no DOM, React, or corpus access — so it unit-tests cleanly.
+ */
+export function seedChapters(
+  initial: ChapterKey,
+  canon: Canon,
+  opts: SeedOptions = {},
+): ChapterKey[] {
+  const behind = opts.behind ?? 1;
+  const ahead = opts.ahead ?? 1;
+
+  const before: ChapterKey[] = [];
+  let cursor: ChapterKey | null = initial;
+  for (let i = 0; i < behind && cursor; i++) {
+    const prev = prevChapterKey(cursor, canon);
+    if (!prev) break;
+    before.unshift(prev);
+    cursor = prev;
+  }
+
+  const after: ChapterKey[] = [];
+  cursor = initial;
+  for (let i = 0; i < ahead && cursor; i++) {
+    const next = nextChapterKey(cursor, canon);
+    if (!next) break;
+    after.push(next);
+    cursor = next;
+  }
+
+  const all = [...before, initial, ...after];
+  const seen = new Set<string>();
+  return all.filter((k) => {
+    const id = chapterKeyId(k);
+    if (seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
+}
+
 /**
  * Reducer over the loaded-chapter list.
  *
@@ -108,6 +172,25 @@ export function stackReducer(state: StackState, action: StackAction): StackState
   switch (action.type) {
     case "reset":
       return { ...state, chapters: [action.key] };
+    case "seed": {
+      // Replace the stack with an ordered, de-duplicated list (the seed
+      // output is already canon-ordered; see `seedChapters`). Clamp to `cap`
+      // from the front so the initial chapter and its following neighbour
+      // survive — seeding 3 chapters fits comfortably under MAX_CHAPTERS, so
+      // this clamp is a safety net, not a routine path.
+      const seen = new Set<string>();
+      const chapters: ChapterKey[] = [];
+      for (const k of action.keys) {
+        const id = chapterKeyId(k);
+        if (seen.has(id)) continue;
+        seen.add(id);
+        chapters.push(k);
+      }
+      return {
+        ...state,
+        chapters: chapters.slice(0, state.cap),
+      };
+    }
     case "append": {
       if (state.chapters.some((c) => sameKey(c, action.key))) return state;
       let chapters = [...state.chapters, action.key];

@@ -168,6 +168,11 @@ export function ChapterSection({
         borderTop: isFirst ? undefined : "1px solid var(--color-rule)",
         paddingTop: isFirst ? undefined : "2.5rem",
         marginTop: isFirst ? undefined : "2.5rem",
+        // The persistent translations bar (LanguageToggle) is sticky-pinned to
+        // the top of the scroll area, so `scrollIntoView({block: "start"})` and
+        // the `#v<N>` hash landing must clear its height — otherwise the target
+        // verse/heading hides behind the bar. Matches the bar's pinned height.
+        scrollMarginTop: "4rem",
       }}
     >
       <ColumnsLayout {...columnProps} />

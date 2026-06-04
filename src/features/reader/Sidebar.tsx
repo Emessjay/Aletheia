@@ -1,5 +1,6 @@
 import { Link, useParams } from "react-router-dom";
 import { useBooks } from "@/db/hooks";
+import { useReaderLocationStore } from "@/stores/useReaderLocationStore";
 import type { BookRow, Testament } from "@/db/types";
 
 const TESTAMENT_LABELS: Record<Testament, string> = {
@@ -14,7 +15,15 @@ const TESTAMENT_LABELS: Record<Testament, string> = {
 const TESTAMENT_ORDER: Testament[] = ["old", "new", "deutero"];
 
 export function Sidebar() {
-  const { book: activeBook = "" } = useParams();
+  const { book: routeBook = "" } = useParams();
+  // The reader publishes the book it's actually showing (scroll-driven) here;
+  // `replaceState`-based URL sync never updates the route param, so the param
+  // alone would keep the *previous* book highlighted after a cross-book
+  // scroll (Bug 4). Prefer the published book, fall back to the route param
+  // when the store is empty (first paint before the reader publishes, or when
+  // the reader isn't mounted).
+  const readerBook = useReaderLocationStore((s) => s.bookSlug);
+  const activeBook = readerBook ?? routeBook;
   const q = useBooks("en_bsb");
 
   const groups: Record<Testament, BookRow[]> = {
@@ -68,6 +77,7 @@ function SidebarLink({ book, active }: { book: BookRow; active: boolean }) {
   return (
     <Link
       to={`/reader/bible/${book.slug}/1`}
+      aria-current={active ? "page" : undefined}
       style={{
         position: "relative",
         display: "block",
