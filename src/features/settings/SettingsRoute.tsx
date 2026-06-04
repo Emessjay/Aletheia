@@ -29,7 +29,7 @@ export function SettingsRoute() {
   const toggleTranslation = useSettingsStore((s) => s.toggleTranslation);
 
   return (
-    <article style={wrap}>
+    <article className="al-page">
       <header style={{ marginBottom: "2rem" }}>
         <p className="al-eyebrow">Settings</p>
         <h1
@@ -44,7 +44,7 @@ export function SettingsRoute() {
       </header>
 
       <Section title="Theme">
-        <div style={{ display: "flex", gap: 18 }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 18 }}>
           {THEME_OPTIONS.map((opt) => (
             <RadioRow
               key={opt}
@@ -64,10 +64,11 @@ export function SettingsRoute() {
             max={MAX_FONT_SIZE}
             value={fontSize}
             onChange={(e) => setFontSize(Number(e.target.value))}
-            style={{ flex: 1, maxWidth: 240 }}
+            style={{ flex: 1, maxWidth: "min(240px, 100%)" }}
           />
           <button
             type="button"
+            className="al-tap"
             onClick={() => setFontSize(DEFAULT_FONT_SIZE)}
             style={textBtn}
           >
@@ -97,6 +98,7 @@ export function SettingsRoute() {
               <button
                 key={lang}
                 type="button"
+                className="al-tap"
                 onClick={() => toggleTranslation(lang)}
                 style={{
                   background: "transparent",
@@ -106,12 +108,19 @@ export function SettingsRoute() {
                   fontSize: 14,
                   cursor: "pointer",
                   color: on ? "var(--color-fg)" : "var(--color-fg-subtle)",
-                  borderBottom: on
-                    ? "1px solid var(--color-accent)"
-                    : "1px solid transparent",
                 }}
               >
-                {t.shortLabel}
+                {/* Underline lives on the span so it hugs the label even
+                    when .al-tap grows the hit area at phone width. */}
+                <span
+                  style={{
+                    borderBottom: on
+                      ? "1px solid var(--color-accent)"
+                      : "1px solid transparent",
+                  }}
+                >
+                  {t.shortLabel}
+                </span>
               </button>
             );
           })}
@@ -154,8 +163,9 @@ export function SettingsRoute() {
               key={t}
               style={{
                 display: "flex",
+                flexWrap: "wrap",
                 alignItems: "baseline",
-                gap: 14,
+                gap: "4px 14px",
                 padding: "8px 0",
                 borderBottom: "1px solid var(--color-rule)",
                 fontSize: 13,
@@ -163,13 +173,14 @@ export function SettingsRoute() {
             >
               <span
                 style={{
-                  flex: "0 0 200px",
+                  flex: "0 0 auto",
+                  minWidth: 140,
                   color: "var(--color-fg)",
                 }}
               >
                 {src.label}
               </span>
-              <span style={{ flex: 1, color: "var(--color-fg-muted)" }}>
+              <span style={{ flex: "1 1 240px", color: "var(--color-fg-muted)" }}>
                 Read by {src.narrator}
                 <span
                   style={{ color: "var(--color-fg-subtle)" }}
@@ -182,6 +193,7 @@ export function SettingsRoute() {
                   style={{
                     color: "var(--color-accent)",
                     fontSize: 12,
+                    wordBreak: "break-all",
                   }}
                 >
                   {src.sourceUrl}
@@ -228,13 +240,14 @@ function Row({
     <div
       style={{
         display: "flex",
+        flexWrap: "wrap",
         alignItems: "center",
-        gap: 14,
+        gap: "4px 14px",
         padding: "8px 0",
         borderBottom: "1px solid var(--color-rule)",
       }}
     >
-      <span style={{ flexShrink: 0, color: "var(--color-fg-muted)", fontSize: 14 }}>
+      <span style={{ color: "var(--color-fg-muted)", fontSize: 14 }}>
         {label}
       </span>
       <span style={{ flex: 1, display: "flex", alignItems: "center", gap: 12, justifyContent: "flex-end" }}>
@@ -256,6 +269,7 @@ function RadioRow({
   return (
     <button
       type="button"
+      className="al-tap"
       onClick={onClick}
       style={{
         background: "transparent",
@@ -265,44 +279,64 @@ function RadioRow({
         fontSize: 14,
         cursor: "pointer",
         color: active ? "var(--color-fg)" : "var(--color-fg-muted)",
-        borderBottom: active
-          ? "1px solid var(--color-accent)"
-          : "1px solid transparent",
-        paddingBottom: 2,
       }}
     >
-      {label}
+      <span
+        style={{
+          paddingBottom: 2,
+          borderBottom: active
+            ? "1px solid var(--color-accent)"
+            : "1px solid transparent",
+        }}
+      >
+        {label}
+      </span>
     </button>
   );
 }
 
 function CheckRow({ on, onClick }: { on: boolean; onClick: () => void }) {
+  // The 28×16 track is an inner span; the button itself is a transparent
+  // padded hit area (and .al-tap grows it to 42px at phone width), so the
+  // toggle stays visually small but is comfortably tappable.
   return (
     <button
       type="button"
+      className="al-tap"
       onClick={onClick}
       style={{
-        background: on ? "var(--color-accent)" : "transparent",
-        border: "1px solid var(--color-rule-strong)",
-        borderRadius: 2,
-        width: 28,
-        height: 16,
-        position: "relative",
+        background: "transparent",
+        border: 0,
+        padding: 6,
+        margin: -6,
         cursor: "pointer",
+        lineHeight: 0,
       }}
       aria-pressed={on}
     >
       <span
         style={{
-          position: "absolute",
-          top: 1,
-          left: on ? 13 : 1,
-          width: 12,
-          height: 12,
-          background: "var(--color-bg)",
-          transition: "left 80ms",
+          display: "inline-block",
+          background: on ? "var(--color-accent)" : "transparent",
+          border: "1px solid var(--color-rule-strong)",
+          borderRadius: 2,
+          width: 28,
+          height: 16,
+          position: "relative",
         }}
-      />
+      >
+        <span
+          style={{
+            position: "absolute",
+            top: 1,
+            left: on ? 13 : 1,
+            width: 12,
+            height: 12,
+            background: "var(--color-bg)",
+            transition: "left 80ms",
+          }}
+        />
+      </span>
     </button>
   );
 }
@@ -354,10 +388,4 @@ const textBtn: React.CSSProperties = {
   fontSize: 13,
   color: "var(--color-fg-muted)",
   cursor: "pointer",
-};
-
-const wrap: React.CSSProperties = {
-  maxWidth: "var(--measure)",
-  margin: "0 auto",
-  padding: "2.5rem 2rem 6rem",
 };

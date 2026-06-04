@@ -37,7 +37,10 @@ export function ThemeToggle() {
           border: 0,
           color: "var(--color-fg-muted)",
           cursor: "pointer",
-          padding: "4px 6px",
+          // Padded hit area (~42px) with negative margin so the visual
+          // footprint in the header stays the same as the old 4px/6px.
+          padding: "13px 12px",
+          margin: "-9px -6px",
           display: "inline-flex",
           alignItems: "center",
           lineHeight: 0,
@@ -76,7 +79,7 @@ export function ThemeToggle() {
                 textAlign: "left",
                 background: "transparent",
                 border: 0,
-                padding: "6px 14px",
+                padding: "10px 14px",
                 color: "var(--color-fg)",
                 font: "inherit",
                 cursor: "pointer",

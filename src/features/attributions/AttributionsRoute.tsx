@@ -183,7 +183,7 @@ const FONTS: Credit[] = [
 
 export function AttributionsRoute() {
   return (
-    <article style={wrap}>
+    <article className="al-page">
       <header style={{ marginBottom: "2rem" }}>
         <p className="al-eyebrow">Attributions</p>
         <h1
@@ -302,12 +302,6 @@ function CreditList({ items }: { items: Credit[] }) {
     </ul>
   );
 }
-
-const wrap: React.CSSProperties = {
-  maxWidth: "var(--measure)",
-  margin: "0 auto",
-  padding: "2.5rem 2rem 6rem",
-};
 
 const blurb: React.CSSProperties = {
   color: "var(--color-fg-muted)",
