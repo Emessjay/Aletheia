@@ -215,6 +215,12 @@ interface SettingsState {
   toggleTranslation: (lang: CorpusLanguage) => void;
   isTranslationActive: (lang: CorpusLanguage) => boolean;
 
+  /** Reader fallback: deactivate every active tab whose languages are not all
+   *  in `available` (it cannot render the current book — e.g. Hebrew open on
+   *  a New Testament chapter). If no tab survives, the default translation
+   *  (BSB) is reactivated via ensureAtLeastOneActive. */
+  retainReaderLangs: (available: CorpusLanguage[]) => void;
+
   fontSize: number;
   setFontSize: (n: number) => void;
   dropCapsEnabled: boolean;
@@ -361,6 +367,20 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   isTranslationActive: (lang) => {
     const { tabs } = get();
     return tabs.some((t) => t.active && tabLangs(t).includes(lang));
+  },
+
+  retainReaderLangs: (available) => {
+    const { tabs } = get();
+    const avail = new Set(available);
+    let next = tabs.map((t) =>
+      t.active && !tabLangs(t).every((l) => avail.has(l))
+        ? { ...t, active: false }
+        : t,
+    );
+    if (next.every((t, i) => t === tabs[i])) return; // nothing to deactivate
+    next = ensureAtLeastOneActive(next);
+    writeTabs(next);
+    set({ tabs: next });
   },
 
   fontSize: readFontSize(),
