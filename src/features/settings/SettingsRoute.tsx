@@ -10,6 +10,16 @@ import {
   readerTabTranslations,
 } from "@/domain/translations";
 import { AUDIO_SOURCES, type AudioTranslation } from "@/domain/audio";
+import {
+  CORPUS_PACKS,
+  formatPackBytes,
+  packMeta,
+} from "@/domain/corpusPacks";
+import { getPlatform } from "@/platform";
+import {
+  isPackInstalled,
+  useCorpusPacks,
+} from "@/db/useCorpusPacks";
 
 const THEME_OPTIONS: ThemeMode[] = ["light", "dark", "system"];
 
@@ -27,6 +37,10 @@ export function SettingsRoute() {
   // a stable function reference (which would skip re-renders).
   const tabs = useSettingsStore((s) => s.tabs);
   const toggleTranslation = useSettingsStore((s) => s.toggleTranslation);
+  const packs = useCorpusPacks();
+  const isDesktop = getPlatform().info.isDesktop;
+  const audioPackOn = isPackInstalled(packs.data, "audio-modern-en");
+  const interlinearOn = isPackInstalled(packs.data, "interlinear");
 
   return (
     <article className="al-page">
@@ -125,6 +139,20 @@ export function SettingsRoute() {
             );
           })}
         </div>
+        {isDesktop && !interlinearOn ? (
+          <p
+            style={{
+              color: "var(--color-fg-muted)",
+              fontSize: 13,
+              margin: "8px 0 0",
+              maxWidth: 540,
+            }}
+          >
+            Interlinear pack not installed — Hebrew/Greek still read as plain
+            verse text; word-level Strong&apos;s columns need the Interlinear
+            pack. Lexicon definitions remain in the base install.
+          </p>
+        ) : null}
       </Section>
 
       <Section title="Keyboard">
@@ -148,11 +176,17 @@ export function SettingsRoute() {
         >
           Chapters download on demand and play from the local file thereafter.
           All recordings are public-domain dedications by their narrators.
+          {!audioPackOn && isDesktop
+            ? " The Audio (Modern English) pack is not installed, so narration stays disabled."
+            : null}
         </p>
         <Row label="Show audio bar in reader">
           <CheckRow
-            on={audioBarEnabled}
-            onClick={() => setAudioBarEnabled(!audioBarEnabled)}
+            on={audioBarEnabled && audioPackOn}
+            onClick={() => {
+              if (!audioPackOn) return;
+              setAudioBarEnabled(!audioBarEnabled);
+            }}
           />
         </Row>
         {audioTranslations().map(({ id }) => {
@@ -169,6 +203,7 @@ export function SettingsRoute() {
                 padding: "8px 0",
                 borderBottom: "1px solid var(--color-rule)",
                 fontSize: 13,
+                opacity: audioPackOn ? 1 : 0.55,
               }}
             >
               <span
@@ -203,6 +238,87 @@ export function SettingsRoute() {
           );
         })}
       </Section>
+
+      {isDesktop ? (
+        <Section title="Content packs">
+          <p
+            style={{
+              color: "var(--color-fg-muted)",
+              fontSize: 13,
+              margin: 0,
+              maxWidth: 540,
+            }}
+          >
+            Optional corpus shards keep the base installer lean. Dev builds
+            (`./scripts/dev-instance.sh`) include every pack. Download plumbing
+            can install a pack from a local path via the platform adapter;
+            CDN distribution is a follow-up.
+          </p>
+          {packs.isPending ? (
+            <p style={{ color: "var(--color-fg-muted)", fontSize: 13 }}>
+              Loading pack status…
+            </p>
+          ) : packs.isError ? (
+            <pre style={{ color: "var(--color-accent)", fontSize: 12 }}>
+              {String(packs.error)}
+            </pre>
+          ) : (
+            CORPUS_PACKS.filter((p) => p.id !== "base").map((meta) => {
+              const status = packs.data?.find((s) => s.id === meta.id);
+              const installed = status?.installed ?? false;
+              return (
+                <div
+                  key={meta.id}
+                  style={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: "4px 14px",
+                    padding: "10px 0",
+                    borderBottom: "1px solid var(--color-rule)",
+                    fontSize: 13,
+                  }}
+                >
+                  <div style={{ flex: "1 1 220px", minWidth: 0 }}>
+                    <div style={{ color: "var(--color-fg)" }}>{meta.title}</div>
+                    <div style={{ color: "var(--color-fg-muted)", marginTop: 2 }}>
+                      {meta.description}
+                    </div>
+                  </div>
+                  <div
+                    style={{
+                      flex: "0 0 auto",
+                      textAlign: "right",
+                      color: installed
+                        ? "var(--color-fg)"
+                        : "var(--color-fg-subtle)",
+                    }}
+                  >
+                    <div>{installed ? "Installed" : "Not installed"}</div>
+                    <div style={{ color: "var(--color-fg-subtle)", fontSize: 12 }}>
+                      {formatPackBytes(status?.bytes)}
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+          {packs.data?.find((s) => s.id === "base") ? (
+            <p
+              style={{
+                color: "var(--color-fg-subtle)",
+                fontSize: 12,
+                margin: "8px 0 0",
+              }}
+            >
+              Base corpus:{" "}
+              {formatPackBytes(
+                packs.data.find((s) => s.id === "base")?.bytes,
+              )}
+              {packMeta("base") ? ` — ${packMeta("base")!.description}` : null}
+            </p>
+          ) : null}
+        </Section>
+      ) : null}
     </article>
   );
 }

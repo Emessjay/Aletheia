@@ -50,8 +50,8 @@ function IndexView() {
       <article style={wrap}>
         <Header eyebrow="Commentaries" title="Historic biblical commentaries" />
         <p style={{ color: "var(--color-fg-muted)" }}>
-          No commentaries are bundled in this corpus yet. Run the ingest
-          pipeline to populate them.
+          The Commentaries pack is not installed. Install it from Settings →
+          Content packs (dev builds ship every pack automatically).
         </p>
       </article>
     );

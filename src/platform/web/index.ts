@@ -4,6 +4,7 @@
 
 import type { Platform } from "../types";
 import { webCorpus } from "./corpus";
+import { webCorpusPacks } from "./corpusPacks";
 import { webUserData } from "./userData";
 import { webAudio } from "./audio";
 import { webPreferences } from "./preferences";
@@ -11,6 +12,7 @@ import { webInfo } from "./info";
 
 export const webPlatform: Platform = {
   corpus: webCorpus,
+  corpusPacks: webCorpusPacks,
   userData: webUserData,
   audio: webAudio,
   preferences: webPreferences,

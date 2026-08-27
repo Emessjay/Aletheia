@@ -25,6 +25,12 @@ export function PatristicsIndexRoute() {
         <p style={{ color: "var(--color-fg-muted)" }}>Loading…</p>
       ) : works.isError ? (
         <pre style={{ color: "var(--color-accent)" }}>{String(works.error)}</pre>
+      ) : (works.data ?? []).length === 0 ? (
+        <p style={{ color: "var(--color-fg-muted)" }}>
+          No patristic works are available. Install the Ante-Nicene Fathers,
+          Nicene and Post-Nicene Fathers, or Reformers packs from Settings →
+          Content packs.
+        </p>
       ) : (
         <WorksByAuthor works={works.data ?? []} />
       )}

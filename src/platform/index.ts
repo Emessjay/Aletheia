@@ -13,6 +13,7 @@ export type {
   AudioAdapter,
   AudioSourcePath,
   CorpusAdapter,
+  CorpusPacksAdapter,
   Platform,
   PlatformInfo,
   PreferencesAdapter,

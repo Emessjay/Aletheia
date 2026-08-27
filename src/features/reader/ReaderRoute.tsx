@@ -31,6 +31,10 @@ import { ChapterNav } from "./ChapterNav";
 import { ChapterPicker } from "./ChapterPicker";
 import { AudioPlayer } from "./AudioPlayer";
 import { isAudioTranslation, type AudioTranslation } from "@/domain/audio";
+import {
+  isPackInstalled,
+  useCorpusPacks,
+} from "@/db/useCorpusPacks";
 import { LanguageToggle } from "./LanguageToggle";
 import { ChapterSection, type ReaderSelection } from "./ChapterSection";
 import {
@@ -74,6 +78,8 @@ export function ReaderRoute() {
 
   const tabs = useSettingsStore((s) => s.tabs);
   const audioBarEnabled = useSettingsStore((s) => s.audioBarEnabled);
+  const packs = useCorpusPacks();
+  const audioPackOn = isPackInstalled(packs.data, "audio-modern-en");
   const activeTabs = tabs.filter((t) => t.active);
   const activeLangs: CorpusLanguage[] = activeTabs.map((t) =>
     t.kind === "single" ? t.lang : t.primary,
@@ -716,7 +722,10 @@ export function ReaderRoute() {
         }
       />
 
-      {work === "bible" && audioLangs.length > 0 && audioBarEnabled ? (
+      {work === "bible" &&
+      audioLangs.length > 0 &&
+      audioBarEnabled &&
+      audioPackOn ? (
         <AudioBar available={audioLangs} current={currentKey} canon={canon} />
       ) : null}
 

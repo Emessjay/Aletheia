@@ -61,6 +61,18 @@ probably bypassing one of them — stop and look:
   one to the other transparently. Keep the SQL strings in
   `src/db/user.ts` using `$N` — that is the shared dialect.
 
+- **Corpus packs (desktop only)** — `src/domain/corpusPacks.ts` +
+  `scripts/split-corpus-packs.py`. The Tauri base install is lean
+  (`data/packs/base.sqlite`: Bibles, Strong's *lexicon*, xref, Summa,
+  Creeds). Optional shards (interlinear `word` table, commentaries, ANF,
+  NPNF, reformers) and the Modern English audio *feature gate* live under
+  `data/packs/`. Runtime merges installed packs into the app-data working
+  copy (`src-tauri/src/corpus_packs.rs`). Dev/test bundles all packs via
+  `tauri.conf.json` resources; production should ship only `base.sqlite`.
+  Web ignores this — it trims via Postgres ingest. After rebuilding
+  `data/Aletheia.sqlite`, run `npm run pack-corpus` before desktop builds.
+  See `data/packs/README.md`.
+
 ## Web/Railway deployment (FastAPI + Postgres)
 
 The same React frontend runs in two hosts: the Tauri desktop build (`npm run

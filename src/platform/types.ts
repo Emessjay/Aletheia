@@ -7,6 +7,7 @@
 // `src/platform/web/` directory and flip the selector in `getPlatform()`.
 
 import type { AudioTranslation } from "@/domain/audio";
+import type { CorpusPackStatus } from "@/domain/corpusPacks";
 import type { PreferencesV1 } from "@/theme/types";
 import type {
   BookmarkRow,
@@ -20,6 +21,13 @@ import type {
 export interface CorpusAdapter {
   select<T>(sql: string, params?: unknown[]): Promise<T[]>;
   selectOne<T>(sql: string, params?: unknown[]): Promise<T | null>;
+}
+
+/** Desktop optional-content packs (SQLite shards + marker packs). */
+export interface CorpusPacksAdapter {
+  list(): Promise<CorpusPackStatus[]>;
+  /** Filesystem install stub for local testing / future download staging. */
+  installFromPath(packId: string, sourcePath: string): Promise<CorpusPackStatus>;
 }
 
 // ── User-data typed adapter ──────────────────────────────────────────────
@@ -199,6 +207,7 @@ export interface PlatformInfo {
 
 export interface Platform {
   corpus: CorpusAdapter;
+  corpusPacks: CorpusPacksAdapter;
   userData: UserDataAdapter;
   audio: AudioAdapter;
   preferences: PreferencesAdapter;

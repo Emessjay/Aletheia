@@ -11,6 +11,10 @@ import {
   type SecondaryLang,
 } from "@/domain/tabs";
 import { sideOf, type SideKey } from "@/domain/sides";
+import {
+  isPackInstalled,
+  useCorpusPacks,
+} from "@/db/useCorpusPacks";
 import type { VerseSelection } from "./ReaderRoute";
 import { InterlinearWord } from "./InterlinearWord";
 import { toRoman } from "./roman";
@@ -58,6 +62,8 @@ export function InterlinearColumn({
 }: Props) {
   const colSide = sideOf(primary);
   const label = interlinearLabel(primary, secondary);
+  const packs = useCorpusPacks();
+  const interlinearOn = isPackInstalled(packs.data, "interlinear");
 
   if (isPending) {
     return (
@@ -98,6 +104,9 @@ export function InterlinearColumn({
       : "grc"
     : undefined;
   const rtl = primary === "he";
+  const anyWords = chapter.verses.some(
+    (v) => (chapter.wordsByVerse[v.id] ?? []).length > 0,
+  );
 
   return (
     <section style={{ maxWidth }}>
@@ -106,6 +115,20 @@ export function InterlinearColumn({
         bookName={chapter.book.name}
         chapterNum={chapter.chapter.number}
       />
+      {!interlinearOn || !anyWords ? (
+        <p
+          style={{
+            color: "var(--color-fg-muted)",
+            fontSize: 13,
+            fontStyle: "italic",
+            margin: "0 0 12px",
+          }}
+        >
+          {!interlinearOn
+            ? "Interlinear pack not installed — showing plain verse text. Install the pack from Settings → Content packs for word-level Strong's columns."
+            : "No word-level rows for this chapter."}
+        </p>
+      ) : null}
       <div
         className="al-chapter-flow al-il-flow"
         data-column={primary}

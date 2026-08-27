@@ -9,6 +9,10 @@ import { getPlatform } from "@/platform";
 import { useViewportWidth } from "@/lib/useViewportWidth";
 import { useGlobalShortcuts } from "@/lib/useGlobalShortcuts";
 import { MAIN_TABS, isTabActive } from "@/tabs/registry";
+import {
+  isTabAllowedByPacks,
+  useCorpusPacks,
+} from "@/db/useCorpusPacks";
 import { AuthProvider } from "@/auth/AuthProvider";
 import { AuthMenu } from "@/auth/AuthMenu";
 import { AuthScreen } from "@/auth/AuthScreen";
@@ -28,7 +32,11 @@ const WORKTREE_LABEL = import.meta.env.VITE_ALETHEIA_WORKTREE as string | undefi
 
 export function AppShell() {
   const loc = useLocation();
-  const activeTab = MAIN_TABS.find((t) => isTabActive(t, loc.pathname));
+  const packs = useCorpusPacks();
+  const visibleTabs = MAIN_TABS.filter((t) =>
+    isTabAllowedByPacks(t.id, packs.data),
+  );
+  const activeTab = visibleTabs.find((t) => isTabActive(t, loc.pathname));
   const showSidebarRoute = activeTab?.shellFeatures?.readerSidebar === true;
   const togglePalette = useCommandPaletteStore((s) => s.toggle);
   const setPaletteOpen = useCommandPaletteStore((s) => s.setOpen);
@@ -114,7 +122,7 @@ export function AppShell() {
             Aletheia
           </Link>
           {!compact
-            ? MAIN_TABS.map((tab) => (
+            ? visibleTabs.map((tab) => (
                 <TopBarLink
                   key={tab.id}
                   to={tab.navTo}
@@ -225,7 +233,7 @@ export function AppShell() {
                   borderBottom: showSidebarRoute ? "1px solid var(--color-rule)" : undefined,
                 }}
               >
-                {MAIN_TABS.map((tab) => {
+                {visibleTabs.map((tab) => {
                   const active = isTabActive(tab, loc.pathname);
                   return (
                     <Link

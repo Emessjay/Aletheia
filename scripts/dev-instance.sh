@@ -51,6 +51,17 @@ fi
 
 echo "▶ Aletheia dev #${N}  vite=${PORT}  hmr=${HMR}  identifier=${IDENT}${WORKTREE_LABEL:+  worktree=${WORKTREE_LABEL}}"
 
+# Corpus packs: prefer split shards under data/packs/ (full content for
+# local testing). Generate with `npm run pack-corpus` if missing.
+if [[ ! -f data/packs/base.sqlite ]]; then
+    if [[ -f data/Aletheia.sqlite ]]; then
+        echo "▶ Generating corpus packs from data/Aletheia.sqlite…"
+        python3 scripts/split-corpus-packs.py
+    else
+        echo "warning: no data/packs/base.sqlite and no data/Aletheia.sqlite — desktop corpus will fail to open" >&2
+    fi
+fi
+
 export ALETHEIA_PORT="$PORT"
 export ALETHEIA_HMR_PORT="$HMR"
 export VITE_ALETHEIA_WORKTREE="$WORKTREE_LABEL"
