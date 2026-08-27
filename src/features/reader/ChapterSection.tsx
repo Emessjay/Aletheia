@@ -172,6 +172,10 @@ export function ChapterSection({
         borderTop: isFirst ? undefined : "1px solid var(--color-rule)",
         paddingTop: isFirst ? undefined : "2.5rem",
         marginTop: isFirst ? undefined : "2.5rem",
+        // LanguageToggle is sticky-pinned at the top of the scroll area, so
+        // scrollIntoView({block:"start"}) and hash landings must clear its
+        // height — otherwise the target heading hides behind the bar.
+        scrollMarginTop: "4rem",
       }}
     >
       <ColumnsLayout {...columnProps} />
