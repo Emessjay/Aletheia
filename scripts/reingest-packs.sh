@@ -23,7 +23,7 @@ cd "${ROOT_DIR}"
 note() { printf "\033[1;34m==>\033[0m %s\n" "$*"; }
 die() { printf "error: %s\n" "$*" >&2; exit 1; }
 
-KNOWN_PACKS="base interlinear commentaries anf npnf reformers audio-modern-en"
+KNOWN_PACKS="base interlinear commentaries anf npnf reformers creeds audio-modern-en"
 
 # Pack id → comma-separated aletheia-ingest --groups (empty = no SQLite ingest).
 ingest_groups_for() {
@@ -34,6 +34,7 @@ ingest_groups_for() {
         anf) echo "anf" ;;
         npnf) echo "npnf" ;;
         reformers) echo "reformers" ;;
+        creeds) echo "creeds" ;;
         audio-modern-en) echo "" ;;
         *) return 1 ;;
     esac
@@ -72,6 +73,8 @@ Packs:
   anf               ingest --groups anf                 → data/packs/anf.sqlite
   npnf              ingest --groups npnf                → data/packs/npnf.sqlite
   reformers         ingest --groups reformers           → data/packs/reformers.sqlite
+  creeds            ingest --groups creeds              → rewrites data/packs/base.sqlite
+                    (ThML label refresh only — no bible merge)
   audio-modern-en   fetch-audio-pack.py only            → data/packs/audio-modern-en/
 
 Selective mode requires an existing data/Aletheia.sqlite (except audio-only).
@@ -233,14 +236,15 @@ if [[ -n "${SQLITE_PACKS}" ]]; then
     if [[ "${PACK_ONLY}" -eq 0 ]]; then
         [[ -f "${SQLITE}" ]] || die "selective ingest needs existing ${SQLITE} (or use --all)"
         # shellcheck disable=SC2086
-        GROUPS="$(union_groups ${SQLITE_PACKS})"
-        if [[ -n "${GROUPS}" ]]; then
-            case ",${GROUPS}," in
+        # Do not name this GROUPS — that is a readonly bash builtin (macOS /bin/bash 3.2).
+        INGEST_GROUPS="$(union_groups ${SQLITE_PACKS})"
+        if [[ -n "${INGEST_GROUPS}" ]]; then
+            case ",${INGEST_GROUPS}," in
                 *,bible,*)
                     note "Note: base/interlinear reingest runs the bible group (heavy merge into monolith)"
                     ;;
             esac
-            run_ingest "${GROUPS}"
+            run_ingest "${INGEST_GROUPS}"
         fi
     else
         [[ -f "${SQLITE}" ]] || die "--pack-only needs existing ${SQLITE}"
