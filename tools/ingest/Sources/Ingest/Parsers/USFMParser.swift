@@ -15,8 +15,22 @@ import Foundation
 /// consecutive `\v` markers as verse text, stripping inline footnote/xref spans. The most
 /// recent paragraph-style marker seen since the previous `\v` is attached as the next
 /// verse's `lead` so the reader can render faithful paragraph/poetry spacing.
+///
+/// For KJV English-primary reverse interlinear, `Row.tokens` preserves English reading
+/// order including untagged glue words ("In", "the") with optional normalized Strong's.
 public struct USFMParser {
     public init() {}
+
+    /// One English surface token from a verse body, optionally linked to a Strong's id.
+    public struct WordToken: Equatable {
+        public let surface: String
+        public let strongs: String?
+
+        public init(surface: String, strongs: String?) {
+            self.surface = surface
+            self.strongs = strongs
+        }
+    }
 
     public struct Row {
         public let bookSlug: String
@@ -24,6 +38,19 @@ public struct USFMParser {
         public let verse: Int
         public let text: String
         public let lead: String?
+        /// English-order tokens extracted from USFM `\w` / `\+w` markup (and untagged glue).
+        /// Empty when the verse body had no word-like content after cleaning.
+        public let tokens: [WordToken]
+
+        public init(bookSlug: String, chapter: Int, verse: Int, text: String,
+                    lead: String?, tokens: [WordToken] = []) {
+            self.bookSlug = bookSlug
+            self.chapter = chapter
+            self.verse = verse
+            self.text = text
+            self.lead = lead
+            self.tokens = tokens
+        }
     }
 
     public struct ParseResult {
@@ -52,7 +79,9 @@ public struct USFMParser {
             guard let slug = bookSlug, chapter > 0, verse > 0 else { return }
             let cleaned = cleanInline(accum)
             if !cleaned.isEmpty {
-                rows.append(Row(bookSlug: slug, chapter: chapter, verse: verse, text: cleaned, lead: currentLead))
+                let tokens = extractWordTokens(accum)
+                rows.append(Row(bookSlug: slug, chapter: chapter, verse: verse,
+                                text: cleaned, lead: currentLead, tokens: tokens))
             }
             accum = ""
         }
@@ -147,7 +176,7 @@ public struct USFMParser {
         out = out.replacingOccurrences(of: #"\\x\s.*?\\x\*"#, with: "", options: .regularExpression)
         // Unwrap \w word|strong=…\w* — and the nested-marker variant \+w word|…\+w*
         // (used inside \nd …\nd* for "LORD"). Strong's payloads are ingested
-        // separately from STEPBible, since USFM Strong's encoding varies.
+        // separately via extractWordTokens for English-primary reverse IL.
         out = out.replacingOccurrences(of: #"\\\+?w ([^|\\]+)\|[^\\]*\\\+?w\*"#, with: "$1", options: .regularExpression)
         out = out.replacingOccurrences(of: #"\\\+?w ([^\\]+)\\\+?w\*"#, with: "$1", options: .regularExpression)
         // Drop any remaining USFM markers — closing forms (\nd*, \add*, \+nd*) and
@@ -164,5 +193,131 @@ public struct USFMParser {
         // Collapse whitespace
         out = out.replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
         return out.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// Extract English-order word tokens from a raw verse body (before cleanInline).
+    /// Preserves untagged glue words and normalized Strong's from `\w` / `\+w`.
+    public func extractWordTokens(_ raw: String) -> [WordToken] {
+        var s = raw
+        s = s.replacingOccurrences(of: #"\\f\s.*?\\f\*"#, with: "", options: .regularExpression)
+        s = s.replacingOccurrences(of: #"\\x\s.*?\\x\*"#, with: "", options: .regularExpression)
+        s = s.replacingOccurrences(of: "¶", with: "")
+        s = s.replacingOccurrences(of: "§", with: "")
+
+        var tokens: [WordToken] = []
+        var i = s.startIndex
+
+        func flushPlain(_ plain: inout String) {
+            let trimmed = plain.trimmingCharacters(in: .whitespacesAndNewlines)
+            plain = ""
+            guard !trimmed.isEmpty else { return }
+            for piece in trimmed.split(whereSeparator: { $0.isWhitespace }) {
+                let surface = String(piece)
+                guard !surface.isEmpty else { continue }
+                tokens.append(WordToken(surface: surface, strongs: nil))
+            }
+        }
+
+        var plain = ""
+        while i < s.endIndex {
+            if s[i] == "\\" {
+                let rest = s[i...]
+                // \w / \+w word markers (optionally with |attrs)
+                if rest.hasPrefix("\\w ") || rest.hasPrefix("\\+w ") {
+                    flushPlain(&plain)
+                    let nested = rest.hasPrefix("\\+w ")
+                    let openLen = nested ? 4 : 3 // "\+w " or "\w "
+                    var j = s.index(i, offsetBy: openLen)
+                    // Body until | or closing marker
+                    var body = ""
+                    while j < s.endIndex {
+                        if s[j] == "|" { break }
+                        let close = nested ? "\\+w*" : "\\w*"
+                        if s[j...].hasPrefix(close) { break }
+                        if s[j] == "\\" { break }
+                        body.append(s[j])
+                        j = s.index(after: j)
+                    }
+                    var strongs: String? = nil
+                    if j < s.endIndex, s[j] == "|" {
+                        j = s.index(after: j)
+                        var attrs = ""
+                        let close = nested ? "\\+w*" : "\\w*"
+                        while j < s.endIndex, !s[j...].hasPrefix(close) {
+                            if s[j] == "\\" && !s[j...].hasPrefix(close) {
+                                // Unexpected nested marker — stop attrs
+                                break
+                            }
+                            attrs.append(s[j])
+                            j = s.index(after: j)
+                        }
+                        if let range = attrs.range(of: #"strong="([^"]+)""#, options: .regularExpression) {
+                            let matched = String(attrs[range])
+                            if let q1 = matched.firstIndex(of: "\""),
+                               let q2 = matched.lastIndex(of: "\""),
+                               q1 < q2 {
+                                let rawId = String(matched[matched.index(after: q1)..<q2])
+                                strongs = Self.normalizeStrongs(rawId)
+                            }
+                        }
+                    }
+                    let close = nested ? "\\+w*" : "\\w*"
+                    if j < s.endIndex, s[j...].hasPrefix(close) {
+                        j = s.index(j, offsetBy: close.count)
+                    }
+                    // Trailing punctuation after \w* (e.g. "earth." / "Joshua,") stays
+                    // on the tagged surface so English-primary flow reads naturally.
+                    var surface = body.trimmingCharacters(in: .whitespacesAndNewlines)
+                    while j < s.endIndex {
+                        let ch = s[j]
+                        if ch.isWhitespace { break }
+                        if ch == "\\" { break }
+                        if ch.isLetter || ch.isNumber { break }
+                        surface.append(ch)
+                        j = s.index(after: j)
+                    }
+                    if !surface.isEmpty {
+                        tokens.append(WordToken(surface: surface, strongs: strongs))
+                    }
+                    i = j
+                    continue
+                }
+
+                // Closing marker \foo* or \+foo*
+                if let m = rest.range(of: #"^\\\+?[a-z0-9]+\*"#, options: .regularExpression) {
+                    i = m.upperBound
+                    continue
+                }
+                // Opening marker \foo or \+foo (optional trailing space)
+                if let m = rest.range(of: #"^\\\+?[a-z0-9]+ ?"#, options: .regularExpression) {
+                    i = m.upperBound
+                    continue
+                }
+                // Lone backslash — skip
+                i = s.index(after: i)
+                continue
+            }
+
+            plain.append(s[i])
+            i = s.index(after: i)
+        }
+        flushPlain(&plain)
+        return tokens
+    }
+
+    /// Same digit-strip logic as STEPBibleParser.normalizeStrongs (H0430 → H430).
+    static func normalizeStrongs(_ raw: String) -> String? {
+        var trimmed = raw.trimmingCharacters(in: .whitespaces)
+        if let slash = trimmed.firstIndex(of: "/") {
+            trimmed = String(trimmed[trimmed.index(after: slash)...])
+        }
+        trimmed = trimmed.replacingOccurrences(of: "{", with: "").replacingOccurrences(of: "}", with: "")
+        guard let first = trimmed.first(where: { $0 == "H" || $0 == "G" }) else { return nil }
+        let prefixIdx = trimmed.firstIndex(of: first)!
+        let after = trimmed[trimmed.index(after: prefixIdx)...]
+        let digits = after.prefix(while: { $0.isNumber })
+        guard !digits.isEmpty else { return nil }
+        let stripped = String(digits).drop(while: { $0 == "0" })
+        return String(first) + (stripped.isEmpty ? "0" : String(stripped))
     }
 }

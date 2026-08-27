@@ -3,7 +3,7 @@ import { lookupByGreekSurface } from "@/domain/greekNormalize";
 import { translationShortLabel } from "@/domain/translations";
 
 /** Languages that can sit on top of an interlinear stack. */
-export type PrimaryLang = "he" | "gk" | "en_bsb";
+export type PrimaryLang = "he" | "gk" | "en_bsb" | "en_kjv";
 /** Languages that can sit under the primary (the dragged-on secondary). */
 export type SecondaryLang = "en_bsb" | "en_kjv" | "he" | "gk";
 
@@ -34,8 +34,11 @@ export type Tab = SingleTab | InterlinearTab;
  *   STEPBible BSB-derived English underneath (same undertext for BSB and KJV).
  * - Primary `en_bsb` + secondary `he`|`gk` — Modern English on top, original
  *   underneath via BSB Translation Tables (English reading order).
+ * - Primary `en_kjv` + secondary `he`|`gk` — King James English on top, original
+ *   underneath via eBible USFM Strong's tags (caveated: lexicon lemma undertext,
+ *   not BSB Translation Table quality; untagged glue has no undertext).
  *
- * Invalid: he+gk, en_bsb+en_kjv, en_kjv as English-primary, anything else.
+ * Invalid: he+gk, en_bsb+en_kjv, anything else.
  */
 export function resolveInterlinear(
   dragged: CorpusLanguage,
@@ -50,8 +53,11 @@ export function resolveInterlinear(
     return { primary: target, secondary: dragged };
   }
 
-  if (target === "en_bsb" && (dragged === "he" || dragged === "gk")) {
-    return { primary: "en_bsb", secondary: dragged };
+  if (
+    (target === "en_bsb" || target === "en_kjv") &&
+    (dragged === "he" || dragged === "gk")
+  ) {
+    return { primary: target, secondary: dragged };
   }
 
   return null;
@@ -61,8 +67,10 @@ export function isOriginalPrimary(primary: PrimaryLang): primary is "he" | "gk" 
   return primary === "he" || primary === "gk";
 }
 
-export function isEnglishPrimary(primary: PrimaryLang): primary is "en_bsb" {
-  return primary === "en_bsb";
+export function isEnglishPrimary(
+  primary: PrimaryLang,
+): primary is "en_bsb" | "en_kjv" {
+  return primary === "en_bsb" || primary === "en_kjv";
 }
 
 export function interlinearLabel(
@@ -142,8 +150,9 @@ export function equivalentForGreekSurface(
 }
 
 /**
- * Clean BSB Translation Table English surface for English-primary interlinear.
- * Tables pad cells with spaces; bracketed inserts like `[the]` become `(the)`.
+ * Clean English surface for English-primary interlinear (BSB Translation Tables
+ * or caveated KJV USFM Strong's words). Tables pad cells with spaces; bracketed
+ * inserts like `[the]` become `(the)`.
  */
 export function bsbEnglishSurface(raw: string | null | undefined): string {
   if (raw == null) return "";
@@ -154,9 +163,12 @@ export function bsbEnglishSurface(raw: string | null | undefined): string {
     .trim();
 }
 
+/** Alias — same cleaning applies to KJV English-primary surfaces. */
+export const englishPrimarySurface = bsbEnglishSurface;
+
 /**
- * Clean original-language undertext from a BSB Translation Table row
- * (stored on `word.english` for en_bsb word rows).
+ * Clean original-language undertext from an English-primary word row
+ * (stored on `word.english`: BSB table original surface, or KJV lexicon lemma).
  */
 export function bsbOriginalUndertext(raw: string | null | undefined): string {
   if (raw == null) return "";
@@ -167,11 +179,16 @@ export function bsbOriginalUndertext(raw: string | null | undefined): string {
     .trim();
 }
 
+/** Alias for English-primary undertext cleaning (BSB original or KJV lemma). */
+export const englishPrimaryUndertext = bsbOriginalUndertext;
+
 /**
- * For English-primary interlinear, keep only word rows whose Strong's language
- * matches the secondary (H* for Hebrew, G* for Greek). OT verses have Hebrew
- * rows; NT verses have Greek — the wrong secondary yields an empty list and
- * the UI falls back to plain BSB text.
+ * For English-primary interlinear, keep word rows whose Strong's language
+ * matches the secondary (H* for Hebrew, G* for Greek), plus untagged glue
+ * rows (null/empty strongs) so function words stay visible in English order.
+ * OT verses have Hebrew tags; NT verses have Greek — the wrong secondary
+ * yields only glue (or empty if BSB tables have no null-strongs rows) and
+ * the UI may fall back to plain verse text.
  */
 export function wordsForEnglishPrimary(
   words: WordRow[],
@@ -179,5 +196,9 @@ export function wordsForEnglishPrimary(
 ): WordRow[] {
   if (secondary !== "he" && secondary !== "gk") return [];
   const prefix = secondary === "he" ? "H" : "G";
-  return words.filter((w) => (w.strongs ?? "").startsWith(prefix));
+  return words.filter((w) => {
+    const s = w.strongs ?? "";
+    if (s === "") return true; // untagged glue
+    return s.startsWith(prefix);
+  });
 }

@@ -149,6 +149,12 @@ public struct Pipeline {
                   run: { try ingestLexicon(writer: writer, source: .hebrewBDB(self.sourceRoot.appendingPathComponent("openscriptures/HebrewLexicon.xml"))) }),
             Stage(name: "Lexicon — Greek Strong's", group: "bible", languages: ["gk"], bookScoped: false,
                   run: { try ingestLexicon(writer: writer, source: .greekStrongs(self.sourceRoot.appendingPathComponent("openscriptures/StrongsGreek.xml"))) }),
+            // Caveated KJV English-primary reverse IL from eBible USFM `\w` tags.
+            // Undertext is Strong's lexicon lemma (not BSB Translation Table quality).
+            // Runs after lexicons so `english` can join `strongs.lemma` on full rebuilds;
+            // with --books, lexicon stages are skipped but an existing strongs table is used.
+            Stage(name: "KJV USFM Strong's words", group: "bible", languages: ["en_kjv"], bookScoped: true,
+                  run: { try ingestKJVUSFMWords(writer: writer) }),
             // Cross-refs index against en_bsb verses, so a partial book filter would
             // produce broken xrefs. Marked non-book-scoped so --books skips it.
             Stage(name: "Cross-references", group: "bible", languages: ["en_bsb"], bookScoped: false,
@@ -332,6 +338,52 @@ public struct Pipeline {
         try ingestUSFMDirectory(named: "kjv", language: "en_kjv", writer: writer)
     }
 
+    /// Attach English-primary word rows to existing `en_kjv` verses from eBible
+    /// USFM `\w` / `\+w` Strong's tags. Surface = English token; `english` =
+    /// lexicon lemma from `strongs` when the id matches (caveated undertext —
+    /// not verse-surface reverse IL / not BSB Translation Tables).
+    /// Apocrypha files without `\w` tags contribute no tokens and are skipped.
+    private func ingestKJVUSFMWords(writer: CorpusWriter) throws {
+        var collected: [(bookSlug: String, chapter: Int, verse: Int, tokens: [USFMParser.WordToken])] = []
+        for dirName in ["kjv", "kjv-apocrypha"] {
+            let dir = sourceRoot.appendingPathComponent(dirName)
+            guard let allFiles = try? FileManager.default.contentsOfDirectory(
+                at: dir, includingPropertiesForKeys: nil
+            ).filter({ ["usfm", "USFM", "sfm"].contains($0.pathExtension) }) else {
+                if dirName == "kjv" {
+                    throw IngestError.sourceMissing(dir.path)
+                }
+                logger.info("    \(dirName): directory missing — skipped")
+                continue
+            }
+            let wantedUSFMCodes = usfmCodesFor(bookFilter)
+            let files = wantedUSFMCodes.isEmpty ? allFiles : allFiles.filter { url in
+                let name = url.lastPathComponent.uppercased()
+                return wantedUSFMCodes.contains(where: { name.contains($0) })
+            }
+            let parser = USFMParser()
+            var booksWithTags = 0
+            for file in files {
+                do {
+                    let result = try parser.parse(fileURL: file)
+                    let filtered = bookFilter.isEmpty
+                        ? result.rows
+                        : result.rows.filter { bookFilter.contains($0.bookSlug) }
+                    var anyTagged = false
+                    for row in filtered where row.tokens.contains(where: { $0.strongs != nil }) {
+                        anyTagged = true
+                        collected.append((row.bookSlug, row.chapter, row.verse, row.tokens))
+                    }
+                    if anyTagged { booksWithTags += 1 }
+                } catch IngestError.malformed {
+                    continue
+                }
+            }
+            logger.info("    \(dirName): \(booksWithTags) book(s) with Strong's \\w tags")
+        }
+        try writeKJVUSFMWords(collected, writer: writer)
+    }
+
     private func ingestBrenton(writer: CorpusWriter) throws {
         try ingestUSFMDirectory(named: "brenton", language: "en_brenton", writer: writer,
                                 transform: { splitCombinedEzraNeh(splitPsalm151($0)) })
@@ -366,7 +418,8 @@ public struct Pipeline {
     private func splitPsalm151(_ rows: [USFMParser.Row]) -> [USFMParser.Row] {
         rows.map { row in
             (row.bookSlug == "ps" && row.chapter == 151)
-                ? USFMParser.Row(bookSlug: "ps151", chapter: 1, verse: row.verse, text: row.text, lead: row.lead)
+                ? USFMParser.Row(bookSlug: "ps151", chapter: 1, verse: row.verse,
+                                 text: row.text, lead: row.lead, tokens: row.tokens)
                 : row
         }
     }
@@ -384,7 +437,8 @@ public struct Pipeline {
         return rows.map { row in
             guard row.bookSlug == "ezra", row.chapter >= 11 else { return row }
             return USFMParser.Row(bookSlug: "neh", chapter: row.chapter - 10,
-                                  verse: row.verse, text: row.text, lead: row.lead)
+                                  verse: row.verse, text: row.text, lead: row.lead,
+                                  tokens: row.tokens)
         }
     }
 
@@ -746,6 +800,61 @@ public struct Pipeline {
             logger.warning("    \(skipped) verse(s) had no matching en_bsb row — skipped")
         }
         logger.info("    wrote \(inserted) en_bsb interlinear word rows")
+    }
+
+    /// Attach KJV USFM Strong's tokens to existing `en_kjv` verses.
+    /// English surface on `surface`; lexicon lemma on `english` (caveated).
+    private func writeKJVUSFMWords(
+        _ verses: [(bookSlug: String, chapter: Int, verse: Int, tokens: [USFMParser.WordToken])],
+        writer: CorpusWriter
+    ) throws {
+        var inserted = 0
+        var skipped = 0
+        try writer.queue.write { db in
+            // Lexicon lemmas for undertext (full table is small; avoids per-token SELECTs).
+            var lemmaById: [String: String] = [:]
+            for row in try Row.fetchAll(db, sql: "SELECT id, lemma FROM strongs") {
+                let id: String = row["id"]
+                let lemma: String = row["lemma"]
+                lemmaById[id] = lemma
+            }
+            if !bookFilter.isEmpty {
+                let placeholders = bookFilter.sorted().map { _ in "?" }.joined(separator: ", ")
+                try db.execute(sql: """
+                    DELETE FROM word WHERE verse_id IN (
+                        SELECT v.id FROM verse v
+                        JOIN chapter c ON v.chapter_id = c.id
+                        JOIN book b ON c.book_id = b.id
+                        WHERE b.language = 'en_kjv' AND b.slug IN (\(placeholders))
+                    )
+                    """, arguments: StatementArguments(Array(bookFilter.sorted())))
+            }
+            for entry in verses {
+                guard let verseID = try fetchVerseID(db, bookSlug: entry.bookSlug,
+                                                     language: "en_kjv",
+                                                     chapter: entry.chapter,
+                                                     verse: entry.verse) else {
+                    skipped += 1
+                    continue
+                }
+                if bookFilter.isEmpty {
+                    try db.execute(sql: "DELETE FROM word WHERE verse_id = ?", arguments: [verseID])
+                }
+                for (idx, tok) in entry.tokens.enumerated() {
+                    let position = idx + 1
+                    let lemmaUndertext = tok.strongs.flatMap { lemmaById[$0] }
+                    try db.execute(sql: """
+                        INSERT OR REPLACE INTO word(verse_id, position, surface, lemma, strongs, morphology, base_text, english)
+                        VALUES (?, ?, ?, NULL, ?, NULL, NULL, ?)
+                        """, arguments: [verseID, position, tok.surface, tok.strongs, lemmaUndertext])
+                    inserted += 1
+                }
+            }
+        }
+        if skipped > 0 {
+            logger.warning("    \(skipped) verse(s) had no matching en_kjv row — skipped")
+        }
+        logger.info("    wrote \(inserted) en_kjv English-primary word rows")
     }
 
     private func writeTaggedWords(words: [STEPBibleParser.Word], language: String, writer: CorpusWriter) throws {

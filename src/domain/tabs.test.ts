@@ -31,6 +31,14 @@ describe("resolveInterlinear", () => {
       primary: "en_bsb",
       secondary: "gk",
     });
+    expect(resolveInterlinear("he", "en_kjv")).toEqual({
+      primary: "en_kjv",
+      secondary: "he",
+    });
+    expect(resolveInterlinear("gk", "en_kjv")).toEqual({
+      primary: "en_kjv",
+      secondary: "gk",
+    });
   });
 
   it("allows original-primary with BSB or KJV secondary", () => {
@@ -104,15 +112,37 @@ describe("wordsForEnglishPrimary", () => {
       position: 1,
       surface: "In",
       lemma: null,
-      strongs: "H7225",
+      strongs: null,
       morphology: null,
       base_text: null,
-      english: "בְּרֵאשִׁ֖ית",
+      english: null,
     },
     {
       id: 2,
       verse_id: 10,
       position: 2,
+      surface: "the",
+      lemma: null,
+      strongs: "",
+      morphology: null,
+      base_text: null,
+      english: null,
+    },
+    {
+      id: 3,
+      verse_id: 10,
+      position: 3,
+      surface: "beginning",
+      lemma: null,
+      strongs: "H7225",
+      morphology: null,
+      base_text: null,
+      english: "רֵאשִׁית",
+    },
+    {
+      id: 4,
+      verse_id: 10,
+      position: 4,
       surface: "the",
       lemma: null,
       strongs: "G3588",
@@ -122,14 +152,14 @@ describe("wordsForEnglishPrimary", () => {
     },
   ];
 
-  it("keeps only Hebrew Strong's rows for Hebrew secondary", () => {
-    expect(wordsForEnglishPrimary(words, "he")).toHaveLength(1);
-    expect(wordsForEnglishPrimary(words, "he")[0]?.strongs).toBe("H7225");
+  it("keeps Hebrew Strong's rows and untagged glue for Hebrew secondary", () => {
+    const out = wordsForEnglishPrimary(words, "he");
+    expect(out.map((w) => w.strongs)).toEqual([null, "", "H7225"]);
   });
 
-  it("keeps only Greek Strong's rows for Greek secondary", () => {
-    expect(wordsForEnglishPrimary(words, "gk")).toHaveLength(1);
-    expect(wordsForEnglishPrimary(words, "gk")[0]?.strongs).toBe("G3588");
+  it("keeps Greek Strong's rows and untagged glue for Greek secondary", () => {
+    const out = wordsForEnglishPrimary(words, "gk");
+    expect(out.map((w) => w.strongs)).toEqual([null, "", "G3588"]);
   });
 
   it("returns empty for non-original secondaries", () => {

@@ -64,6 +64,9 @@ export interface WordRow {
   //     (normalized key casefolds all-caps Brenton tokens); null when no NT hit.
   //   • en_bsb rows — original-language surface from BSB Translation Tables
   //     (English is in `surface`; this column holds Hebrew/Greek underneath).
+  //   • en_kjv rows — Strong's lexicon lemma for tagged USFM tokens (caveated
+  //     reverse IL; not verse-surface forms / not BSB Translation Table quality);
+  //     null for untagged glue words.
   english: string | null;
 }
 

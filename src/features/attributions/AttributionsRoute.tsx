@@ -32,13 +32,15 @@ const ATTRIBUTED: Credit[] = [
 const PUBLIC_DOMAIN_TEXTS: Credit[] = [
   {
     name: "Berean Standard Bible",
-    detail: "2023 public-domain dedication.",
+    detail:
+      "2023 public-domain dedication. English-primary interlinear uses Berean Translation Tables (English reading order with original-language undertext).",
     license: "Public Domain",
     url: "https://berean.bible/",
   },
   {
     name: "King James Version + Apocrypha",
-    detail: "PD by age (1611/1769). Distributed via eBible.org `eng-kjv`.",
+    detail:
+      "PD by age (1611/1769). Distributed via eBible.org `eng-kjv`. Caveated English-primary reverse interlinear uses embedded USFM Strong's tags with lexicon-lemma undertext — not BSB Translation Table quality; untagged function words have no undertext.",
     license: "Public Domain",
     url: "https://ebible.org/find/details.php?id=eng-kjv",
   },

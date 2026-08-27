@@ -50,7 +50,7 @@ function isToggleable(v: unknown): v is CorpusLanguage {
 }
 
 function isPrimary(v: unknown): v is PrimaryLang {
-  return v === "he" || v === "gk" || v === "en_bsb";
+  return v === "he" || v === "gk" || v === "en_bsb" || v === "en_kjv";
 }
 
 function isSecondary(v: unknown): v is SecondaryLang {

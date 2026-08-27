@@ -29,8 +29,8 @@ import { useSettingsStore } from "@/stores/useSettingsStore";
 import { translationShortLabel } from "@/domain/translations";
 import { bookDisplayName } from "@/domain/reference";
 import {
-  bsbEnglishSurface,
-  bsbOriginalUndertext,
+  englishPrimarySurface,
+  englishPrimaryUndertext,
   equivalentForGreekSurface,
   interlinearLabel,
   isEnglishPrimary,
@@ -790,8 +790,8 @@ function InterlinearVerseCell({
                 let surface: string;
                 let gloss: string;
                 if (englishPrimary) {
-                  surface = bsbEnglishSurface(w.surface);
-                  const under = bsbOriginalUndertext(w.english);
+                  surface = englishPrimarySurface(w.surface);
+                  const under = englishPrimaryUndertext(w.english);
                   gloss = under === "" ? "—" : under;
                 } else {
                   surface = w.surface;

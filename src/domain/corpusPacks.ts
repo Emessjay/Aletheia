@@ -29,10 +29,11 @@ export interface CorpusPackMeta {
  * Strong's *lexicon* (`strongs` table) stays in base (~3 MiB) so definition
  * popovers work whenever a Strong's id is known. The Interlinear pack is the
  * heavy `word` table (~100 MiB) that powers Hebrew/Greek word columns and
- * stacked interlinear glosses. English BSB/KJV verses do not embed Strong's
- * ids today (`hasStrongs: false`), so without the Interlinear pack the reader
- * still shows plain Hebrew/Greek verse text from base — only token-level
- * interlinear / clickable Strong's surfaces are missing.
+ * stacked interlinear glosses (including English-primary BSB Translation Tables
+ * and caveated KJV USFM Strong's words). English BSB/KJV single columns do not
+ * embed Strong's ids today (`hasStrongs: false`), so without the Interlinear
+ * pack the reader still shows plain Hebrew/Greek verse text from base — only
+ * token-level interlinear / clickable Strong's surfaces are missing.
  */
 export const CORPUS_PACKS: readonly CorpusPackMeta[] = [
   {
@@ -46,7 +47,7 @@ export const CORPUS_PACKS: readonly CorpusPackMeta[] = [
     id: "interlinear",
     title: "Interlinear",
     description:
-      "Word-level Hebrew/Greek rows (Strong's ids, morphology, glosses) for interlinear columns.",
+      "Word-level Hebrew/Greek rows (Strong's ids, morphology, glosses) plus English-primary BSB/KJV interlinear word rows.",
     kind: "sqlite",
   },
   {

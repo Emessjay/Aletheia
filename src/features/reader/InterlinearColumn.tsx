@@ -1,8 +1,8 @@
 import type { ChapterPayload } from "@/db/queries";
 import type { HighlightRow, NoteRow } from "@/db/types";
 import {
-  bsbEnglishSurface,
-  bsbOriginalUndertext,
+  englishPrimarySurface,
+  englishPrimaryUndertext,
   equivalentForGreekSurface,
   interlinearLabel,
   isEnglishPrimary,
@@ -40,8 +40,9 @@ interface Props {
  *
  * - Original primary (`he`|`gk`): Hebrew/Greek surface, STEPBible BSB-derived
  *   English underneath. Flows RTL for Hebrew.
- * - English primary (`en_bsb`): BSB English surface in reading order, original
- *   language underneath from BSB Translation Tables. LTR.
+ * - English primary (`en_bsb`|`en_kjv`): English surface in reading order,
+ *   original underneath (BSB Translation Tables, or caveated KJV USFM Strong's
+ *   lexicon lemmas). LTR.
  *
  * Per-character highlighting and translation-side text are not rendered here —
  * users can still split the tab to access the secondary verse as a column.
@@ -196,8 +197,8 @@ export function InterlinearColumn({
                         let surface: string;
                         let gloss: string;
                         if (englishPrimary) {
-                          surface = bsbEnglishSurface(w.surface);
-                          const under = bsbOriginalUndertext(w.english);
+                          surface = englishPrimarySurface(w.surface);
+                          const under = englishPrimaryUndertext(w.english);
                           gloss = under === "" ? "—" : under;
                         } else {
                           surface = w.surface;

@@ -132,6 +132,53 @@ final class USFMParserTests: XCTestCase {
             "At that time the LORD said unto Joshua, Make thee sharp knives."
         )
     }
+
+    /// Gen 1:1 eBible KJV: untagged glue ("In", "the") plus normalized Strong's.
+    func testKJVGenesis11WordTokens() throws {
+        let parser = USFMParser()
+        let usfm = """
+        \\id GEN Genesis
+        \\c 1
+        \\p
+        \\v 1 In the \\w beginning|strong="H7225"\\w* \\w God|strong="H0430"\\w* \\w created|strong="H1254"\\w* the \\w heaven|strong="H8064"\\w* \\w and|strong="H0853"\\w* the \\w earth|strong="H0776"\\w*.
+        """
+        let result = try parser.parse(text: usfm)
+        let tokens = result.rows[0].tokens
+        XCTAssertEqual(tokens.map(\.surface), [
+            "In", "the", "beginning", "God", "created", "the", "heaven", "and", "the", "earth.",
+        ])
+        XCTAssertNil(tokens[0].strongs)
+        XCTAssertNil(tokens[1].strongs)
+        XCTAssertEqual(tokens[2].strongs, "H7225")
+        XCTAssertEqual(tokens[3].strongs, "H430")
+        XCTAssertEqual(tokens[4].strongs, "H1254")
+        XCTAssertNil(tokens[5].strongs)
+        XCTAssertEqual(tokens[6].strongs, "H8064")
+        XCTAssertEqual(tokens[7].strongs, "H853")
+        XCTAssertNil(tokens[8].strongs)
+        XCTAssertEqual(tokens[9].strongs, "H776")
+    }
+
+    /// Joshua 5:2: nested \\+w LORD + untagged glue + footnote stripped from tokens.
+    func testKJVJoshua52WordTokens() throws {
+        let parser = USFMParser()
+        let usfm = """
+        \\id JOS Joshua
+        \\c 5
+        \\p
+        \\v 2 ¶ At that \\w time|strong="H6256"\\w* the \\nd \\+w LORD|strong="H3068"\\+w*\\nd* \\w said|strong="H0559"\\w* unto \\w Joshua|strong="H3091"\\w*, \\w Make|strong="H6213"\\w* thee \\w sharp|strong="H6697"\\w* \\w knives|strong="H2719"\\w*.\\f + \\fr 5.2 \\ft sharp…: or, knives of flints\\f*
+        """
+        let result = try parser.parse(text: usfm)
+        let tokens = result.rows[0].tokens
+        XCTAssertEqual(tokens.first { $0.surface == "LORD" }?.strongs, "H3068")
+        XCTAssertEqual(tokens.first { $0.surface == "time" }?.strongs, "H6256")
+        XCTAssertNil(tokens.first { $0.surface == "At" }?.strongs)
+        XCTAssertNil(tokens.first { $0.surface == "the" }?.strongs)
+        XCTAssertNil(tokens.first { $0.surface == "unto" }?.strongs)
+        XCTAssertFalse(tokens.contains(where: { $0.surface.contains("flint") }))
+        XCTAssertEqual(USFMParser.normalizeStrongs("H0430"), "H430")
+        XCTAssertEqual(USFMParser.normalizeStrongs("H3068"), "H3068")
+    }
 }
 
 final class SwordCommentaryParserTests: XCTestCase {
