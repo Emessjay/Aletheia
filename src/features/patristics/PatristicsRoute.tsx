@@ -9,9 +9,12 @@ import {
 } from "@/db/hooks";
 import type { SectionOutlineRow, SectionRow, WorkRow } from "@/db/types";
 import { useViewportWidth } from "@/lib/useViewportWidth";
-import { RESOURCES_BASE } from "@/domain/resourcesCorpora";
 import {
-  eyebrowLine,
+  RESOURCES_BASE,
+  corpusIdForWork,
+  resourcesCorpusMeta,
+} from "@/domain/resourcesCorpora";
+import {
   hasMeaningfulBody,
   parseHeadingLabel,
   shortenLabel,
@@ -68,6 +71,7 @@ function PatristicsLayout({
   const viewportW = useViewportWidth();
   const compact = viewportW < SIDEBAR_BREAKPOINT;
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const parentMenu = parentMenuForWork(workSlug);
 
   // Auto-close drawer when switching section or transitioning to desktop.
   useEffect(() => setDrawerOpen(false), [ordinalPath, compact]);
@@ -82,7 +86,11 @@ function PatristicsLayout({
       }}
     >
       {!compact ? (
-        <PatristicsSidebar workSlug={workSlug} activePath={ordinalPath} />
+        <PatristicsSidebar
+          workSlug={workSlug}
+          activePath={ordinalPath}
+          parentMenu={parentMenu}
+        />
       ) : null}
       <main style={{ flex: 1, overflow: "auto", minWidth: 0 }}>
         {compact ? (
@@ -94,8 +102,15 @@ function PatristicsLayout({
               position: "sticky",
               top: 0,
               zIndex: 5,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 12,
             }}
           >
+            <Link to={parentMenu.to} style={backLink}>
+              ← {parentMenu.label}
+            </Link>
             <button
               type="button"
               aria-label="Show section list"
@@ -122,7 +137,12 @@ function PatristicsLayout({
             </button>
           </div>
         ) : null}
-        <SectionView workSlug={workSlug} ordinalPath={ordinalPath} />
+        <SectionView
+          workSlug={workSlug}
+          ordinalPath={ordinalPath}
+          parentMenu={parentMenu}
+          compact={compact}
+        />
       </main>
       {compact && drawerOpen ? (
         <>
@@ -178,6 +198,7 @@ function PatristicsLayout({
             <PatristicsSidebar
               workSlug={workSlug}
               activePath={ordinalPath}
+              parentMenu={parentMenu}
               onNavigate={() => setDrawerOpen(false)}
               fillHeight
             />
@@ -188,12 +209,26 @@ function PatristicsLayout({
   );
 }
 
+/** Parent list to exit into from a work's reading view. */
+function parentMenuForWork(workSlug: string): { to: string; label: string } {
+  const corpusId = corpusIdForWork(workSlug);
+  const meta = corpusId ? resourcesCorpusMeta(corpusId) : undefined;
+  if (meta) {
+    return { to: `${RESOURCES_BASE}/${meta.id}`, label: meta.title };
+  }
+  return { to: RESOURCES_BASE, label: "Resources" };
+}
+
 function SectionView({
   workSlug,
   ordinalPath,
+  parentMenu,
+  compact = false,
 }: {
   workSlug: string;
   ordinalPath: string;
+  parentMenu: { to: string; label: string };
+  compact?: boolean;
 }) {
   const section = useSection(workSlug, ordinalPath, "en");
   const children = useChildSections(workSlug, ordinalPath, "en");
@@ -246,14 +281,22 @@ function SectionView({
 
   const heading = parseHeadingLabel(s.label);
 
-  const trail = breadcrumbTrail(list, ordinalPath, work);
+  const trail = breadcrumbTrail(list, ordinalPath, work, workSlug, parentMenu);
 
   return (
     <>
-      <StickyBreadcrumb trail={trail} />
+      <StickyBreadcrumb trail={trail} offsetForCompactChrome={compact} />
       <article style={wrap}>
       <header style={{ marginBottom: "1.75rem" }}>
-        <p className="al-eyebrow">{eyebrowLine(work, workSlug)}</p>
+        <p className="al-eyebrow">
+          {compact ? (
+            work?.title ?? workSlug
+          ) : (
+            <Link to={parentMenu.to} style={backLink}>
+              ← {parentMenu.label}
+            </Link>
+          )}
+        </p>
         {heading ? (
           <h1
             style={{
@@ -346,14 +389,20 @@ function SectionView({
   );
 }
 
-function StickyBreadcrumb({ trail }: { trail: string[] }) {
+function StickyBreadcrumb({
+  trail,
+  offsetForCompactChrome = false,
+}: {
+  trail: BreadcrumbPart[];
+  offsetForCompactChrome?: boolean;
+}) {
   if (trail.length === 0) return null;
   return (
-    <div
+    <nav
       style={{
         position: "sticky",
-        top: 0,
-        zIndex: 5,
+        top: offsetForCompactChrome ? 45 : 0,
+        zIndex: 4,
         background: "var(--color-bg-elevated)",
         borderBottom: "1px solid var(--color-rule)",
         padding: "8px 2rem",
@@ -366,24 +415,43 @@ function StickyBreadcrumb({ trail }: { trail: string[] }) {
       }}
       aria-label="Current section"
     >
-      {trail.join(" · ")}
-    </div>
+      {trail.map((part, i) => (
+        <span key={`${part.label}-${i}`}>
+          {i > 0 ? " · " : null}
+          {part.to ? (
+            <Link to={part.to} style={crumbLink}>
+              {part.label}
+            </Link>
+          ) : (
+            part.label
+          )}
+        </span>
+      ))}
+    </nav>
   );
 }
 
-/** Build "Author · Title · Book I · Chapter VIII"-style trail from the work
- *  metadata plus the ancestor chain of the active section. Ancestors are
- *  computed by ordinal-path prefix; each parent label is run through
- *  parseHeadingLabel so we show just the rubric, not the full caption. */
+interface BreadcrumbPart {
+  label: string;
+  to?: string;
+}
+
+/** Build "Category · Title · Book I · Chapter VIII"-style trail from the
+ *  parent menu, work metadata, and ancestor chain of the active section. */
 function breadcrumbTrail(
   allSections: SectionOutlineRow[],
   activePath: string,
   work: WorkRow | null,
-): string[] {
-  const parts: string[] = [];
+  workSlug: string,
+  parentMenu: { to: string; label: string },
+): BreadcrumbPart[] {
+  const parts: BreadcrumbPart[] = [
+    { label: parentMenu.label, to: parentMenu.to },
+  ];
   if (work) {
-    if (work.author) parts.push(work.author);
-    parts.push(work.title);
+    parts.push({ label: work.title });
+  } else if (workSlug) {
+    parts.push({ label: workSlug });
   }
   if (allSections.length === 0 || !activePath) return parts;
   const byPath = new Map<string, SectionOutlineRow>();
@@ -397,7 +465,13 @@ function breadcrumbTrail(
     if (!row) continue;
     const heading = parseHeadingLabel(row.label);
     const lead = heading?.lead ?? row.ordinal_path;
-    parts.push(lead);
+    const isActive = prefix === activePath;
+    parts.push({
+      label: lead,
+      to: isActive
+        ? undefined
+        : `${RESOURCES_BASE}/${workSlug}/${encodeURIComponent(prefix)}`,
+    });
   }
   return parts;
 }
@@ -445,11 +519,13 @@ function ChildSection({ section }: { section: SectionRow }) {
 function PatristicsSidebar({
   workSlug,
   activePath,
+  parentMenu,
   onNavigate,
   fillHeight = false,
 }: {
   workSlug: string;
   activePath: string;
+  parentMenu: { to: string; label: string };
   onNavigate?: () => void;
   fillHeight?: boolean;
 }) {
@@ -479,6 +555,15 @@ function PatristicsSidebar({
         padding: "16px 0",
       }}
     >
+      <div style={{ padding: "0 18px 14px", borderBottom: "1px solid var(--color-rule)", marginBottom: 10 }}>
+        <Link
+          to={parentMenu.to}
+          onClick={onNavigate}
+          style={{ ...backLink, fontSize: 12 }}
+        >
+          ← {parentMenu.label}
+        </Link>
+      </div>
       {items.length === 0 ? (
         <p
           style={{
@@ -574,6 +659,16 @@ const wrap: React.CSSProperties = {
   maxWidth: "var(--measure)",
   margin: "0 auto",
   padding: "2.5rem 2rem 6rem",
+};
+
+const backLink: React.CSSProperties = {
+  color: "var(--color-fg-muted)",
+  textDecoration: "none",
+};
+
+const crumbLink: React.CSSProperties = {
+  color: "inherit",
+  textDecoration: "none",
 };
 
 function ListIcon() {

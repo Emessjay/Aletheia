@@ -73,3 +73,11 @@ export function resourcesCorpusMeta(
 export function isResourcesCorpusId(id: string): id is ResourcesCorpusId {
   return RESOURCES_CORPORA.some((c) => c.id === id);
 }
+
+/** Which Resources landing category a work slug belongs to, if any. */
+export function corpusIdForWork(slug: string): ResourcesCorpusId | null {
+  for (const corpus of RESOURCES_CORPORA) {
+    if (workMatchesCorpus(slug, corpus.id)) return corpus.id;
+  }
+  return null;
+}

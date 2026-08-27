@@ -153,7 +153,7 @@ function BookView({
         <Header
           eyebrow={
             <Link to={`/commentaries/${workSlug}`} style={crumbLink}>
-              ← {workSlug}
+              ← {work.data?.title ?? workSlug}
             </Link>
           }
           title={bookSlug}
@@ -173,15 +173,9 @@ function BookView({
     <article style={wrap}>
       <Header
         eyebrow={
-          <span>
-            <Link to="/commentaries" style={crumbLink}>
-              Commentaries
-            </Link>
-            {" · "}
-            <Link to={`/commentaries/${workSlug}`} style={crumbLink}>
-              {work.data?.title ?? workSlug}
-            </Link>
-          </span>
+          <Link to={`/commentaries/${workSlug}`} style={crumbLink}>
+            ← {work.data?.title ?? workSlug}
+          </Link>
         }
         title={bookName}
         sub="Book introduction"
@@ -273,15 +267,9 @@ function ChapterView({
   const header = (
     <Header
       eyebrow={
-        <span>
-          <Link to="/commentaries" style={crumbLink}>
-            Commentaries
-          </Link>
-          {" · "}
-          <Link to={`/commentaries/${workSlug}`} style={crumbLink}>
-            {work.data?.title ?? workSlug}
-          </Link>
-        </span>
+        <Link to={`/commentaries/${workSlug}`} style={crumbLink}>
+          ← {work.data?.title ?? workSlug}
+        </Link>
       }
       title={`${bookEntry?.book_name ?? bookSlug} ${chapter}`}
     />
