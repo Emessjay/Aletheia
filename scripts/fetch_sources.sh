@@ -1,10 +1,16 @@
 #!/usr/bin/env bash
 # Fetches every raw source the ingest pipeline expects under data/sources/.
-# Idempotent: re-running only refreshes things that already changed upstream.
+# Paths must match tools/ingest/Sources/Ingest/Pipeline.swift (and parser
+# comments). Idempotent: re-running only refreshes things that changed upstream.
 # Required tools: git, curl, unzip.
 #
-# All biblical sources are public domain / unencumbered. See CLAUDE.md for the
-# corpus licensing policy.
+# Licensing is mixed — not everything is PD:
+#   PD / Unlicense / CC0 — BSB (+ tables), eBible USFM (KJV, Brenton, WEB),
+#     Jacob-Gray summa.json, CCEL Schaff ThML (underlying works PD by age),
+#     CrossWire SWORD commentaries, Luther PG plain text, Matthew Henry (CC0)
+#   CC BY 4.0 — STEPBible-Data (TAHOT/TAGNT), OpenScriptures HebrewStrong +
+#     StrongsGreek XML, OpenBible.info cross_references.txt
+# See src/features/attributions/AttributionsRoute.tsx and CLAUDE.md.
 
 set -euo pipefail
 
@@ -98,54 +104,67 @@ if [[ -z "$(ls -A "${KJV_DIR}" 2>/dev/null)" ]]; then
 fi
 
 # -----------------------------------------------------------------------------
-# Byzantine Majority Greek NT (byztxt/byzantine-majority-text) — Unlicense / PD
-# Robinson-Pierpont 2018, tagged with Strong's + morphology
+# STEPBible-Data — CC BY 4.0 (https://github.com/STEPBible/STEPBible-Data)
+# Pipeline reads stepbible/{TAHOT,TAGOT,TAGNT,TKJVS}/*.txt. Upstream currently
+# publishes TAHOT + TAGNT under "Translators Amalgamated OT+NT/"; TAGOT and
+# TKJVS are empty placeholders (ingest skips them). Greek NT Strong's/morph
+# comes from TAGNT — do not fetch byztxt (unused by Pipeline.swift).
 # -----------------------------------------------------------------------------
-BYZ_DIR="${SRC_DIR}/byztxt"
-if [[ ! -d "${BYZ_DIR}/.git" ]]; then
-    note "Cloning byztxt/byzantine-majority-text (shallow)…"
-    git clone --depth=1 https://github.com/byztxt/byzantine-majority-text.git "${BYZ_DIR}"
+STEP_DIR="${SRC_DIR}/stepbible"
+STEP_AMALG="${STEP_DIR}/Translators Amalgamated OT+NT"
+if [[ ! -d "${STEP_DIR}/.git" ]]; then
+    note "Cloning STEPBible/STEPBible-Data (shallow)…"
+    git clone --depth=1 https://github.com/STEPBible/STEPBible-Data.git "${STEP_DIR}"
 else
-    note "Updating byztxt/byzantine-majority-text…"
-    git -C "${BYZ_DIR}" pull --ff-only
+    note "Updating STEPBible/STEPBible-Data…"
+    git -C "${STEP_DIR}" pull --ff-only
+fi
+mkdir -p "${STEP_DIR}/TAHOT" "${STEP_DIR}/TAGNT" "${STEP_DIR}/TAGOT" "${STEP_DIR}/TKJVS"
+if [[ -d "${STEP_AMALG}" ]]; then
+    note "Staging STEPBible TAHOT / TAGNT into Pipeline table dirs…"
+    shopt -s nullglob
+    for f in "${STEP_AMALG}"/TAHOT*.txt; do
+        dest="${STEP_DIR}/TAHOT/$(basename "$f")"
+        ln -f "$f" "${dest}" 2>/dev/null || cp -f "$f" "${dest}"
+    done
+    for f in "${STEP_AMALG}"/TAGNT*.txt; do
+        dest="${STEP_DIR}/TAGNT/$(basename "$f")"
+        ln -f "$f" "${dest}" 2>/dev/null || cp -f "$f" "${dest}"
+    done
+    shopt -u nullglob
 fi
 
 # -----------------------------------------------------------------------------
-# BDB Hebrew lexicon (eliranwong/unabridged-BDB-Hebrew-lexicon) — PD
-# Unabridged 1906 BDB, Strong's-keyed, distributed as JSON.
+# OpenScriptures lexicons — CC BY 4.0
+# Pipeline paths: openscriptures/HebrewLexicon.xml, openscriptures/StrongsGreek.xml
+# HebrewLexicon.xml is openscriptures/HebrewLexicon's HebrewStrong.xml (Strong's H
+# + BDB markup the LexiconParser reads). Not eliranwong DictBDB.json.
 # -----------------------------------------------------------------------------
-BDB_DIR="${SRC_DIR}/bdb"
-mkdir -p "${BDB_DIR}"
-if [[ ! -f "${BDB_DIR}/DictBDB.json" ]]; then
-    note "Downloading unabridged BDB JSON…"
-    curl -sSL "https://raw.githubusercontent.com/eliranwong/unabridged-BDB-Hebrew-lexicon/master/DictBDB.json" \
-        -o "${BDB_DIR}/DictBDB.json"
+OS_DIR="${SRC_DIR}/openscriptures"
+mkdir -p "${OS_DIR}"
+if [[ ! -f "${OS_DIR}/HebrewLexicon.xml" ]]; then
+    note "Downloading OpenScriptures HebrewStrong.xml → HebrewLexicon.xml…"
+    curl -sSL "https://raw.githubusercontent.com/openscriptures/HebrewLexicon/master/HebrewStrong.xml" \
+        -o "${OS_DIR}/HebrewLexicon.xml"
 fi
-
-# -----------------------------------------------------------------------------
-# Strong's Greek dictionary — PD by age (Strong, 1890)
-# We use the openscriptures/strongs digital edition for convenience; the digital
-# edition itself is unlicensed in that repo, but the underlying lexicon is PD.
-# -----------------------------------------------------------------------------
-STRONGS_DIR="${SRC_DIR}/strongs-greek"
-mkdir -p "${STRONGS_DIR}"
-if [[ ! -f "${STRONGS_DIR}/StrongsGreek.xml" ]]; then
-    note "Downloading Strong's Greek dictionary…"
+if [[ ! -f "${OS_DIR}/StrongsGreek.xml" ]]; then
+    note "Downloading OpenScriptures Strong's Greek dictionary…"
     curl -sSL "https://raw.githubusercontent.com/openscriptures/strongs/master/greek/StrongsGreekDictionaryXML_1.4/strongsgreek.xml" \
-        -o "${STRONGS_DIR}/StrongsGreek.xml"
+        -o "${OS_DIR}/StrongsGreek.xml"
 fi
 
 # -----------------------------------------------------------------------------
-# Treasury of Scripture Knowledge (TSK) cross-references — PD by age (R.A. Torrey, 1880s)
-# Sourced from narthur/tsk-cli; the repository's GPL applies to the CLI code,
-# not to the underlying public-domain TSK data file.
+# OpenBible.info cross-references — CC BY 4.0
+# CrossReferenceParser reads openbibleinfo/cross_references.txt (TSK-derived
+# compilation with vote weights). Not raw narthur/tsk-cli tskxref.txt.
 # -----------------------------------------------------------------------------
-TSK_DIR="${SRC_DIR}/tsk"
-mkdir -p "${TSK_DIR}"
-if [[ ! -f "${TSK_DIR}/tskxref.txt" ]]; then
-    note "Downloading Treasury of Scripture Knowledge data…"
-    curl -sSL "https://raw.githubusercontent.com/narthur/tsk-cli/master/tskxref.txt" \
-        -o "${TSK_DIR}/tskxref.txt"
+OB_DIR="${SRC_DIR}/openbibleinfo"
+mkdir -p "${OB_DIR}"
+if [[ ! -f "${OB_DIR}/cross_references.txt" ]]; then
+    note "Downloading OpenBible.info cross-references…"
+    curl -sSL "https://a.openbible.info/data/cross-references.zip" -o /tmp/openbible-xref.zip
+    unzip -qo /tmp/openbible-xref.zip -d "${OB_DIR}"
+    rm /tmp/openbible-xref.zip
 fi
 
 # -----------------------------------------------------------------------------

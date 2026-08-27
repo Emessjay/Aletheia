@@ -85,11 +85,12 @@ bookmarks, notes) lives in a separate local SQLite (`aletheia_user.db`)
 with ULID keys and soft-delete tombstones.
 
 **Ingest pipeline.** A Swift Package under [tools/ingest/](tools/ingest/)
-ingests every raw upstream source (BSB plain text, eBible.org USFM, byztxt,
-BDB, Strong's, Treasury of Scripture Knowledge, Jacob-Gray *Summa*, and
-the Schaff patristics) into the single bundled `data/Aletheia.sqlite`. The
-corpus is read-only at runtime and rebuilt offline whenever sources or
-schema change.
+ingests every raw upstream source fetched by `scripts/fetch_sources.sh`
+(BSB + tables, eBible.org USFM, STEPBible TAHOT/TAGNT, OpenScriptures
+lexicons, OpenBible.info cross-refs, Jacob-Gray *Summa*, Schaff/CCEL
+ThML, and PD commentaries) into the single bundled `data/Aletheia.sqlite`.
+The corpus is read-only at runtime and rebuilt offline whenever sources
+or schema change.
 
 **Web / Railway deployment.** A hosted variant is on the roadmap — the
 goal is to make the same reader available in a browser without the desktop
