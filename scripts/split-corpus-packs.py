@@ -21,10 +21,15 @@ Usage
 -----
   python3 scripts/split-corpus-packs.py
   python3 scripts/split-corpus-packs.py --src data/Aletheia.sqlite --out data/packs
+  python3 scripts/split-corpus-packs.py --packs commentaries anf
+  python3 scripts/split-corpus-packs.py --packs audio-modern-en   # no SQLite source needed
 
 Outputs data/packs/{base,interlinear,commentaries,anf,npnf,reformers}.sqlite
 plus audio-modern-en/manifest.json and copies kjv-timing.json when present.
 Existing MP3s under audio-modern-en/ are preserved (fetch separately).
+
+With --packs, only the named shards are rewritten; registry.json is merged
+so untouched pack entries keep their prior bytes/paths.
 """
 
 from __future__ import annotations
@@ -37,6 +42,17 @@ import sys
 from pathlib import Path
 
 PACK_VERSION = 1
+
+# All SQLite/directory pack ids this script can emit (order for full runs).
+ALL_PACK_IDS: tuple[str, ...] = (
+    "base",
+    "interlinear",
+    "commentaries",
+    "anf",
+    "npnf",
+    "reformers",
+    "audio-modern-en",
+)
 
 # Work-slug predicates for section/work packs (applied against work.slug).
 WORK_PACKS: dict[str, str] = {
@@ -300,24 +316,49 @@ def emit_audio_pack(repo: Path, out_dir: Path) -> Path:
     return audio_dir
 
 
-def write_registry(out_dir: Path, artifacts: dict[str, Path]) -> None:
-    entries = []
+def pack_entry(out_dir: Path, pack_id: str, path: Path) -> dict:
+    if path.is_dir():
+        size = sum(p.stat().st_size for p in path.rglob("*") if p.is_file())
+        kind = "directory"
+    else:
+        size = path.stat().st_size
+        kind = "sqlite"
+    return {
+        "id": pack_id,
+        "version": PACK_VERSION,
+        "path": str(path.relative_to(out_dir)),
+        "kind": kind,
+        "bytes": size,
+    }
+
+
+def write_registry(
+    out_dir: Path,
+    artifacts: dict[str, Path],
+    *,
+    merge: bool,
+) -> None:
+    """Write registry.json. When merge=True, keep entries for packs we did not emit."""
+    by_id: dict[str, dict] = {}
+    if merge:
+        existing = out_dir / "registry.json"
+        if existing.is_file():
+            try:
+                prev = json.loads(existing.read_text(encoding="utf-8"))
+                for entry in prev.get("packs", []):
+                    if isinstance(entry, dict) and "id" in entry:
+                        by_id[str(entry["id"])] = entry
+            except (json.JSONDecodeError, OSError) as e:
+                print(f"  warning: could not merge registry.json ({e})", file=sys.stderr)
+
     for pack_id, path in artifacts.items():
-        if path.is_dir():
-            size = sum(p.stat().st_size for p in path.rglob("*") if p.is_file())
-            kind = "directory"
-        else:
-            size = path.stat().st_size
-            kind = "sqlite"
-        entries.append(
-            {
-                "id": pack_id,
-                "version": PACK_VERSION,
-                "path": str(path.relative_to(out_dir)),
-                "kind": kind,
-                "bytes": size,
-            }
-        )
+        by_id[pack_id] = pack_entry(out_dir, pack_id, path)
+
+    # Prefer canonical order; append any unknown leftover ids at the end.
+    ordered_ids = [pid for pid in ALL_PACK_IDS if pid in by_id]
+    ordered_ids.extend(sorted(pid for pid in by_id if pid not in ALL_PACK_IDS))
+    entries = [by_id[pid] for pid in ordered_ids]
+
     registry = {
         "version": PACK_VERSION,
         "note": (
@@ -332,65 +373,77 @@ def write_registry(out_dir: Path, artifacts: dict[str, Path]) -> None:
     )
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--src",
-        type=Path,
-        default=Path("data/Aletheia.sqlite"),
-        help="Monolithic corpus SQLite",
-    )
-    parser.add_argument(
-        "--out",
-        type=Path,
-        default=Path("data/packs"),
-        help="Output directory for pack artifacts",
-    )
-    args = parser.parse_args()
-    src: Path = args.src
-    out: Path = args.out
-    if not src.is_file():
-        print(f"error: source corpus not found: {src}", file=sys.stderr)
-        return 1
+def parse_pack_ids(raw: list[str] | None) -> list[str] | None:
+    """None = emit all packs. Otherwise a de-duplicated list in ALL_PACK_IDS order."""
+    if not raw:
+        return None
+    wanted: set[str] = set()
+    for token in raw:
+        for part in token.split(","):
+            part = part.strip()
+            if not part:
+                continue
+            if part not in ALL_PACK_IDS:
+                known = ", ".join(ALL_PACK_IDS)
+                raise SystemExit(f"error: unknown pack id {part!r} (known: {known})")
+            wanted.add(part)
+    return [pid for pid in ALL_PACK_IDS if pid in wanted]
 
-    repo = Path.cwd()
-    out.mkdir(parents=True, exist_ok=True)
-    print(f"Splitting {src} ({human_mb(src)}) → {out}/")
 
+def needs_sqlite_source(pack_ids: list[str] | None) -> bool:
+    if pack_ids is None:
+        return True
+    return any(pid != "audio-modern-en" for pid in pack_ids)
+
+
+def emit_selected(
+    src: Path | None,
+    out: Path,
+    repo: Path,
+    pack_ids: list[str] | None,
+) -> dict[str, Path]:
+    """Emit packs. pack_ids=None means full split."""
+    selected = list(ALL_PACK_IDS) if pack_ids is None else pack_ids
     artifacts: dict[str, Path] = {}
-    print("  base…")
-    artifacts["base"] = emit_base(src, out)
-    print(f"    {human_mb(artifacts['base'])}")
 
-    print("  interlinear…")
-    artifacts["interlinear"] = emit_interlinear(src, out)
-    print(f"    {human_mb(artifacts['interlinear'])}")
-
-    for pack_id, where in WORK_PACKS.items():
+    for pack_id in selected:
         print(f"  {pack_id}…")
-        artifacts[pack_id] = emit_work_pack(src, out, pack_id, where)
-        print(f"    {human_mb(artifacts[pack_id])}")
+        if pack_id == "base":
+            assert src is not None
+            artifacts["base"] = emit_base(src, out)
+            print(f"    {human_mb(artifacts['base'])}")
+        elif pack_id == "interlinear":
+            assert src is not None
+            artifacts["interlinear"] = emit_interlinear(src, out)
+            print(f"    {human_mb(artifacts['interlinear'])}")
+        elif pack_id in WORK_PACKS:
+            assert src is not None
+            artifacts[pack_id] = emit_work_pack(src, out, pack_id, WORK_PACKS[pack_id])
+            print(f"    {human_mb(artifacts[pack_id])}")
+        elif pack_id == "audio-modern-en":
+            artifacts["audio-modern-en"] = emit_audio_pack(repo, out)
+            size = sum(
+                p.stat().st_size
+                for p in artifacts["audio-modern-en"].rglob("*")
+                if p.is_file()
+            )
+            mp3_n = sum(
+                1
+                for p in artifacts["audio-modern-en"].rglob("*.mp3")
+                if p.is_file() and p.stat().st_size > 0
+            )
+            if size >= 1024 * 1024:
+                print(f"    {size / (1024 * 1024):.1f} MiB ({mp3_n} MP3s)")
+            else:
+                print(f"    {size / 1024:.1f} KiB ({mp3_n} MP3s — run fetch-audio-pack.py)")
+        else:
+            raise SystemExit(f"error: unhandled pack id {pack_id!r}")
 
-    print("  audio-modern-en…")
-    artifacts["audio-modern-en"] = emit_audio_pack(repo, out)
-    size = sum(
-        p.stat().st_size for p in artifacts["audio-modern-en"].rglob("*") if p.is_file()
-    )
-    mp3_n = sum(
-        1
-        for p in artifacts["audio-modern-en"].rglob("*.mp3")
-        if p.is_file() and p.stat().st_size > 0
-    )
-    if size >= 1024 * 1024:
-        print(f"    {size / (1024 * 1024):.1f} MiB ({mp3_n} MP3s)")
-    else:
-        print(f"    {size / 1024:.1f} KiB ({mp3_n} MP3s — run fetch-audio-pack.py)")
+    return artifacts
 
-    write_registry(out, artifacts)
-    print("Wrote registry.json")
 
-    # Sanity: base must not contain commentary works or word rows.
-    b = connect(artifacts["base"])
+def sanity_check_base(base_path: Path) -> None:
+    b = connect(base_path)
     assert b.execute("SELECT COUNT(*) FROM word").fetchone()[0] == 0
     assert (
         b.execute("SELECT COUNT(*) FROM work WHERE kind = 'commentary'").fetchone()[0]
@@ -400,6 +453,71 @@ def main() -> int:
     base_works = b.execute("SELECT COUNT(*) FROM work").fetchone()[0]
     b.close()
     print(f"OK — base has {base_works} works (summa+creeds), 0 words.")
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument(
+        "--src",
+        type=Path,
+        default=Path("data/Aletheia.sqlite"),
+        help="Monolithic corpus SQLite (not required for --packs audio-modern-en alone)",
+    )
+    parser.add_argument(
+        "--out",
+        type=Path,
+        default=Path("data/packs"),
+        help="Output directory for pack artifacts",
+    )
+    parser.add_argument(
+        "--packs",
+        nargs="+",
+        metavar="PACK",
+        help=(
+            "Emit only these packs (space- or comma-separated). "
+            f"Known: {', '.join(ALL_PACK_IDS)}. Default: all."
+        ),
+    )
+    args = parser.parse_args()
+    src: Path = args.src
+    out: Path = args.out
+    try:
+        pack_ids = parse_pack_ids(args.packs)
+    except SystemExit:
+        raise
+    except Exception as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 1
+
+    if needs_sqlite_source(pack_ids) and not src.is_file():
+        print(f"error: source corpus not found: {src}", file=sys.stderr)
+        return 1
+
+    repo = Path.cwd()
+    out.mkdir(parents=True, exist_ok=True)
+    if needs_sqlite_source(pack_ids):
+        print(f"Splitting {src} ({human_mb(src)}) → {out}/")
+    else:
+        print(f"Updating audio pack under {out}/")
+    if pack_ids is not None:
+        print(f"  (selective: {', '.join(pack_ids)})")
+
+    artifacts = emit_selected(
+        src if needs_sqlite_source(pack_ids) else None,
+        out,
+        repo,
+        pack_ids,
+    )
+    write_registry(out, artifacts, merge=pack_ids is not None)
+    print("Wrote registry.json")
+
+    if "base" in artifacts:
+        sanity_check_base(artifacts["base"])
+    elif pack_ids is not None:
+        print(f"OK — updated {len(artifacts)} pack(s).")
     return 0
 
 

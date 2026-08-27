@@ -13,7 +13,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "pack-corpus": "python3 scripts/split-corpus-packs.py",
-    "fetch-audio-pack": "python3 scripts/fetch-audio-pack.py"
+    "fetch-audio-pack": "python3 scripts/fetch-audio-pack.py",
+    "reingest": "bash scripts/reingest-packs.sh",
+    "reingest:all": "bash scripts/reingest-packs.sh --all"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",
