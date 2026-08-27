@@ -1,11 +1,11 @@
 // Tauri implementation of AudioAdapter.
 //
-// Source MP3s live at <app_data>/audio/<translation>/<book>/<filename>. The
-// Rust side owns the path resolution and download logic; the adapter is a
-// thin invoke() shim. `assetUrl` uses Tauri's `convertFileSrc` to mint the
-// `asset://` URL the WKWebView can play — that requires
-// `assetProtocol.enable = true` in tauri.conf.json with a scope covering the
-// audio dir.
+// Rust resolves each source MP3 pack-first (`data/packs/audio-modern-en/` or
+// user-installed copy under `<app_data>/packs/`), hard-links it into
+// `<app_data>/audio/<translation>/<book>/<filename>`, then falls back to
+// on-demand download when the pack file is missing. The adapter is a thin
+// invoke() shim. `assetUrl` uses `convertFileSrc` for the cache path —
+// `assetProtocol.enable` in tauri.conf.json must cover `$APPDATA/audio/**`.
 
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import type { AudioTranslation } from "@/domain/audio";

@@ -65,11 +65,15 @@ probably bypassing one of them — stop and look:
   `scripts/split-corpus-packs.py`. The Tauri base install is lean
   (`data/packs/base.sqlite`: Bibles, Strong's *lexicon*, xref, Summa,
   Creeds). Optional shards (interlinear `word` table, commentaries, ANF,
-  NPNF, reformers) and the Modern English audio *feature gate* live under
-  `data/packs/`. Runtime merges installed packs into the app-data working
-  copy (`src-tauri/src/corpus_packs.rs`). Dev/test bundles all packs via
-  `tauri.conf.json` resources; production should ship only `base.sqlite`.
-  Web ignores this — it trims via Postgres ingest. After rebuilding
+  NPNF, reformers) and the Modern English audio pack (timing + prepackaged
+  MP3s under `audio-modern-en/`) live under `data/packs/`. Runtime merges
+  installed SQLite packs into the app-data working copy
+  (`src-tauri/src/corpus_packs.rs`); audio MP3s are read from the pack
+  directory and hard-linked into app-data for playback (no network when
+  present). Fetch MP3s with `npm run fetch-audio-pack` before a full desktop
+  test build. Dev/test bundles all packs via `tauri.conf.json` resources;
+  production should ship only `base.sqlite`. Web ignores this — it trims via
+  Postgres ingest and keeps on-demand `/api/audio` caching. After rebuilding
   `data/Aletheia.sqlite`, run `npm run pack-corpus` before desktop builds.
   See `data/packs/README.md`.
 

@@ -14,7 +14,8 @@ commentaries    work.kind = 'commentary' + sections (+ section_fts for those).
 anf             slug LIKE 'anf%'
 npnf            slug LIKE 'npnf%'
 reformers       luther_/calvin_/knox_/latimer_ prefixes (pipeline group).
-audio-modern-en marker JSON + timing manifest; MP3s stay on-demand downloads.
+audio-modern-en directory pack: manifest + kjv-timing.json + prepackaged
+                MP3s (fetch via scripts/fetch-audio-pack.py; not regenerated here).
 
 Usage
 -----
@@ -23,6 +24,7 @@ Usage
 
 Outputs data/packs/{base,interlinear,commentaries,anf,npnf,reformers}.sqlite
 plus audio-modern-en/manifest.json and copies kjv-timing.json when present.
+Existing MP3s under audio-modern-en/ are preserved (fetch separately).
 """
 
 from __future__ import annotations
@@ -264,23 +266,37 @@ def emit_base(src_path: Path, out_dir: Path) -> Path:
 def emit_audio_pack(repo: Path, out_dir: Path) -> Path:
     audio_dir = out_dir / "audio-modern-en"
     audio_dir.mkdir(parents=True, exist_ok=True)
-    manifest = {
-        "id": "audio-modern-en",
-        "version": PACK_VERSION,
-        "title": "Audio (Modern English)",
-        "description": (
-            "Enables on-demand Modern English narration (BSB / KJV / WEB). "
-            "MP3s are downloaded at play time into app data — this pack is a "
-            "feature gate plus timing metadata, not a bulk audio archive."
-        ),
-        "translations": ["en_bsb", "en_kjv", "en_web"],
-    }
-    man_path = audio_dir / "manifest.json"
-    man_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
 
     timing_src = repo / "data" / "audio" / "kjv-timing.json"
     if timing_src.is_file():
         shutil.copy2(timing_src, audio_dir / "kjv-timing.json")
+
+    mp3s = [p for p in audio_dir.rglob("*.mp3") if p.is_file() and p.stat().st_size > 0]
+    mp3_bytes = sum(p.stat().st_size for p in mp3s)
+    if mp3s:
+        description = (
+            "Prepackaged Modern English narration (BSB + WEB deuterocanon "
+            "under en_bsb/, KJV under en_kjv/). Local MP3s play offline; "
+            "missing files can still download on demand."
+        )
+    else:
+        description = (
+            "Modern English narration pack (BSB / KJV / WEB). Run "
+            "`python3 scripts/fetch-audio-pack.py` to download MP3s into this "
+            "directory before a full desktop test build."
+        )
+
+    manifest = {
+        "id": "audio-modern-en",
+        "version": PACK_VERSION,
+        "title": "Audio (Modern English)",
+        "description": description,
+        "translations": ["en_bsb", "en_kjv", "en_web"],
+        "mp3FileCount": len(mp3s),
+        "mp3Bytes": mp3_bytes,
+    }
+    man_path = audio_dir / "manifest.json"
+    man_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     return audio_dir
 
 
@@ -360,7 +376,15 @@ def main() -> int:
     size = sum(
         p.stat().st_size for p in artifacts["audio-modern-en"].rglob("*") if p.is_file()
     )
-    print(f"    {size / 1024:.1f} KiB")
+    mp3_n = sum(
+        1
+        for p in artifacts["audio-modern-en"].rglob("*.mp3")
+        if p.is_file() and p.stat().st_size > 0
+    )
+    if size >= 1024 * 1024:
+        print(f"    {size / (1024 * 1024):.1f} MiB ({mp3_n} MP3s)")
+    else:
+        print(f"    {size / 1024:.1f} KiB ({mp3_n} MP3s — run fetch-audio-pack.py)")
 
     write_registry(out, artifacts)
     print("Wrote registry.json")

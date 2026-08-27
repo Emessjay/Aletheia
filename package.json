@@ -12,7 +12,8 @@
     "tauri": "tauri",
     "test": "vitest run",
     "test:watch": "vitest",
-    "pack-corpus": "python3 scripts/split-corpus-packs.py"
+    "pack-corpus": "python3 scripts/split-corpus-packs.py",
+    "fetch-audio-pack": "python3 scripts/fetch-audio-pack.py"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",

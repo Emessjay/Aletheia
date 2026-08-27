@@ -27,7 +27,14 @@
       "csp": null,
       "assetProtocol": {
         "enable": true,
-        "scope": ["$APPDATA/audio/**", "$APPLOCALDATA/audio/**"]
+        "scope": [
+          "$APPDATA/audio/**",
+          "$APPLOCALDATA/audio/**",
+          "$APPDATA/packs/audio-modern-en/**",
+          "$APPLOCALDATA/packs/audio-modern-en/**",
+          "$RESOURCE/audio-modern-en/**",
+          "$RESOURCE/packs/audio-modern-en/**"
+        ]
       }
     }
   },

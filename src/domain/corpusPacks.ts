@@ -2,8 +2,8 @@
 //
 // The Tauri base install ships Bibles + Strong's lexicon + Summa/Creeds.
 // Optional shards (interlinear word rows, commentaries, ANF, NPNF, reformers)
-// and the Modern English audio *feature gate* are separate packs. Web ignores
-// this registry — it trims corpus via Postgres ingest instead.
+// and the Modern English audio pack (timing + prepackaged MP3s) are separate.
+// Web ignores this registry — it trims corpus via Postgres ingest instead.
 
 export type CorpusPackId =
   | "base"
@@ -80,7 +80,7 @@ export const CORPUS_PACKS: readonly CorpusPackMeta[] = [
     id: "audio-modern-en",
     title: "Audio (Modern English)",
     description:
-      "Enables on-demand BSB / KJV / WEB narration. MP3s download at play time; this pack is a feature gate plus timing metadata.",
+      "Prepackaged BSB / KJV / WEB narration MP3s (plus timing metadata). Plays offline when the pack includes audio files.",
     kind: "marker",
   },
 ] as const;

@@ -3,7 +3,9 @@
 //! The lean base SQLite ships with Bibles + Strong's lexicon + Summa/Creeds.
 //! Optional shards (interlinear word table, commentaries, ANF, NPNF, reformers)
 //! live beside it and are merged into the working app-data copy on launch.
-//! Audio (Modern English) is a marker pack — MP3s remain on-demand downloads.
+//! Audio (Modern English) is a directory pack: manifest + timing + prepackaged
+//! MP3s under `<pack>/<translation>/<book>/<file>.mp3` (see
+//! `scripts/fetch-audio-pack.py`).
 //!
 //! Dev/test builds bundle every pack under `data/packs/`. Production installers
 //! should ship only `base.sqlite`; downloaded packs land in
@@ -16,7 +18,7 @@ use std::process::{Command, Stdio};
 use std::time::UNIX_EPOCH;
 
 use serde::Serialize;
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Manager, Runtime};
 
 pub const BASE_FILENAME: &str = "base.sqlite";
 pub const LEGACY_FILENAME: &str = "Aletheia.sqlite";
@@ -33,7 +35,8 @@ pub const SQLITE_PACK_IDS: &[&str] = &[
     "reformers",
 ];
 
-/// Marker pack (directory with manifest.json) — no SQLite merge.
+/// Directory packs (manifest.json + optional assets) — no SQLite merge.
+/// Audio ships MP3s beside the manifest; see `scripts/fetch-audio-pack.py`.
 pub const MARKER_PACK_IDS: &[&str] = &["audio-modern-en"];
 
 #[derive(Debug, Clone, Serialize)]
@@ -58,7 +61,7 @@ fn source_fingerprint(meta: &std::fs::Metadata) -> String {
 }
 
 /// Repo `data/` (dev) or resource dir (release).
-fn data_roots(app: &AppHandle) -> Vec<PathBuf> {
+fn data_roots<R: Runtime>(app: &AppHandle<R>) -> Vec<PathBuf> {
     let mut roots = Vec::new();
     if let Ok(dir) = app.path().resource_dir() {
         roots.push(dir.clone());
@@ -116,7 +119,8 @@ fn locate_sqlite_pack(app: &AppHandle, pack_id: &str) -> Option<PathBuf> {
         .or_else(|| find_in_roots(&roots, &format!("{PACKS_SUBDIR}/{name}")))
 }
 
-fn locate_marker_pack(app: &AppHandle, pack_id: &str) -> Option<PathBuf> {
+/// Locate an installed/bundled directory pack (e.g. `audio-modern-en`).
+pub fn locate_marker_pack<R: Runtime>(app: &AppHandle<R>, pack_id: &str) -> Option<PathBuf> {
     let roots = data_roots(app);
     if let Ok(app_data) = app.path().app_data_dir() {
         let user = app_data.join(PACKS_SUBDIR).join(pack_id).join("manifest.json");

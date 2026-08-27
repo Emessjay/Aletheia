@@ -62,6 +62,13 @@ if [[ ! -f data/packs/base.sqlite ]]; then
     fi
 fi
 
+# Audio pack MP3s are gitignored (large). Offline narration needs a one-time fetch.
+mp3_count="$(find data/packs/audio-modern-en -name '*.mp3' -type f 2>/dev/null | wc -l | tr -d ' ')"
+if [[ "${mp3_count}" -eq 0 ]]; then
+    echo "warning: audio-modern-en has no MP3s — run: npm run fetch-audio-pack" >&2
+    echo "         (until then, Tauri still downloads chapters on demand)" >&2
+fi
+
 export ALETHEIA_PORT="$PORT"
 export ALETHEIA_HMR_PORT="$HMR"
 export VITE_ALETHEIA_WORKTREE="$WORKTREE_LABEL"
