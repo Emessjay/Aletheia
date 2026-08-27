@@ -47,6 +47,8 @@ export function AppShell() {
   const win = platformInfo.isWindowsDesktop;
   const viewportW = useViewportWidth();
   const compact = viewportW < SIDEBAR_BREAKPOINT;
+  // Web `/` is the marketing homepage — no app chrome or first-run canon modal.
+  const marketingHome = !platformInfo.isDesktop && loc.pathname === "/";
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   // Auto-close the drawer on route or breakpoint change.
@@ -55,6 +57,7 @@ export function AppShell() {
   const { helpOpen, setHelpOpen } = useGlobalShortcuts();
 
   useEffect(() => {
+    if (marketingHome) return;
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
@@ -63,14 +66,15 @@ export function AppShell() {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [togglePalette]);
+  }, [togglePalette, marketingHome]);
 
-  const sidebarVisible = showSidebarRoute && !compact;
-  const drawerVisible = compact && drawerOpen;
+  const sidebarVisible = !marketingHome && showSidebarRoute && !compact;
+  const drawerVisible = !marketingHome && compact && drawerOpen;
 
   return (
     <AuthProvider>
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+      {marketingHome ? null : (
       <header
         data-tauri-drag-region
         style={{
@@ -189,6 +193,7 @@ export function AppShell() {
           <AuthMenu />
         </div>
       </header>
+      )}
       <div style={{ flex: 1, display: "flex", minHeight: 0, position: "relative" }}>
         {sidebarVisible ? <Sidebar /> : null}
         <main style={{ flex: 1, overflow: "auto" }}>
@@ -263,10 +268,14 @@ export function AppShell() {
           </>
         ) : null}
       </div>
-      <CommandPalette />
-      <KeyboardHelp open={helpOpen} onClose={() => setHelpOpen(false)} />
-      <AuthScreen />
-      <CanonOnboarding />
+      {marketingHome ? null : (
+        <>
+          <CommandPalette />
+          <KeyboardHelp open={helpOpen} onClose={() => setHelpOpen(false)} />
+          <AuthScreen />
+          <CanonOnboarding />
+        </>
+      )}
     </div>
     </AuthProvider>
   );
