@@ -9,7 +9,8 @@ domain translations in parallel (English, Greek, Hebrew) with Strong's
 lexicon lookups, audio narration, highlights, notes, and bookmarks. Study
 groups are invite-only spaces where every post is anchored to a verse.
 Members reply, flag, and moderate, and a "most discussed passages" board
-shows where the conversation is. All corpus sources are public domain.
+shows where the conversation is. Corpus sources are public domain, CC0, or
+CC BY 4.0 with credits listed at <code>/attributions</code>.
 
 The reader works without an account. Everything social requires sign-up.
 Sign up, create a group, share the invite code, and post on a verse.

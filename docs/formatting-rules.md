@@ -128,3 +128,18 @@ Language: set `lang` on the body wrapper (`en`, `la`, `grc`) when known.
 | Body render | `src/components/SectionBody.tsx` |
 | Resources chrome | `src/features/patristics/PatristicsRoute.tsx` |
 | Commentary chrome | `src/features/commentaries/CommentariesRoute.tsx` |
+
+---
+
+## Reingest after label-normalization changes
+
+ThML label cleanup is written at ingest time. Refresh affected packs without
+re-running the heavy bible merge:
+
+```bash
+./scripts/reingest-packs.sh anf npnf reformers creeds
+```
+
+Use `creeds` (not `base`) for Schaff *Creeds of Christendom* only. Frontend
+display-time normalization in `sectionLabels.ts` applies immediately without
+reingest.

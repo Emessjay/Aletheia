@@ -27,6 +27,13 @@ const ATTRIBUTED: Credit[] = [
     license: "CC BY 4.0",
     url: "https://github.com/openscriptures/strongs",
   },
+  {
+    name: "OpenBible.info Cross-References",
+    detail:
+      "Verse cross-reference compilation (~340k links). Derived from the Treasury of Scripture Knowledge and other sources.",
+    license: "CC BY 4.0",
+    url: "https://www.openbible.info/labs/cross-references/",
+  },
 ];
 
 const PUBLIC_DOMAIN_TEXTS: Credit[] = [
@@ -57,22 +64,10 @@ const PUBLIC_DOMAIN_TEXTS: Credit[] = [
     url: "https://ebible.org/find/details.php?id=grcbrent",
   },
   {
-    name: "Robinson-Pierpont Byzantine Greek NT",
-    detail: "Byzantine Majority Text with Strong's tagging and morphology.",
-    license: "Public Domain / Unlicense",
-    url: "https://github.com/byztxt/byzantine-majority-text",
-  },
-  {
     name: "World English Bible",
     detail: "Used as the deuterocanon fallback when BSB has no coverage.",
     license: "Public Domain",
     url: "https://ebible.org/web/",
-  },
-  {
-    name: "Treasury of Scripture Knowledge",
-    detail: "Cross-reference apparatus. R.A. Torrey, 1880s.",
-    license: "Public Domain",
-    url: "https://www.openbible.info/labs/cross-references/",
   },
 ];
 
@@ -97,10 +92,23 @@ const PATRISTICS_AND_COMMENTARY: Credit[] = [
     url: "https://github.com/Jacob-Gray/summa.json",
   },
   {
-    name: "Summa Theologica (Latin)",
-    detail: "Geremia/AquinasOperaOmnia.",
+    name: "Schaff — Creeds of Christendom",
+    detail: "Volumes 1–3. PD by age; CCEL ThML transcription.",
     license: "Public Domain",
-    url: "https://github.com/Geremia/AquinasOperaOmnia",
+    url: "https://www.ccel.org/s/schaff/creeds/",
+  },
+  {
+    name: "Reformation-era treatises",
+    detail:
+      "Luther, Calvin, Knox, and Latimer works (beyond verse commentaries). PD by age; CCEL ThML.",
+    license: "Public Domain",
+    url: "https://www.ccel.org/",
+  },
+  {
+    name: "Martin Luther — Selected Commentaries",
+    detail: "Galatians, Genesis, and Peter/Jude from Project Gutenberg transcriptions.",
+    license: "Public Domain",
+    url: "https://www.gutenberg.org/",
   },
   {
     name: "Matthew Henry's Commentary on the Whole Bible",
@@ -205,8 +213,9 @@ export function AttributionsRoute() {
             maxWidth: 600,
           }}
         >
-          Aletheia bundles its text, audio, and fonts from open sources. Most are in the
-          public domain. A few require attribution under CC BY 4.0 — those are listed
+          Aletheia bundles its text, audio, and fonts from open sources. Most
+          biblical and patristic texts are in the public domain. A few modern
+          tagged editions require attribution under CC BY 4.0 — those are listed
           first.
         </p>
       </header>
