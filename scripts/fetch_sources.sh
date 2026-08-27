@@ -24,6 +24,10 @@ if [[ ! -f "${BSB_DIR}/bsb.txt" ]]; then
     curl -sSL "https://bereanbible.com/bsb.txt" -o "${BSB_DIR}/bsb.txt" \
         || curl -sSL "https://archive.org/download/berean-standard-bible_202403/bsb.txt" -o "${BSB_DIR}/bsb.txt"
 fi
+if [[ ! -f "${BSB_DIR}/bsb_tables.tsv" ]]; then
+    note "Downloading BSB Translation Tables (English-primary interlinear)…"
+    curl -sSL "https://bereanbible.com/bsb_tables.tsv" -o "${BSB_DIR}/bsb_tables.tsv"
+fi
 
 # -----------------------------------------------------------------------------
 # Brenton LXX English (eBible.org USFM) — public domain (1851)

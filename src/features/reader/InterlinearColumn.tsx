@@ -1,8 +1,12 @@
 import type { ChapterPayload } from "@/db/queries";
 import type { HighlightRow, NoteRow } from "@/db/types";
 import {
+  bsbEnglishSurface,
+  bsbOriginalUndertext,
   equivalentFor,
   interlinearLabel,
+  isEnglishPrimary,
+  wordsForEnglishPrimary,
   type PrimaryLang,
   type SecondaryLang,
 } from "@/domain/tabs";
@@ -27,8 +31,14 @@ interface Props {
 }
 
 /**
- * Interlinear column. Renders primary-language words with the Strong's gloss
- * stacked beneath each one. Hebrew primary flows RTL; Greek primary flows LTR.
+ * Interlinear column. Renders primary-language words with secondary text
+ * stacked beneath each one.
+ *
+ * - Original primary (`he`|`gk`): Hebrew/Greek surface, STEPBible BSB-derived
+ *   English underneath. Flows RTL for Hebrew.
+ * - English primary (`en_bsb`): BSB English surface in reading order, original
+ *   language underneath from BSB Translation Tables. LTR.
+ *
  * Per-character highlighting and translation-side text are not rendered here —
  * users can still split the tab to access the secondary verse as a column.
  */
@@ -76,7 +86,17 @@ export function InterlinearColumn({
     );
   }
 
-  const tokenLang: "he" | "grc" = primary === "he" ? "he" : "grc";
+  const englishPrimary = isEnglishPrimary(primary);
+  const surfaceLang = englishPrimary
+    ? "en"
+    : primary === "he"
+      ? "he"
+      : "grc";
+  const glossLang = englishPrimary
+    ? secondary === "he"
+      ? "he"
+      : "grc"
+    : undefined;
   const rtl = primary === "he";
 
   return (
@@ -89,11 +109,14 @@ export function InterlinearColumn({
       <div
         className="al-chapter-flow al-il-flow"
         data-column={primary}
-        lang={tokenLang}
+        lang={surfaceLang === "en" ? "en" : surfaceLang}
         dir={rtl ? "rtl" : "ltr"}
       >
         {chapter.verses.map((v) => {
-          const words = chapter.wordsByVerse[v.id] ?? [];
+          const rawWords = chapter.wordsByVerse[v.id] ?? [];
+          const words = englishPrimary
+            ? wordsForEnglishPrimary(rawWords, secondary)
+            : rawWords;
           // Verse-level highlights apply (universal + this side's). Partial
           // highlights never render here — the surface tokens are primary-
           // language, so secondary-language character offsets wouldn't align.
@@ -132,7 +155,7 @@ export function InterlinearColumn({
               <span
                 className={wrapperClass}
                 data-verse-text={v.number}
-                lang={tokenLang}
+                lang={surfaceLang === "en" ? "en" : surfaceLang}
                 onClick={() =>
                   onSelectVerse(isSelected ? null : v.number, colSide)
                 }
@@ -147,19 +170,27 @@ export function InterlinearColumn({
                 <span data-verse-body={v.number} className="al-il-body">
                   {words.length > 0
                     ? words.map((w, i) => {
-                        // Both BSB and KJV pairs render STEPBible's per-word
-                        // English (BSB-derived from TAHOT/TAGNT col 3). No
-                        // dictionary-gloss fallback — show '—' when no
-                        // aligned word exists, same for both pairs.
-                        const equivalent = equivalentFor(w.english);
+                        let surface: string;
+                        let gloss: string;
+                        if (englishPrimary) {
+                          surface = bsbEnglishSurface(w.surface);
+                          const under = bsbOriginalUndertext(w.english);
+                          gloss = under === "" ? "—" : under;
+                        } else {
+                          surface = w.surface;
+                          const equivalent = equivalentFor(w.english);
+                          gloss = equivalent === "" ? "—" : equivalent;
+                        }
+                        if (surface === "" && gloss === "—") return null;
                         return (
                           <InterlinearWord
                             key={`${w.id}-${i}`}
-                            surface={w.surface}
-                            gloss={equivalent === "" ? "—" : equivalent}
+                            surface={surface || "—"}
+                            gloss={gloss}
                             strongs={w.strongs}
                             lemma={w.lemma}
-                            lang={tokenLang}
+                            lang={surfaceLang}
+                            glossLang={glossLang}
                             highlightColor={hl?.color ?? null}
                             onOpenStrongs={onOpenStrongs}
                           />

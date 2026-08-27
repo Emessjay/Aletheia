@@ -5,6 +5,7 @@ import Logging
 ///
 ///     <root>/
 ///       bsb/bsb.txt                              # BSB plain text
+///       bsb/bsb_tables.tsv                       # BSB Translation Tables (English-primary interlinear)
 ///       brenton/eng-Brenton/*.usfm               # Brenton LXX English USFM files
 ///       grcbrent/*.usfm                          # Brenton LXX Greek USFM files
 ///       kjv-apocrypha/*.usfm                     # KJV 1611 Apocrypha USFM
@@ -127,6 +128,10 @@ public struct Pipeline {
             // the same paragraph rhythm. Must run after both BSB and WEB.
             Stage(name: "BSB paragraph parity from WEB", group: "bible", languages: ["en_bsb", "en_web"], bookScoped: true,
                   run: { try copyLeadsFromWEBtoBSB(writer: writer) }),
+            // English-primary interlinear: per-word English on `surface`, original
+            // language undertext on `english`. Requires en_bsb verses from the BSB stage.
+            Stage(name: "BSB Translation Tables", group: "bible", languages: ["en_bsb"], bookScoped: true,
+                  run: { try ingestBSBTables(writer: writer) }),
             Stage(name: "STEPBible KJV+Strongs", group: "bible", languages: ["en_kjv"], bookScoped: true,
                   run: { try ingestSTEP(writer: writer, table: .tkjvs, language: "en_kjv") }),
             Stage(name: "STEPBible Hebrew (MT)", group: "bible", languages: ["he"], bookScoped: true,
@@ -309,6 +314,18 @@ public struct Pipeline {
         // BSB source is plain TSV with no paragraph markup; lead is always nil.
         try writeBibleRows(filtered.map { ($0.bookSlug, $0.chapter, $0.verse, $0.text, nil) },
                            language: "en_bsb", writer: writer)
+    }
+
+    private func ingestBSBTables(writer: CorpusWriter) throws {
+        let url = sourceRoot.appendingPathComponent("bsb/bsb_tables.tsv")
+        guard FileManager.default.fileExists(atPath: url.path) else {
+            throw IngestError.sourceMissing(url.path)
+        }
+        let parser = BSBTablesParser()
+        let words = try parser.parse(fileURL: url)
+        let filtered = bookFilter.isEmpty ? words : words.filter { bookFilter.contains($0.bookSlug) }
+        logger.info("    parsed \(words.count) BSB table words\(bookFilter.isEmpty ? "" : " (\(filtered.count) after book filter)")")
+        try writeBSBTableWords(filtered, writer: writer)
     }
 
     private func ingestKJV(writer: CorpusWriter) throws {
@@ -684,6 +701,51 @@ public struct Pipeline {
             else { cid = try writer.upsertChapter(bookID: bid, number: row.chapter); chapterIDs[chapKey] = cid }
             _ = try writer.insertVerse(chapterID: cid, number: row.verse, text: row.text, lead: row.lead)
         }
+    }
+
+    /// Attach BSB Translation Table word rows to existing `en_bsb` verses.
+    /// English is stored in `surface`; original-language undertext in `english`.
+    private func writeBSBTableWords(_ words: [BSBTablesParser.Word], writer: CorpusWriter) throws {
+        let grouped = Dictionary(grouping: words, by: { "\($0.bookSlug):\($0.chapter):\($0.verse)" })
+        var inserted = 0
+        var skipped = 0
+        try writer.queue.write { db in
+            if !bookFilter.isEmpty {
+                let placeholders = bookFilter.sorted().map { _ in "?" }.joined(separator: ", ")
+                try db.execute(sql: """
+                    DELETE FROM word WHERE verse_id IN (
+                        SELECT v.id FROM verse v
+                        JOIN chapter c ON v.chapter_id = c.id
+                        JOIN book b ON c.book_id = b.id
+                        WHERE b.language = 'en_bsb' AND b.slug IN (\(placeholders))
+                    )
+                    """, arguments: StatementArguments(Array(bookFilter.sorted())))
+            }
+            for (_, wordsInVerse) in grouped {
+                guard let first = wordsInVerse.first else { continue }
+                guard let verseID = try fetchVerseID(db, bookSlug: first.bookSlug,
+                                                     language: "en_bsb",
+                                                     chapter: first.chapter,
+                                                     verse: first.verse) else {
+                    skipped += 1
+                    continue
+                }
+                if bookFilter.isEmpty {
+                    try db.execute(sql: "DELETE FROM word WHERE verse_id = ?", arguments: [verseID])
+                }
+                for w in wordsInVerse.sorted(by: { $0.position < $1.position }) {
+                    try db.execute(sql: """
+                        INSERT OR REPLACE INTO word(verse_id, position, surface, lemma, strongs, morphology, base_text, english)
+                        VALUES (?, ?, ?, NULL, ?, ?, NULL, ?)
+                        """, arguments: [verseID, w.position, w.english, w.strongs, w.morphology, w.original])
+                    inserted += 1
+                }
+            }
+        }
+        if skipped > 0 {
+            logger.warning("    \(skipped) verse(s) had no matching en_bsb row — skipped")
+        }
+        logger.info("    wrote \(inserted) en_bsb interlinear word rows")
     }
 
     private func writeTaggedWords(words: [STEPBibleParser.Word], language: String, writer: CorpusWriter) throws {

@@ -505,9 +505,12 @@ export async function getChapter(
     [book.id],
   );
 
-  // Words: only tagged languages produce useful rows. Avoid the join cost for English.
+  // Words: original-language books (he/gk) always carry STEPBible rows.
+  // en_bsb carries BSB Translation Table rows for English-primary interlinear
+  // (surface = English, english column = original undertext). Other English
+  // editions have no word rows — skip the join.
   let wordsByVerse: Record<number, WordRow[]> = {};
-  if (language === "he" || language === "gk") {
+  if (language === "he" || language === "gk" || language === "en_bsb") {
     const words = await corpusSelect<WordRow>(
       `SELECT w.* FROM word w
          JOIN verse v ON v.id = w.verse_id

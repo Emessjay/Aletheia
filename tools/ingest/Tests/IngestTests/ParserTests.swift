@@ -528,3 +528,68 @@ final class SummaSubsectionTests: XCTestCase {
         XCTAssertEqual(stripped, body)
     }
 }
+
+final class BSBTablesParserTests: XCTestCase {
+    /// Build a minimal tables row with English in column 18 (BSB version).
+    private func row(
+        bsbSort: String,
+        language: String,
+        original: String,
+        morph: String,
+        strHeb: String,
+        strGrk: String,
+        verseId: String,
+        english: String
+    ) -> String {
+        var cells = Array(repeating: "", count: 19)
+        cells[2] = bsbSort
+        cells[4] = language
+        cells[5] = original
+        cells[8] = morph
+        cells[10] = strHeb
+        cells[11] = strGrk
+        cells[12] = verseId
+        cells[18] = english
+        return cells.joined(separator: "\t")
+    }
+
+    func testCarriesForwardVerseIdAndEnglishOrder() {
+        let tsv = [
+            "Heb Sort\tGreek Sort\tBSB Sort\tVerse\tLanguage\tOrig",
+            row(bsbSort: "1", language: "Hebrew", original: "בְּרֵאשִׁ֖ית", morph: "N-fs",
+                strHeb: "7225", strGrk: "", verseId: "Genesis 1:1", english: "In the beginning"),
+            row(bsbSort: "2", language: "Hebrew", original: "אֱלֹהִ֑ים", morph: "N-mp",
+                strHeb: "430", strGrk: "", verseId: "", english: "God"),
+            row(bsbSort: "3", language: "Hebrew", original: "אֵ֥ת", morph: "DirObjM",
+                strHeb: "853", strGrk: "", verseId: "", english: "-"),
+        ].joined(separator: "\n")
+        let parser = BSBTablesParser()
+        let words = parser.parse(text: tsv)
+        XCTAssertEqual(words.count, 3)
+        XCTAssertEqual(words[0].bookSlug, "gen")
+        XCTAssertEqual(words[0].chapter, 1)
+        XCTAssertEqual(words[0].verse, 1)
+        XCTAssertEqual(words[0].position, 1)
+        XCTAssertEqual(words[0].english, "In the beginning")
+        XCTAssertEqual(words[0].original, "בְּרֵאשִׁ֖ית")
+        XCTAssertEqual(words[0].strongs, "H7225")
+        XCTAssertEqual(words[1].english, "God")
+        XCTAssertEqual(words[1].strongs, "H430")
+        XCTAssertEqual(words[2].english, "-")
+        XCTAssertEqual(words[2].strongs, "H853")
+    }
+
+    func testParsesGreekStrongsWithGPrefix() {
+        let tsv = [
+            "Heb Sort\tGreek Sort\tBSB Sort\tVerse\tLanguage\tOrig",
+            row(bsbSort: "1", language: "Greek", original: "Ἐν", morph: "Prep",
+                strHeb: "", strGrk: "1722", verseId: "John 1:1", english: "In"),
+        ].joined(separator: "\n")
+        let words = BSBTablesParser().parse(text: tsv)
+        XCTAssertEqual(words.count, 1)
+        XCTAssertEqual(words[0].bookSlug, "john")
+        XCTAssertEqual(words[0].english, "In")
+        XCTAssertEqual(words[0].original, "Ἐν")
+        XCTAssertEqual(words[0].strongs, "G1722")
+    }
+}

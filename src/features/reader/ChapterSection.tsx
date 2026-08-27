@@ -29,8 +29,12 @@ import { useSettingsStore } from "@/stores/useSettingsStore";
 import { translationShortLabel } from "@/domain/translations";
 import { bookDisplayName } from "@/domain/reference";
 import {
+  bsbEnglishSurface,
+  bsbOriginalUndertext,
   equivalentFor,
   interlinearLabel,
+  isEnglishPrimary,
+  wordsForEnglishPrimary,
   type InterlinearTab,
   type SingleTab,
   type Tab,
@@ -728,8 +732,21 @@ function InterlinearVerseCell({
   onSelectVerse: (n: number | null, side: SideKey | null) => void;
   onOpenStrongs: (id: string, rect: DOMRect) => void;
 }) {
-  const tokenLang: "he" | "grc" = tab.primary === "he" ? "he" : "grc";
+  const englishPrimary = isEnglishPrimary(tab.primary);
+  const surfaceLang = englishPrimary
+    ? "en"
+    : tab.primary === "he"
+      ? "he"
+      : "grc";
+  const glossLang = englishPrimary
+    ? tab.secondary === "he"
+      ? "he"
+      : "grc"
+    : undefined;
   const rtl = tab.primary === "he";
+  const displayWords = englishPrimary
+    ? wordsForEnglishPrimary(words, tab.secondary)
+    : words;
   const verseHls = highlights.filter(
     (h) =>
       h.verse === verse.number &&
@@ -753,14 +770,14 @@ function InterlinearVerseCell({
   return (
     <span
       className="al-il-flow"
-      lang={tokenLang}
+      lang={surfaceLang}
       dir={rtl ? "rtl" : "ltr"}
       style={{ display: "block" }}
     >
       <span
         className={wrapperClass}
         data-verse-text={verse.number}
-        lang={tokenLang}
+        lang={surfaceLang}
         onClick={() => onSelectVerse(isSelected ? null : verse.number, side)}
         style={{ cursor: "pointer" }}
       >
@@ -768,17 +785,29 @@ function InterlinearVerseCell({
           {verse.number}
         </sup>
         <span data-verse-body={verse.number} className="al-il-body">
-          {words.length > 0
-            ? words.map((w, i) => {
-                const equivalent = equivalentFor(w.english);
+          {displayWords.length > 0
+            ? displayWords.map((w, i) => {
+                let surface: string;
+                let gloss: string;
+                if (englishPrimary) {
+                  surface = bsbEnglishSurface(w.surface);
+                  const under = bsbOriginalUndertext(w.english);
+                  gloss = under === "" ? "—" : under;
+                } else {
+                  surface = w.surface;
+                  const equivalent = equivalentFor(w.english);
+                  gloss = equivalent === "" ? "—" : equivalent;
+                }
+                if (surface === "" && gloss === "—") return null;
                 return (
                   <InterlinearWord
                     key={`${w.id}-${i}`}
-                    surface={w.surface}
-                    gloss={equivalent === "" ? "—" : equivalent}
+                    surface={surface || "—"}
+                    gloss={gloss}
                     strongs={w.strongs}
                     lemma={w.lemma}
-                    lang={tokenLang}
+                    lang={surfaceLang}
+                    glossLang={glossLang}
                     highlightColor={hl?.color ?? null}
                     onOpenStrongs={onOpenStrongs}
                   />

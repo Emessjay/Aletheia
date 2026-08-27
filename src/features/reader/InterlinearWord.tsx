@@ -7,7 +7,10 @@ interface Props {
   gloss: ReactNode;
   strongs: string | null;
   lemma?: string | null;
-  lang: "he" | "grc";
+  /** Script of the primary (top) surface token. */
+  lang: "he" | "grc" | "en";
+  /** Script of the under-word gloss when it differs from `lang` (English-primary). */
+  glossLang?: "he" | "grc";
   highlightColor: HighlightColor | null;
   onOpenStrongs: (strongsId: string, rect: DOMRect) => void;
 }
@@ -23,6 +26,7 @@ export function InterlinearWord({
   strongs,
   lemma,
   lang,
+  glossLang,
   highlightColor,
   onOpenStrongs,
 }: Props) {
@@ -36,6 +40,7 @@ export function InterlinearWord({
   ]
     .filter(Boolean)
     .join(" ");
+  const surfaceLangAttr = lang === "en" ? "en" : lang;
   return (
     <span
       className="al-il-word"
@@ -54,10 +59,12 @@ export function InterlinearWord({
       }
       style={clickable ? { cursor: "pointer" } : undefined}
     >
-      <span ref={ref} className={surfaceClass} lang={lang}>
+      <span ref={ref} className={surfaceClass} lang={surfaceLangAttr}>
         {clean(surface)}
       </span>
-      <span className="al-il-gloss">{gloss ?? " "}</span>
+      <span className="al-il-gloss" lang={glossLang}>
+        {gloss ?? " "}
+      </span>
     </span>
   );
 }

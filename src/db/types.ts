@@ -58,8 +58,11 @@ export interface WordRow {
   strongs: string | null;
   morphology: string | null;
   base_text: WordBaseText;
-  // BSB-derived per-word English translation (from STEPBible TAHOT/TAGNT col 3).
-  // Present for he + gk-NT word rows; null for LXX tokens and any others.
+  // Interlinear undertext:
+  //   • he / gk rows — BSB-derived English (STEPBible TAHOT/TAGNT col 3);
+  //     null for LXX tokens and untagged words.
+  //   • en_bsb rows — original-language surface from BSB Translation Tables
+  //     (English is in `surface`; this column holds Hebrew/Greek underneath).
   english: string | null;
 }
 

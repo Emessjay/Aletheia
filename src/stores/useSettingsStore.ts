@@ -50,11 +50,13 @@ function isToggleable(v: unknown): v is CorpusLanguage {
 }
 
 function isPrimary(v: unknown): v is PrimaryLang {
-  return v === "he" || v === "gk";
+  return v === "he" || v === "gk" || v === "en_bsb";
 }
 
 function isSecondary(v: unknown): v is SecondaryLang {
-  return v === "en_bsb" || v === "en_kjv";
+  return (
+    v === "en_bsb" || v === "en_kjv" || v === "he" || v === "gk"
+  );
 }
 
 function parseStoredTabs(raw: string): Tab[] | null {
