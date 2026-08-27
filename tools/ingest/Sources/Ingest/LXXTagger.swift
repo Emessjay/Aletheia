@@ -67,6 +67,23 @@ struct LXXTagger {
         var totalTokens = 0
         var taggedTokens = 0
         try writer.queue.write { db in
+            // Merge reingests must replace prior LXX rows — INSERT OR IGNORE
+            // would keep stale strongs/english from an earlier tagging pass.
+            if bookFilter.isEmpty {
+                try db.execute(sql: """
+                    DELETE FROM word WHERE COALESCE(base_text, '') = 'LXX'
+                    """)
+            } else {
+                let placeholders = bookFilter.sorted().map { _ in "?" }.joined(separator: ", ")
+                try db.execute(sql: """
+                    DELETE FROM word WHERE verse_id IN (
+                        SELECT v.id FROM verse v
+                        JOIN chapter c ON v.chapter_id = c.id
+                        JOIN book b ON c.book_id = b.id
+                        WHERE b.language = 'gk' AND b.slug IN (\(placeholders))
+                    ) AND COALESCE(base_text, '') = 'LXX'
+                    """, arguments: StatementArguments(Array(bookFilter.sorted())))
+            }
             for (verseID, text, _) in verses {
                 let tokens = tokenize(text)
                 for (i, surface) in tokens.enumerated() {
@@ -79,7 +96,7 @@ struct LXXTagger {
                         taggedTokens += 1
                     }
                     try db.execute(sql: """
-                        INSERT OR IGNORE INTO word(verse_id, position, surface, lemma, strongs, morphology, base_text, english)
+                        INSERT INTO word(verse_id, position, surface, lemma, strongs, morphology, base_text, english)
                         VALUES (?, ?, ?, NULL, ?, NULL, 'LXX', ?)
                         """, arguments: [verseID, i + 1, surface, strongs, english])
                 }

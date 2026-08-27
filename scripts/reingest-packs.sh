@@ -165,6 +165,20 @@ run_split() {
     fi
 }
 
+# creeds ingest updates the monolith only; the creeds shard lives in base.sqlite.
+split_packs_for() {
+    local out="" p mapped
+    for p in "$@"; do
+        mapped="${p}"
+        [[ "${p}" == "creeds" ]] && mapped="base"
+        case " ${out} " in
+            *" ${mapped} "*) ;;
+            *) out="${out}${out:+ }${mapped}" ;;
+        esac
+    done
+    echo "${out}"
+}
+
 run_audio_fetch() {
     note "Fetching audio-modern-en MP3s…"
     python3 scripts/fetch-audio-pack.py
@@ -251,7 +265,8 @@ if [[ -n "${SQLITE_PACKS}" ]]; then
         note "Skipping Swift ingest (--pack-only)"
     fi
     # shellcheck disable=SC2086
-    run_split ${SQLITE_PACKS}
+    SPLIT_PACKS="$(split_packs_for ${SQLITE_PACKS})"
+    run_split ${SPLIT_PACKS}
 fi
 
 if [[ "${WANT_AUDIO}" -eq 1 ]]; then
