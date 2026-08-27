@@ -31,7 +31,7 @@ import { bookDisplayName } from "@/domain/reference";
 import {
   bsbEnglishSurface,
   bsbOriginalUndertext,
-  equivalentFor,
+  equivalentForGreekSurface,
   interlinearLabel,
   isEnglishPrimary,
   wordsForEnglishPrimary,
@@ -795,7 +795,10 @@ function InterlinearVerseCell({
                   gloss = under === "" ? "—" : under;
                 } else {
                   surface = w.surface;
-                  const equivalent = equivalentFor(w.english);
+                  const equivalent = equivalentForGreekSurface(
+                    w.english,
+                    w.surface,
+                  );
                   gloss = equivalent === "" ? "—" : equivalent;
                 }
                 if (surface === "" && gloss === "—") return null;

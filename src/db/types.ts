@@ -59,8 +59,9 @@ export interface WordRow {
   morphology: string | null;
   base_text: WordBaseText;
   // Interlinear undertext:
-  //   • he / gk rows — BSB-derived English (STEPBible TAHOT/TAGNT col 3);
-  //     null for LXX tokens and untagged words.
+  //   • he / gk (NT) rows — BSB-derived English (STEPBible TAHOT/TAGNT col 3).
+  //   • gk LXX rows — English copied from a matching NT surface at ingest
+  //     (normalized key casefolds all-caps Brenton tokens); null when no NT hit.
   //   • en_bsb rows — original-language surface from BSB Translation Tables
   //     (English is in `surface`; this column holds Hebrew/Greek underneath).
   english: string | null;

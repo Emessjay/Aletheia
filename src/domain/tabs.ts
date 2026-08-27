@@ -1,4 +1,5 @@
 import type { CorpusLanguage, StrongsRow, WordRow } from "@/db/types";
+import { lookupByGreekSurface } from "@/domain/greekNormalize";
 import { translationShortLabel } from "@/domain/translations";
 
 /** Languages that can sit on top of an interlinear stack. */
@@ -102,9 +103,10 @@ export function glossFor(
  * still distinguishes the two for the parallel-column view; under-word text is
  * the same.
  *
- * Returns '' for words STEPBible left blank (LXX surface tokens, untagged
- * function words). Callers render an em-dash in that case — no dictionary
- * fallback.
+ * Returns '' for words STEPBible left blank (untagged function words, or LXX
+ * tokens that never matched an NT surface). Callers render an em-dash in that
+ * case — no dictionary gloss fallback. LXX rows may carry english copied from
+ * a matching NT surface at ingest (all-caps Greek casefolded in the lookup key).
  */
 export function equivalentFor(english: string | null): string {
   if (english == null) return "";
@@ -119,6 +121,24 @@ export function equivalentFor(english: string | null): string {
     .replace(/>/g, ")")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+/**
+ * Resolve English undertext for a Greek surface, preferring the row's stored
+ * `english` then a normalized-surface map (all-caps LXX tokens casefold before
+ * lookup). Display still uses the raw surface elsewhere.
+ */
+export function equivalentForGreekSurface(
+  english: string | null,
+  surface: string,
+  englishByNormalizedGreek?: ReadonlyMap<string, string>,
+): string {
+  const direct = equivalentFor(english);
+  if (direct !== "") return direct;
+  if (!englishByNormalizedGreek) return "";
+  return equivalentFor(
+    lookupByGreekSurface(englishByNormalizedGreek, surface) ?? null,
+  );
 }
 
 /**

@@ -3,7 +3,7 @@ import type { HighlightRow, NoteRow } from "@/db/types";
 import {
   bsbEnglishSurface,
   bsbOriginalUndertext,
-  equivalentFor,
+  equivalentForGreekSurface,
   interlinearLabel,
   isEnglishPrimary,
   wordsForEnglishPrimary,
@@ -201,7 +201,10 @@ export function InterlinearColumn({
                           gloss = under === "" ? "—" : under;
                         } else {
                           surface = w.surface;
-                          const equivalent = equivalentFor(w.english);
+                          const equivalent = equivalentForGreekSurface(
+                            w.english,
+                            w.surface,
+                          );
                           gloss = equivalent === "" ? "—" : equivalent;
                         }
                         if (surface === "" && gloss === "—") return null;

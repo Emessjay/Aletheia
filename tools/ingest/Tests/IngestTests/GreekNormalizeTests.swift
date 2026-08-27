@@ -6,6 +6,13 @@ final class GreekNormalizeTests: XCTestCase {
         XCTAssertEqual(GreekNormalize.key("ΘΕΟΣ"), GreekNormalize.key("θεος"))
     }
 
+    func testAllCapsLXXMatchesLowercaseNT() {
+        // Brenton uncials → same key as accented lowercase NT surfaces.
+        XCTAssertEqual(GreekNormalize.key("ΕΝ"), GreekNormalize.key("εν"))
+        XCTAssertEqual(GreekNormalize.key("ἘΝ"), GreekNormalize.key("ἐν"))
+        XCTAssertEqual(GreekNormalize.key("ΛΌΓΟΣ"), GreekNormalize.key("λόγος"))
+    }
+
     func testStripsTrailingPunctuation() {
         XCTAssertEqual(GreekNormalize.key("γῆν."), GreekNormalize.key("γῆν"))
         XCTAssertEqual(GreekNormalize.key("αὐτοῦ,"), GreekNormalize.key("αὐτοῦ"))

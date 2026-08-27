@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { WordRow } from "@/db/types";
+import { greekNormalizeKey } from "./greekNormalize";
 import {
   bsbEnglishSurface,
   bsbOriginalUndertext,
   equivalentFor,
+  equivalentForGreekSurface,
   resolveInterlinear,
   wordsForEnglishPrimary,
 } from "./tabs";
@@ -58,6 +60,25 @@ describe("equivalentFor", () => {
 
   it("returns empty string for null undertext", () => {
     expect(equivalentFor(null)).toBe("");
+  });
+});
+
+describe("equivalentForGreekSurface", () => {
+  it("prefers the row english when present", () => {
+    const map = new Map([["ἐν", "in"]]);
+    expect(equivalentForGreekSurface("among", "ΕΝ", map)).toBe("among");
+  });
+
+  it("looks up English via casefolded all-caps LXX surface", () => {
+    // Map keys are normalized (NFC + lower + sigma fold), as produced at ingest.
+    // Unaccented ΕΝ and accented ἘΝ are distinct keys (diacritics preserved).
+    const map = new Map<string, string>([
+      [greekNormalizeKey("ἐν")!, "in"],
+      [greekNormalizeKey("εν")!, "in"],
+      [greekNormalizeKey("ἀρχῇ")!, "beginning"],
+    ]);
+    expect(equivalentForGreekSurface(null, "ΕΝ", map)).toBe("in");
+    expect(equivalentForGreekSurface(null, "ἘΝ", map)).toBe("in");
   });
 });
 
