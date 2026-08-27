@@ -437,10 +437,12 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
 export function resolveTheme(mode: ThemeMode): "light" | "dark" {
   if (mode === "system") {
-    return typeof window !== "undefined" &&
-      window.matchMedia("(prefers-color-scheme: dark)").matches
-      ? "dark"
-      : "light";
+    // jsdom (and some SSR hosts) have `window` but no matchMedia.
+    const prefersDark =
+      typeof window !== "undefined" &&
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-color-scheme: dark)").matches;
+    return prefersDark ? "dark" : "light";
   }
   return mode;
 }

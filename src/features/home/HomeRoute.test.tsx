@@ -1,8 +1,6 @@
 /**
- * The front door must never error for a signed-out visitor. Anonymous
- * browsing is allowed: when the user-data adapter refuses the last-position
- * read with AuthRequiredError, Home lands on the default reader instead of
- * printing the error (the bug a grader would have seen first).
+ * Web `/` is the marketing landing; desktop still resumes into the reader.
+ * Anonymous browsing on web means the landing itself — not an AuthRequiredError.
  */
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
@@ -12,6 +10,12 @@ const mockKvGet = vi.fn();
 vi.mock("@/db/user", () => ({
   kvGet: (key: string) => mockKvGet(key),
 }));
+
+vi.mock("@/platform", () => ({
+  getPlatform: vi.fn(() => ({ info: { isDesktop: false } })),
+}));
+import { getPlatform } from "@/platform";
+const mockGetPlatform = vi.mocked(getPlatform);
 
 import { HomeRoute } from "./HomeRoute";
 
@@ -32,9 +36,27 @@ function renderHome() {
   );
 }
 
-describe("HomeRoute anonymous visitors", () => {
+describe("HomeRoute web landing", () => {
   beforeEach(() => {
     mockKvGet.mockReset();
+    mockGetPlatform.mockReturnValue({ info: { isDesktop: false } } as never);
+  });
+
+  it("shows the marketing homepage with a link into the web reader", () => {
+    renderHome();
+    expect(screen.getByRole("heading", { name: "Aletheia" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /open web version/i }),
+    ).toHaveAttribute("href", "/reader/bible/gen/1");
+    expect(screen.getByRole("button", { name: /build for mac/i })).toBeInTheDocument();
+    expect(screen.queryByText("READER")).toBeNull();
+  });
+});
+
+describe("HomeRoute desktop resume", () => {
+  beforeEach(() => {
+    mockKvGet.mockReset();
+    mockGetPlatform.mockReturnValue({ info: { isDesktop: true } } as never);
   });
 
   it("lands signed-out visitors at the default reader, not an error", async () => {
