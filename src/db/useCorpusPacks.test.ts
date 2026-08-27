@@ -27,7 +27,7 @@ describe("pack gating helpers", () => {
       status("anf", true),
     ];
     expect(isTabAllowedByPacks("commentaries", packs)).toBe(false);
-    expect(isTabAllowedByPacks("patristics", packs)).toBe(true);
+    expect(isTabAllowedByPacks("resources", packs)).toBe(true);
     expect(isTabAllowedByPacks("read", packs)).toBe(true);
   });
 

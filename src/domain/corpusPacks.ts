@@ -22,7 +22,7 @@ export interface CorpusPackMeta {
   description: string;
   kind: CorpusPackKind;
   /** Main-nav tab ids that should hide when this pack is absent (desktop). */
-  gatesTabs?: ReadonlyArray<"commentaries" | "patristics">;
+  gatesTabs?: ReadonlyArray<"commentaries" | "resources">;
 }
 
 /**
@@ -97,7 +97,7 @@ export function packMeta(id: string): CorpusPackMeta | undefined {
   return CORPUS_PACKS.find((p) => p.id === id);
 }
 
-/** Tabs that require a specific pack on desktop. Patristics stays visible
+/** Tabs that require a specific pack on desktop. Resources stays visible
  *  whenever base is present (Summa/Creeds); ANF/NPNF/Reformers filter inside. */
 export function tabRequiresPack(tabId: string): CorpusPackId | null {
   if (tabId === "commentaries") return "commentaries";

@@ -1,5 +1,5 @@
 /**
- * The Patristics and Commentaries tabs both read the `work` / `section` /
+ * The Resources and Commentaries tabs both read the `work` / `section` /
  * `citation` tables. On the web build `section` + `citation` are dropped from
  * the Postgres ingest to fit Supabase's free tier, so both tabs are hidden —
  * their routes would otherwise surface empty pages. On Tauri (full bundled
@@ -29,18 +29,18 @@ describe("MAIN_TABS section-table tab gating", () => {
     vi.resetModules();
   });
 
-  it("hides the patristics and commentaries tabs on web", async () => {
+  it("hides the resources and commentaries tabs on web", async () => {
     const ids = await loadTabIds(false);
-    expect(ids).not.toContain("patristics");
+    expect(ids).not.toContain("resources");
     expect(ids).not.toContain("commentaries");
     // The Bible reader and the other web-supported tabs stay.
     expect(ids).toContain("read");
     expect(ids).toContain("notes");
   });
 
-  it("keeps the patristics and commentaries tabs on the desktop build", async () => {
+  it("keeps the resources and commentaries tabs on the desktop build", async () => {
     const ids = await loadTabIds(true);
-    expect(ids).toContain("patristics");
+    expect(ids).toContain("resources");
     expect(ids).toContain("commentaries");
     expect(ids).toContain("read");
   });

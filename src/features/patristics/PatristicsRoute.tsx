@@ -9,9 +9,10 @@ import {
 } from "@/db/hooks";
 import type { SectionOutlineRow, SectionRow, WorkRow } from "@/db/types";
 import { useViewportWidth } from "@/lib/useViewportWidth";
+import { RESOURCES_BASE } from "@/domain/resourcesCorpora";
 import { SectionBody } from "./SectionBody";
 
-// Match AppShell's SIDEBAR_BREAKPOINT so the patristics sidebar collapses at
+// Match AppShell's SIDEBAR_BREAKPOINT so the resources sidebar collapses at
 // the same width as the top-nav links. Below this, the 280px sidebar would
 // crush the reading panel to ~95px on a 375px-wide phone.
 const SIDEBAR_BREAKPOINT = 760;
@@ -46,7 +47,7 @@ export function PatristicsRoute() {
   const ordinalPath = decodeURIComponent(sectionParam);
   const valid = !!work && !!ordinalPath;
 
-  if (!valid) return <Navigate to="/patristics" replace />;
+  if (!valid) return <Navigate to={RESOURCES_BASE} replace />;
 
   return <PatristicsLayout workSlug={work} ordinalPath={ordinalPath} />;
 }
@@ -316,7 +317,7 @@ function SectionView({
         <div>
           {prev ? (
             <Link
-              to={`/patristics/${workSlug}/${encodeURIComponent(prev.ordinal_path)}`}
+              to={`${RESOURCES_BASE}/${workSlug}/${encodeURIComponent(prev.ordinal_path)}`}
               title={prev.label ?? undefined}
             >
               ← {shortenLabel(prev.label ?? prev.ordinal_path)}
@@ -326,7 +327,7 @@ function SectionView({
         <div>
           {next ? (
             <Link
-              to={`/patristics/${workSlug}/${encodeURIComponent(next.ordinal_path)}`}
+              to={`${RESOURCES_BASE}/${workSlug}/${encodeURIComponent(next.ordinal_path)}`}
               title={next.label ?? undefined}
             >
               {shortenLabel(next.label ?? next.ordinal_path)} →
@@ -487,7 +488,7 @@ function PatristicsSidebar({
           <Link
             key={`${s.ordinal_path}-${s.id}`}
             ref={s.ordinal_path === activePath ? activeRef : undefined}
-            to={`/patristics/${workSlug}/${encodeURIComponent(s.ordinal_path)}`}
+            to={`${RESOURCES_BASE}/${workSlug}/${encodeURIComponent(s.ordinal_path)}`}
             onClick={onNavigate}
             style={{
               display: "block",

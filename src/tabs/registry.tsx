@@ -10,7 +10,7 @@ import { LibrariesRoute } from "@/features/libraries/LibrariesRoute";
 import { CommentariesRoute } from "@/features/commentaries/CommentariesRoute";
 import { PatristicsIndexRoute } from "@/features/patristics/PatristicsIndexRoute";
 import { PatristicsRoute } from "@/features/patristics/PatristicsRoute";
-import { PatristicsWorkRedirect } from "@/features/patristics/PatristicsWorkRedirect";
+import { ResourcesEntryRoute } from "@/features/patristics/ResourcesEntryRoute";
 import { SettingsRoute } from "@/features/settings/SettingsRoute";
 import { AttributionsRoute } from "@/features/attributions/AttributionsRoute";
 import { StudyGroupsRoute } from "@/features/study-groups/StudyGroupsRoute";
@@ -60,14 +60,14 @@ const ALL_TABS: MainTab[] = [
     ],
   },
   {
-    id: "patristics",
-    label: "Patristics",
-    navTo: "/patristics",
-    matchPrefix: "/patristics",
+    id: "resources",
+    label: "Resources",
+    navTo: "/resources",
+    matchPrefix: "/resources",
     routes: [
-      { path: "patristics", element: <PatristicsIndexRoute /> },
-      { path: "patristics/:work", element: <PatristicsWorkRedirect /> },
-      { path: "patristics/:work/:section", element: <PatristicsRoute /> },
+      { path: "resources", element: <PatristicsIndexRoute /> },
+      { path: "resources/:slug", element: <ResourcesEntryRoute /> },
+      { path: "resources/:work/:section", element: <PatristicsRoute /> },
     ],
   },
   {
@@ -117,15 +117,15 @@ const ALL_TABS: MainTab[] = [
   },
 ];
 
-// Both the Patristics tab (Schaff ANF/NPNF + Aquinas) and the Commentaries
-// tab read the `work` / `section` / `citation` tables. On the web build
-// `section` + `citation` are dropped from the Postgres ingest to fit
-// Supabase's free-tier disk cap (see app/scripts/ingest_corpus.py), so every
-// route on either tab would surface an empty page. Hide both on web; the nav
-// links disappear and direct `/patristics/*` or `/commentaries/*` URL hits
-// fall through to the existing 404 catch-all. Tauri reads the full corpus
-// from its bundled SQLite, so both tabs stay on desktop.
-const HIDDEN_ON_WEB = new Set(["patristics", "commentaries"]);
+// Both the Resources tab (Schaff ANF/NPNF + Aquinas + reformers) and the
+// Commentaries tab read the `work` / `section` / `citation` tables. On the
+// web build `section` + `citation` are dropped from the Postgres ingest to
+// fit Supabase's free-tier disk cap (see app/scripts/ingest_corpus.py), so
+// every route on either tab would surface an empty page. Hide both on web;
+// the nav links disappear and direct `/resources/*` or `/commentaries/*`
+// URL hits fall through to the existing 404 catch-all. Tauri reads the full
+// corpus from its bundled SQLite, so both tabs stay on desktop.
+const HIDDEN_ON_WEB = new Set(["resources", "commentaries"]);
 // The "Report a bug" tab is web-only — desktop users have direct file access
 // and their bug channel is a separate decision (out of scope here). Hidden on
 // Tauri; direct `/bug-report` URL hits there fall through to the 404 catch-all.

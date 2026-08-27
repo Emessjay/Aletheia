@@ -28,7 +28,7 @@ describe("corpusPacks registry", () => {
 
   it("gates only the commentaries tab by pack id", () => {
     expect(tabRequiresPack("commentaries")).toBe("commentaries");
-    expect(tabRequiresPack("patristics")).toBeNull();
+    expect(tabRequiresPack("resources")).toBeNull();
     expect(tabRequiresPack("read")).toBeNull();
   });
 
