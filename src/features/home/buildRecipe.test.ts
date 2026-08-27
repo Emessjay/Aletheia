@@ -33,8 +33,12 @@ describe("wantsAudioPack", () => {
 });
 
 describe("buildMacRecipe", () => {
-  it("clones the public repo and always packs base", () => {
+  it("bootstraps missing prerequisites before cloning", () => {
     const script = buildMacRecipe(set());
+    expect(script).toContain("xcode-select --install");
+    expect(script).toContain("Homebrew/install/HEAD/install.sh");
+    expect(script).toContain("brew install node@20");
+    expect(script).toContain("https://sh.rustup.rs");
     expect(script).toContain(`git clone ${REPO_URL}`);
     expect(script).toContain("npm run pack-corpus -- --packs base");
     expect(script).toContain("npm run tauri build");

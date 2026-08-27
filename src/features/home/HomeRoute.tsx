@@ -207,7 +207,8 @@ function LandingPage() {
             >
               The base install always includes Bibles, Strong&apos;s lexicon,
               cross-references, Summa, and Creeds. Check any extras you want
-              packed in, then copy the commands.
+              packed in, then copy the script — it installs missing tools
+              (Xcode CLT, Homebrew, Node 20+, Rust) before building.
             </p>
 
             <fieldset
