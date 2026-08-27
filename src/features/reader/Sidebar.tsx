@@ -56,7 +56,10 @@ export function Sidebar() {
         overflowY: "auto",
         background: "var(--color-bg-elevated)",
         borderRight: "1px solid var(--color-rule)",
+        // Bottom clearance tracks the fixed AudioPlayer (--audio-player-height
+        // on <html>) so the last book stays visible above the audio bar.
         padding: "16px 0",
+        paddingBottom: "calc(16px + var(--audio-player-height, 0px))",
       }}
     >
       {GROUP_ORDER.map((g) => {
