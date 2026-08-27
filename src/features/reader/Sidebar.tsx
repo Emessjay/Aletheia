@@ -5,6 +5,7 @@ import {
   classifyExtraBook,
   type CanonTradition,
 } from "@/domain/canonTradition";
+import { useReaderLocationStore } from "@/stores/useReaderLocationStore";
 import { useSettingsStore } from "@/stores/useSettingsStore";
 
 type SidebarGroup = "old" | "new" | "deuterocanon" | "apocrypha";
@@ -31,7 +32,15 @@ function groupForBook(book: BookRow, tradition: CanonTradition): SidebarGroup {
 }
 
 export function Sidebar() {
-  const { book: activeBook = "" } = useParams();
+  const { book: routeBook = "" } = useParams();
+  // The reader publishes the book it's actually showing (scroll-driven) here;
+  // `replaceState`-based URL sync never updates the route param, so the param
+  // alone would keep the *previous* book highlighted after a cross-book
+  // scroll (Bug 4). Prefer the published book, fall back to the route param
+  // when the store is empty (first paint before the reader publishes, or when
+  // the reader isn't mounted).
+  const readerBook = useReaderLocationStore((s) => s.bookSlug);
+  const activeBook = readerBook ?? routeBook;
   const q = useBooks("en_bsb");
   // Until onboarding completes the modal blocks the shell; fall back to
   // protestant labeling so the sidebar never crashes if rendered early.
@@ -93,6 +102,7 @@ function SidebarLink({ book, active }: { book: BookRow; active: boolean }) {
   return (
     <Link
       to={`/reader/bible/${book.slug}/1`}
+      aria-current={active ? "page" : undefined}
       style={{
         position: "relative",
         display: "block",

@@ -42,11 +42,13 @@ import {
   nextChapterKey,
   prevChapterKey,
   sameKey,
+  seedChapters,
   useChapterStack,
   MAX_CHAPTERS,
   type Canon,
   type ChapterKey,
 } from "./useChapterStack";
+import { useReaderLocationStore } from "@/stores/useReaderLocationStore";
 
 interface StrongsState {
   id: string;
@@ -157,8 +159,12 @@ export function ReaderRoute() {
   // layout effect below restores the anchor chapter to its pre-mutation
   // viewport position so the page doesn't jump.
   const anchorAdjustRef = useRef<{ key: string; top: number } | null>(null);
-  const captureAnchor = useCallback(() => {
-    const key = chapterKeyId(currentKeyRef.current);
+  // Capture the on-screen top of a section so the layout effect below can pin
+  // it back to the same position after a stack mutation adds/removes content
+  // above the viewport. Defaults to the current chapter; seeding passes the
+  // explicit navigation target (which may not yet be `currentKey`).
+  const captureAnchor = useCallback((keyId?: string) => {
+    const key = keyId ?? chapterKeyId(currentKeyRef.current);
     const el = sectionEls.current.get(key);
     anchorAdjustRef.current = el
       ? { key, top: el.getBoundingClientRect().top }
@@ -432,6 +438,70 @@ export function ReaderRoute() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [work, book, chapterNum, location.hash, location.key]);
+
+  // ── Optimistic neighbour seeding (Bug 1 + Bug 3) ───────────────────────────
+  // Mount the immediately previous and next chapters around the navigation
+  // target so the user can scroll *up* at once (Bug 1) and the next chapter is
+  // present before they reach it (Bug 3). `canon` loads async, so on the first
+  // synchronous render only the target exists; we seed once canon resolves.
+  //
+  // The seed runs only when the stack is in its pristine post-reset shape (the
+  // lone target) — which is exactly the load / navigation moment. It is gated
+  // to fire at most once per navigation target: a primary-translation change
+  // yields a fresh `canon` object but the same target, and re-seeding then
+  // would yank a mid-scroll reader, so `seededTargetRef` suppresses it.
+  //
+  // Bug 1 is fixed by *seeding*, NOT by loosening the `userScrolled` prepend
+  // gate: there is now real content above to scroll into, while the gate still
+  // suppresses sentinel-driven prepend until the user actually scrolls.
+  const seededTargetRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!valid) return;
+    const c = canon;
+    if (!c) return; // canon not ready yet; this effect re-runs when it resolves
+    const target: ChapterKey = {
+      workSlug: work,
+      bookSlug: book,
+      chapter: chapterNum,
+    };
+    const targetId = chapterKeyId(target);
+    if (seededTargetRef.current === targetId) return; // already seeded this target
+    const chapters = stackRef.current.chapters;
+    // Wait for the navigation effect's `reset` to collapse the stack to the
+    // lone target before seeding (this effect re-runs on stack changes). If the
+    // user has already grown the stack by scrolling, leave it alone.
+    if (!(chapters.length === 1 && sameKey(chapters[0], target))) return;
+    const keys = seedChapters(target, c);
+    seededTargetRef.current = targetId;
+    if (keys.length <= 1) return; // nothing to add (e.g. a 1-chapter canon)
+    // Capture the target's current top, then expand the stack; the anchor
+    // layout effect restores scrollTop so the target stays pinned (AC #2 — no
+    // jump). Neighbours mount after the target's first paint (this is a passive
+    // effect), so the visible chapter isn't starved by their queries (AC #3).
+    captureAnchor(targetId);
+    dispatch({ type: "seed", keys });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [valid, canon, work, book, chapterNum, stack.chapters, captureAnchor, dispatch]);
+
+  // ── Publish current chapter to the shared store for the Sidebar (Bug 4) ────
+  // `currentKey` updates on scroll (recomputeCurrent) and synchronously on the
+  // navigation reset (setCurrentKey(pk)); publishing here covers both, so the
+  // sidebar highlight tracks the read book live and updates immediately on an
+  // intra-reader navigation rather than after the scroll throttle.
+  const publishLocation = useReaderLocationStore((s) => s.setLocation);
+  useEffect(() => {
+    publishLocation({
+      workSlug: currentKey.workSlug,
+      bookSlug: currentKey.bookSlug,
+      chapter: currentKey.chapter,
+    });
+  }, [currentKey, publishLocation]);
+  // Clear on unmount so a later visit to a different tab/book doesn't inherit a
+  // stale highlight (AC #7).
+  useEffect(
+    () => () => useReaderLocationStore.getState().clear(),
+    [],
+  );
 
   // ── Floating verse toolbar anchor ──────────────────────────────────────────
   useLayoutEffect(() => {
