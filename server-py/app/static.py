@@ -48,11 +48,11 @@ def mount_static(app: FastAPI, static_dir: Path) -> None:
                 candidate.relative_to(static_dir.resolve())
             except ValueError:
                 # Path traversal attempt — fall through to index for SPA.
-                return FileResponse(index_path, media_type="text/html")
+                return FileResponse(index_path, media_type="text/html", headers={"Cache-Control": "no-cache"})
             if candidate.is_file():
                 mt, _ = mimetypes.guess_type(str(candidate))
                 return FileResponse(candidate, media_type=mt or "application/octet-stream")
 
-        return FileResponse(index_path, media_type="text/html")
+        return FileResponse(index_path, media_type="text/html", headers={"Cache-Control": "no-cache"})
 
     app.include_router(router)

@@ -44,6 +44,7 @@ describe("HomeRoute web landing", () => {
 
   it("shows the marketing homepage with a link into the web reader", () => {
     renderHome();
+    expect(mockKvGet).not.toHaveBeenCalled();
     expect(screen.getByRole("heading", { name: "Aletheia" })).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: /open web version/i }),

@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { kvGet } from "@/db/user";
 import { getPlatform } from "@/platform";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { VersionBadge } from "@/components/VersionBadge";
 import {
   OPTIONAL_BUILD_PACKS,
   buildMacRecipe,
@@ -109,11 +110,16 @@ function LandingPage() {
       <div
         style={{
           display: "flex",
-          justifyContent: "flex-end",
+          justifyContent: "space-between",
+          alignItems: "center",
           padding: "14px 18px 0",
         }}
       >
-        <ThemeToggle />
+        <span aria-hidden style={{ width: 1 }} />
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <ThemeToggle />
+          <VersionBadge />
+        </div>
       </div>
 
       <article

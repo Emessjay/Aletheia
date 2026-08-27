@@ -17,6 +17,7 @@ import { AuthProvider } from "@/auth/AuthProvider";
 import { AuthMenu } from "@/auth/AuthMenu";
 import { AuthScreen } from "@/auth/AuthScreen";
 import { CanonOnboarding } from "@/features/settings/CanonOnboarding";
+import { VersionBadge } from "@/components/VersionBadge";
 
 // titleBarStyle "Overlay" leaves the native window controls floating on top of
 // our header. Pad to clear them where applicable.
@@ -191,6 +192,7 @@ export function AppShell() {
           </button>
           <ThemeToggle />
           <AuthMenu />
+          <VersionBadge />
         </div>
       </header>
       )}
