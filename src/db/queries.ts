@@ -374,6 +374,25 @@ export interface ChapterPayload {
   chapterNumbers: number[];
 }
 
+/**
+ * Bucket word rows by verse_id, collapsing accidental duplicates that share
+ * the same (position, base_text). Hebrew TAHOT rows always have NULL
+ * base_text; SQLite's NULLs-distinct UNIQUE allowed a second insert on
+ * partial re-ingest, which rendered every surface twice in the reader.
+ * Keeps the first row in input order (callers ORDER BY position, id).
+ */
+export function groupWordsByVerse(words: WordRow[]): Record<number, WordRow[]> {
+  const out: Record<number, WordRow[]> = {};
+  const seen = new Set<string>();
+  for (const w of words) {
+    const key = `${w.verse_id}:${w.position}:${w.base_text ?? ""}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    (out[w.verse_id] ||= []).push(w);
+  }
+  return out;
+}
+
 export async function listBooksByLanguage(
   language: CorpusLanguage,
 ): Promise<BookRow[]> {
@@ -521,13 +540,10 @@ export async function getChapter(
       `SELECT w.* FROM word w
          JOIN verse v ON v.id = w.verse_id
         WHERE v.chapter_id = $1
-        ORDER BY w.verse_id, w.position`,
+        ORDER BY w.verse_id, w.position, w.id`,
       [chapter.id],
     );
-    wordsByVerse = {};
-    for (const w of words) {
-      (wordsByVerse[w.verse_id] ||= []).push(w);
-    }
+    wordsByVerse = groupWordsByVerse(words);
   }
 
   return {
@@ -594,12 +610,10 @@ async function getRemappedChapter(
       `SELECT w.* FROM word w
          JOIN verse v ON v.id = w.verse_id
         WHERE v.chapter_id IN (${placeholders})
-        ORDER BY w.verse_id, w.position`,
+        ORDER BY w.verse_id, w.position, w.id`,
       collectedChapterIds,
     );
-    for (const w of words) {
-      (wordsByVerse[w.verse_id] ||= []).push(w);
-    }
+    wordsByVerse = groupWordsByVerse(words);
   }
 
   // The MT chapter number list for a divergent book is the full MT range, not

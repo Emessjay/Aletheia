@@ -59,9 +59,16 @@ public enum Schema {
                 strongs     TEXT,                     -- 'H6268' or 'G2316'
                 morphology  TEXT,
                 base_text   TEXT,                     -- 'NA28' | 'BYZ' | 'TR' | NULL
-                english     TEXT,                     -- BSB-derived contextual English (STEPBible col 3)
-                UNIQUE(verse_id, position, base_text)
+                english     TEXT                      -- BSB-derived contextual English (STEPBible col 3)
             );
+            """)
+        // SQLite treats NULL as distinct in UNIQUE constraints, so a table-level
+        // UNIQUE(verse_id, position, base_text) would not stop Hebrew re-ingests
+        // (TAHOT always writes base_text NULL) from inserting duplicate rows.
+        // ifnull collapses NULL → '' so INSERT OR IGNORE is actually idempotent.
+        try db.execute(sql: """
+            CREATE UNIQUE INDEX word_verse_pos_base_idx
+                ON word(verse_id, position, ifnull(base_text, ''))
             """)
         try db.execute(sql: "CREATE INDEX word_strongs_idx ON word(strongs);")
         try db.execute(sql: "CREATE INDEX word_lemma_idx ON word(lemma);")

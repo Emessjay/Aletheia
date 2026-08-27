@@ -113,9 +113,12 @@ CREATE TABLE word (
     strongs     TEXT,
     morphology  TEXT,
     base_text   TEXT,
-    english     TEXT,
-    UNIQUE(verse_id, position, base_text)
+    english     TEXT
 );
+-- ifnull so NULL base_text (Hebrew TAHOT) participates in uniqueness;
+-- table-level UNIQUE(verse_id, position, base_text) treats NULLs as distinct.
+CREATE UNIQUE INDEX word_verse_pos_base_idx
+    ON word(verse_id, position, ifnull(base_text, ''));
 CREATE INDEX word_lemma_idx ON word(lemma);
 CREATE INDEX word_strongs_idx ON word(strongs);
 """
@@ -221,7 +224,21 @@ def emit_interlinear(src_path: Path, out_dir: Path) -> Path:
 
     src = connect(src_path)
     src.execute(f"ATTACH DATABASE '{dest}' AS pack")
-    src.execute("INSERT INTO pack.word SELECT * FROM word")
+    # Keep one row per (verse_id, position, base_text). Hebrew TAHOT rows have
+    # NULL base_text; a partial re-ingest historically doubled every position.
+    src.execute(
+        """
+        INSERT INTO pack.word
+        SELECT w.id, w.verse_id, w.position, w.surface, w.lemma, w.strongs,
+               w.morphology, w.base_text, w.english
+          FROM word w
+          JOIN (
+            SELECT verse_id, position, ifnull(base_text, '') AS bt, MIN(id) AS id
+              FROM word
+             GROUP BY verse_id, position, ifnull(base_text, '')
+          ) keep ON keep.id = w.id
+        """
+    )
     src.commit()
     src.execute("DETACH DATABASE pack")
     src.close()
