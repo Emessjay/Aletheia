@@ -218,6 +218,7 @@ function ChapterView({
   const work = useCommentaryEntry(workSlug);
   const books = useCommentaryBooks(workSlug);
   const chapters = useCommentaryChapters(workSlug, bookSlug);
+  const intro = useCommentaryBookIntro(workSlug, bookSlug);
   const sections = useChapterCommentary(workSlug, bookSlug, chapter);
   const refTranslation = commentaryReferenceTranslation();
   const refChapter = useChapter(refTranslation.id, bookSlug, chapter);
@@ -234,6 +235,10 @@ function ChapterView({
   const idx = numbers.indexOf(chapter);
   const prev = idx > 0 ? numbers[idx - 1] : null;
   const next = idx >= 0 && idx < numbers.length - 1 ? numbers[idx + 1] : null;
+  // Book intros live on /commentaries/:work/:book (not in the chapter list),
+  // so from chapter 1 offer a prev link back when an intro exists.
+  const hasBookIntro = (intro.data ?? "").trim().length > 0;
+  const prevToIntro = prev == null && idx === 0 && hasBookIntro;
 
   const list = sections.data ?? [];
   const chapterIntro = list.find((s) => s.kind === "chapter");
@@ -291,6 +296,13 @@ function ChapterView({
             style={linkReset}
           >
             ← Chapter {prev}
+          </Link>
+        ) : prevToIntro ? (
+          <Link
+            to={`/commentaries/${workSlug}/${bookSlug}`}
+            style={linkReset}
+          >
+            ← Introduction
           </Link>
         ) : null}
       </div>
