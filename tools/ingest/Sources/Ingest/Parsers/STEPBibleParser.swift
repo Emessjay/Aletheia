@@ -273,11 +273,14 @@ public struct STEPBibleParser {
     }
 
     private func normalizeStrongs(_ raw: String) -> String? {
-        // Strong's in STEPBible can be a slash-separated list or wrapped in {}: e.g. `H9003/{H7225G}`.
-        // Take the first H/G + digits run we encounter, then strip leading zeros so
-        // the IDs match the canonical form used by the lexicon table.
-        var trimmed = raw.replacingOccurrences(of: "{", with: "").replacingOccurrences(of: "}", with: "")
-        if let slash = trimmed.firstIndex(of: "/") { trimmed = String(trimmed[..<slash]) }
+        // Strong's in STEPBible can be a slash-separated list or wrapped in
+        // braces: e.g. `H9003/{H7225G}`. The prefix code (H9003) is a STEPBible
+        // grammar marker, not a lexicon row — prefer the root after `/`.
+        var trimmed = raw.trimmingCharacters(in: .whitespaces)
+        if let slash = trimmed.firstIndex(of: "/") {
+            trimmed = String(trimmed[trimmed.index(after: slash)...])
+        }
+        trimmed = trimmed.replacingOccurrences(of: "{", with: "").replacingOccurrences(of: "}", with: "")
         guard let first = trimmed.first(where: { $0 == "H" || $0 == "G" }) else { return nil }
         let prefixIdx = trimmed.firstIndex(of: first)!
         let after = trimmed[trimmed.index(after: prefixIdx)...]

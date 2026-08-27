@@ -158,6 +158,7 @@ export function InterlinearColumn({
                             surface={w.surface}
                             gloss={equivalent === "" ? "—" : equivalent}
                             strongs={w.strongs}
+                            lemma={w.lemma}
                             lang={tokenLang}
                             highlightColor={hl?.color ?? null}
                             onOpenStrongs={onOpenStrongs}

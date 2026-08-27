@@ -152,6 +152,7 @@ function renderBody({
             key={`${first.id}-0`}
             surface={firstRest}
             strongs={first.strongs}
+            lemma={first.lemma}
             lang={tokenLang}
             onOpen={onOpenStrongs}
           />
@@ -160,6 +161,7 @@ function renderBody({
               key={`${w.id}-${i + 1}`}
               surface={w.surface}
               strongs={w.strongs}
+              lemma={w.lemma}
               lang={tokenLang}
               onOpen={onOpenStrongs}
             />
@@ -174,6 +176,7 @@ function renderBody({
             key={`${w.id}-${i}`}
             surface={w.surface}
             strongs={w.strongs}
+            lemma={w.lemma}
             lang={tokenLang}
             onOpen={onOpenStrongs}
           />

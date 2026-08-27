@@ -1,16 +1,19 @@
 import { useRef } from "react";
+import { lexiconStrongsId } from "@/domain/strongsId";
 
 interface Props {
   surface: string;
   strongs: string | null;
+  lemma?: string | null;
   lang: string;
   onOpen: (strongsId: string, rect: DOMRect) => void;
 }
 
-export function WordToken({ surface, strongs, lang, onOpen }: Props) {
+export function WordToken({ surface, strongs, lemma, lang, onOpen }: Props) {
   const ref = useRef<HTMLSpanElement>(null);
+  const lexiconId = lexiconStrongsId(strongs, lemma);
 
-  if (!strongs) {
+  if (!lexiconId) {
     return (
       <span lang={lang}>
         {clean(surface)}
@@ -29,7 +32,7 @@ export function WordToken({ surface, strongs, lang, onOpen }: Props) {
           // the verse-annotation toolbar opens on top of the lexicon panel,
           // which is what shipped to the round-2 critic.
           e.stopPropagation();
-          if (ref.current) onOpen(strongs, ref.current.getBoundingClientRect());
+          if (ref.current) onOpen(lexiconId, ref.current.getBoundingClientRect());
         }}
         style={{
           cursor: "pointer",

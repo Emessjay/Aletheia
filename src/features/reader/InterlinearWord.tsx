@@ -1,10 +1,12 @@
 import { useRef, type ReactNode } from "react";
 import type { HighlightColor } from "@/db/types";
+import { lexiconStrongsId } from "@/domain/strongsId";
 
 interface Props {
   surface: string;
   gloss: ReactNode;
   strongs: string | null;
+  lemma?: string | null;
   lang: "he" | "grc";
   highlightColor: HighlightColor | null;
   onOpenStrongs: (strongsId: string, rect: DOMRect) => void;
@@ -19,12 +21,14 @@ export function InterlinearWord({
   surface,
   gloss,
   strongs,
+  lemma,
   lang,
   highlightColor,
   onOpenStrongs,
 }: Props) {
   const ref = useRef<HTMLSpanElement>(null);
-  const clickable = !!strongs;
+  const lexiconId = lexiconStrongsId(strongs, lemma);
+  const clickable = !!lexiconId;
   const surfaceClass = [
     "al-il-surface",
     clickable ? "al-il-clickable" : null,
@@ -42,8 +46,8 @@ export function InterlinearWord({
               // wrapper and opens the verse-annotation toolbar on top of
               // the lexicon — the round-2 critic's web-build regression.
               e.stopPropagation();
-              if (ref.current && strongs) {
-                onOpenStrongs(strongs, ref.current.getBoundingClientRect());
+              if (ref.current && lexiconId) {
+                onOpenStrongs(lexiconId, ref.current.getBoundingClientRect());
               }
             }
           : undefined
