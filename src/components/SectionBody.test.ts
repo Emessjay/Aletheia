@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { _testing } from "./SectionBody";
+import { _testing } from "@/components/SectionBody";
 
 const { tokenize, stripAllTokens } = _testing;
 
@@ -57,8 +57,6 @@ describe("SectionBody tokenizer", () => {
 
   it("tolerates an unmatched closer by ignoring it", () => {
     const tree = tokenize("{em}open never closed and a stray {/q} closer");
-    // The stray `{/q}` is silently dropped; remaining text stays inside the
-    // un-closed em wrapper so the surrounding prose isn't lost.
     expect(tree).toEqual([
       {
         kind: "em",
@@ -79,10 +77,6 @@ describe("SectionBody tokenizer", () => {
   });
 
   it("captures scripRef with passage attribute and visible text", () => {
-    // CCEL's <scripRef passage="Phil. 4.3">Phil. iv. 3</scripRef> survives as
-    // paired tokens — the renderer turns them into a clickable link whose
-    // href derives from the passage attribute regardless of how the visible
-    // text is abbreviated.
     const tree = tokenize(
       "St. Paul mentions ({ref:Phil. 4.3}Phil. iv. 3{/ref}) here.",
     );
@@ -98,9 +92,6 @@ describe("SectionBody tokenizer", () => {
   });
 
   it("captures scripRef whose visible text is a bare marker", () => {
-    // Sometimes the editor's visible cue is just "Ver. 2." — without the
-    // paired tokens we'd have no way to link it. The tokenizer preserves
-    // the passage attribute so the renderer can resolve the marker.
     const tree = tokenize(
       "{ref:1 John 1:2}Ver. 2.{/ref} The life was manifested.",
     );

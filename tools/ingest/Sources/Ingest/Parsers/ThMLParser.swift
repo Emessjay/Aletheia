@@ -728,6 +728,7 @@ private final class ThMLDelegate: NSObject, XMLParserDelegate {
         // Container-only sections (e.g. confessions Books) end up with an empty body once
         // their title-page contents are stripped. Still emit them — the UI navigates by
         // label and renders just the heading.
+        finalLabel = ThMLParser.normalizeSectionLabel(finalLabel)
         let labelText = finalLabel?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         if !stripped.isEmpty || !labelText.isEmpty {
             sections.append(ThMLParser.Section(
@@ -745,6 +746,36 @@ private final class ThMLDelegate: NSObject, XMLParserDelegate {
 // MARK: - Heading detection / cleanup (file-scope so tests can exercise it)
 
 extension ThMLParser {
+    /// Clean a section label before it is stored — mirrors
+    /// `src/domain/sectionLabels.ts::normalizeSectionLabel`.
+    static func normalizeSectionLabel(_ label: String?) -> String? {
+        guard var t = label?.trimmingCharacters(in: .whitespacesAndNewlines), !t.isEmpty else {
+            return nil
+        }
+        t = t.replacingOccurrences(
+            of: #"\s+[—–-]\s+(Sect|Cap|Ch|Bk|Vol|St|S|Pt)\.?$"#,
+            with: "",
+            options: [.regularExpression, .caseInsensitive]
+        )
+        t = t.replacingOccurrences(
+            of: #"\s*[—–-]\s*:\s*[—–-]\s*"#,
+            with: " — ",
+            options: .regularExpression
+        )
+        t = t.replacingOccurrences(
+            of: #"^[—–-:\s]+"#,
+            with: "",
+            options: .regularExpression
+        )
+        t = t.replacingOccurrences(
+            of: #"\s+[—–-]\s*:\s*$"#,
+            with: "",
+            options: .regularExpression
+        )
+        t = normalizeWhitespace(t)
+        return t.isEmpty ? nil : t
+    }
+
     /// Structural prefixes that can stand in for a chapter title in the source.
     /// Match must be case-insensitive (e.g. "CHAPTER I" appears in some volumes).
     fileprivate static let structuralPrefixPattern =

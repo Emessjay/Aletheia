@@ -533,6 +533,17 @@ final class ThMLHeadingTests: XCTestCase {
         let stripped = ThMLParser.stripLeadingHeadingParagraphs(from: body, label: "The Parable of the Sower")
         XCTAssertEqual(stripped, "LUKE 8:4-15: And when much people were gathered, he spake by a parable.")
     }
+
+    func testNormalizeSectionLabelStripsEmptyCaptionStub() {
+        let raw = "Section III. — : — Now I come to the next head"
+        let normalized = ThMLParser.normalizeSectionLabel(raw)
+        XCTAssertEqual(normalized, "Section III. — Now I come to the next head")
+    }
+
+    func testNormalizeSectionLabelStripsTrailingFragment() {
+        let raw = "Section XLI. — Sect"
+        XCTAssertEqual(ThMLParser.normalizeSectionLabel(raw), "Section XLI.")
+    }
 }
 
 final class SummaSubsectionTests: XCTestCase {

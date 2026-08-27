@@ -11,6 +11,7 @@ import {
 import { commentaryReferenceTranslation } from "@/domain/translations";
 import type { ChapterPayload } from "@/db/queries";
 import type { SectionRow, WorkRow } from "@/db/types";
+import { SectionBody } from "@/components/SectionBody";
 
 /**
  * /commentaries                              → list all commentaries
@@ -553,25 +554,6 @@ function parseVerseLabel(label: string): number[] {
   return out;
 }
 
-function SectionBody({ body }: { body: string }) {
-  // Ingest stores commentary text with paragraph breaks as double-newlines.
-  // Split on those so we get real <p>'s with the same measure/leading the rest
-  // of the reader uses.
-  const paragraphs = body
-    .split(/\n{2,}/g)
-    .map((p) => p.trim())
-    .filter((p) => p.length > 0);
-  return (
-    <div>
-      {paragraphs.map((p, i) => (
-        <p key={i} style={paraStyle}>
-          {p}
-        </p>
-      ))}
-    </div>
-  );
-}
-
 function Header({
   eyebrow,
   title,
@@ -654,11 +636,6 @@ const commentLabel: React.CSSProperties = {
   textTransform: "uppercase",
   color: "var(--color-fg-muted)",
   margin: "0 0 6px",
-};
-const paraStyle: React.CSSProperties = {
-  margin: "0 0 0.9rem",
-  lineHeight: 1.55,
-  color: "var(--color-fg)",
 };
 const crumbLink: React.CSSProperties = {
   color: "var(--color-fg-muted)",

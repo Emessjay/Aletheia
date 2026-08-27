@@ -215,6 +215,28 @@ kbd {
   margin: 0;
 }
 
+/* Section-based corpus body (Resources, commentaries) */
+.al-section-body {
+  color: var(--color-fg);
+  line-height: 1.55;
+}
+
+.al-section-body p {
+  margin: 0 0 0.9em;
+}
+
+.al-section-blockquote {
+  margin: 0.4em 0 1.1em;
+  padding: 0 0 0 1em;
+  border-left: 2px solid var(--color-rule);
+  font-style: italic;
+}
+
+.al-section-footnotes {
+  font-size: 14px;
+  color: var(--color-fg-muted);
+}
+
 /* ── Flowing inline verse layout ──────────────────────────────────────────
    Single-tab mode: verses flow as paragraph-style text, the way a printed
    Bible reads. Multi-tab comparison uses a CSS grid (one row per verse, one
