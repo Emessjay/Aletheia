@@ -92,9 +92,22 @@ TRUNCATE_EXTRA: tuple[str, ...] = ("xref", "section", "citation")
 
 def _iter_rows(sqlite_conn: sqlite3.Connection, table: str, columns: tuple[str, ...]) -> Iterable[tuple]:
     """Stream rows from SQLite as tuples in the declared column order."""
-    cur = sqlite_conn.execute(
-        f'SELECT {", ".join(columns)} FROM {table}'
-    )
+    if table == "word":
+        # Collapse duplicate Hebrew TAHOT rows (NULL base_text) that slipped
+        # through SQLite's NULLs-distinct UNIQUE on partial re-ingest.
+        cols = ", ".join(f"w.{c}" for c in columns)
+        sql = f"""
+            SELECT {cols}
+              FROM word w
+              JOIN (
+                SELECT verse_id, position, ifnull(base_text, '') AS bt, MIN(id) AS id
+                  FROM word
+                 GROUP BY verse_id, position, ifnull(base_text, '')
+              ) keep ON keep.id = w.id
+        """
+    else:
+        sql = f'SELECT {", ".join(columns)} FROM {table}'
+    cur = sqlite_conn.execute(sql)
     while True:
         batch = cur.fetchmany(10_000)
         if not batch:

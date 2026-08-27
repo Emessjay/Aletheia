@@ -76,7 +76,8 @@ def upgrade() -> None:
         -- The SQLite UNIQUE(verse_id, position, base_text) treats NULL base_text
         -- as distinct (SQLite default), so duplicates are technically allowed
         -- when base_text IS NULL. Postgres has the same NULLs-distinct default,
-        -- so we mirror the constraint as-is.
+        -- so we mirror the constraint as-is. Migration 0008 replaces this with
+        -- COALESCE(base_text, '') so Hebrew TAHOT re-ingests stay idempotent.
         CREATE UNIQUE INDEX word_verse_pos_base_idx
             ON word(verse_id, position, base_text);
         CREATE INDEX word_strongs_idx ON word(strongs);

@@ -89,6 +89,24 @@ public final class CorpusWriter {
         }
     }
 
+    /// Drop all `word` rows belonging to verses of `language` (e.g. `"he"`).
+    /// Used at the start of STEPBible stages so a `--languages he` partial
+    /// rebuild replaces rather than doubles rows. Necessary because Hebrew
+    /// words always have `base_text IS NULL`, and SQLite's NULLs-distinct
+    /// UNIQUE semantics previously let re-ingests insert a second copy.
+    public func deleteWords(forLanguage language: String) throws {
+        try queue.write { db in
+            try db.execute(sql: """
+                DELETE FROM word WHERE verse_id IN (
+                    SELECT v.id FROM verse v
+                    JOIN chapter c ON v.chapter_id = c.id
+                    JOIN book b ON c.book_id = b.id
+                    WHERE b.language = ?
+                )
+                """, arguments: [language])
+        }
+    }
+
     public func upsertStrongs(_ entry: StrongsRow) throws {
         try queue.write { db in
             try db.execute(sql: """

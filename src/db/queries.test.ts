@@ -19,10 +19,12 @@ vi.mock("./corpus", () => ({
 import {
   buildFtsQuery,
   findBook,
+  groupWordsByVerse,
   searchVerses,
   SEARCH_MARK_CLOSE,
   SEARCH_MARK_OPEN,
 } from "./queries";
+import type { WordRow } from "./types";
 
 afterEach(() => {
   selectMock.mockReset();
@@ -186,5 +188,58 @@ describe("findBook", () => {
     const out = await findBook("en_bsb", "GENESIS");
     expect(out).toEqual(bsbGen);
     expect(selectOneMock.mock.calls[0][1]).toEqual(["en_bsb", "GENESIS"]);
+  });
+});
+
+function word(
+  partial: Pick<WordRow, "id" | "verse_id" | "position"> &
+    Partial<Omit<WordRow, "id" | "verse_id" | "position">>,
+): WordRow {
+  return {
+    surface: "אֵת",
+    lemma: null,
+    strongs: null,
+    morphology: null,
+    base_text: null,
+    english: null,
+    ...partial,
+  };
+}
+
+describe("groupWordsByVerse", () => {
+  it("keeps the first row when (position, base_text) collide", () => {
+    const first = word({ id: 1, verse_id: 10, position: 1, surface: "לֵאמֹר" });
+    const dup = word({ id: 99, verse_id: 10, position: 1, surface: "לֵאמֹר" });
+    const next = word({ id: 2, verse_id: 10, position: 2, surface: "הֵן" });
+    const out = groupWordsByVerse([first, dup, next]);
+    expect(out[10]?.map((w) => w.id)).toEqual([1, 2]);
+  });
+
+  it("keeps distinct base_text variants at the same position", () => {
+    const na = word({
+      id: 1,
+      verse_id: 5,
+      position: 1,
+      base_text: "NA28",
+      surface: "ἐν",
+    });
+    const byz = word({
+      id: 2,
+      verse_id: 5,
+      position: 1,
+      base_text: "BYZ",
+      surface: "ἐν",
+    });
+    const out = groupWordsByVerse([na, byz]);
+    expect(out[5]?.map((w) => w.id)).toEqual([1, 2]);
+  });
+
+  it("buckets by verse_id independently", () => {
+    const a = word({ id: 1, verse_id: 1, position: 1 });
+    const b = word({ id: 2, verse_id: 2, position: 1 });
+    const out = groupWordsByVerse([a, b]);
+    expect(Object.keys(out).sort()).toEqual(["1", "2"]);
+    expect(out[1]).toHaveLength(1);
+    expect(out[2]).toHaveLength(1);
   });
 });

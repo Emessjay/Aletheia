@@ -502,6 +502,24 @@ public struct Pipeline {
         guard !candidates.isEmpty else {
             throw IngestError.sourceMissing("\(dir.path): no .txt/.tsv files (STEPBible may not publish this table)")
         }
+        // Partial rebuilds (`clean: false`) reuse existing verses; without this
+        // wipe, Hebrew TAHOT rows (NULL base_text) would double under SQLite's
+        // NULLs-distinct UNIQUE semantics. Mirror BSB tables' delete-before-write.
+        if bookFilter.isEmpty {
+            try writer.deleteWords(forLanguage: language)
+        } else {
+            try writer.queue.write { db in
+                let placeholders = bookFilter.sorted().map { _ in "?" }.joined(separator: ", ")
+                try db.execute(sql: """
+                    DELETE FROM word WHERE verse_id IN (
+                        SELECT v.id FROM verse v
+                        JOIN chapter c ON v.chapter_id = c.id
+                        JOIN book b ON c.book_id = b.id
+                        WHERE b.language = ? AND b.slug IN (\(placeholders))
+                    )
+                    """, arguments: StatementArguments([language] + bookFilter.sorted()))
+            }
+        }
         let parser = STEPBibleParser(table: table)
         var totalWords = 0
         var keptWords = 0

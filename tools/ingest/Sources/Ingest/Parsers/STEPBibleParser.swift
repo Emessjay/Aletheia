@@ -96,9 +96,10 @@ public struct STEPBibleParser {
 
         // TAHOT references encode an explicit per-word position (`Gen.1.1#01`),
         // but TAGNT does not — every row in a verse shares `44_Jhn.001.001`.
-        // Without unique positions the writer's `UNIQUE(verse_id, position,
-        // base_text)` collapses the whole verse to one word. Auto-assign
-        // sequential positions when the source omits them.
+        // Without unique positions the writer's unique index on
+        // `(verse_id, position, ifnull(base_text, ''))` collapses the whole
+        // verse to one word. Auto-assign sequential positions when the
+        // source omits them.
         var nextAutoPosition: [String: Int] = [:]
 
         for rawLine in normalized.split(separator: "\n", omittingEmptySubsequences: true) {
