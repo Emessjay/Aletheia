@@ -127,13 +127,6 @@ the workflow itself:
 This is a one-time UI step; the workflow itself needs no additional
 configuration to be enabled.
 
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the worktree convention, how to
-run the tests, what we'll accept into the corpus, and how to add a new
-translation or top-level tab. By participating you agree to the
-[Code of Conduct](CODE_OF_CONDUCT.md).
-
 ## License
 
 Aletheia is released into the public domain under the
