@@ -53,9 +53,10 @@ from typing import Iterator
 RE_VERSE_GAL = re.compile(r"^\s*VERSE\s+(\d+)\.?\s*", re.IGNORECASE)
 
 # Peter/Jude + Genesis: "V. 1." | "V. 1, 2." | "V. 1-6." | "V. 2a." | etc.
+# Genesis also prefixes Roman section numbers: "I. V. 1." | "III. V. 3." | "II. V. 15a."
 # Captures the first integer (the anchor) and ignores the rest of the range.
 RE_VERSE_LENKER = re.compile(
-    r"^V\.\s*(\d+)(?:[a-z])?(?:\s*[,\-]\s*\d+(?:[a-z])?)?\.?\s*",
+    r"^(?:[IVXLCDM]+\.\s+)?V\.\s*(\d+)(?:[a-z])?(?:\s*[,\-]\s*\d+(?:[a-z])?)?\.?\s*",
 )
 
 # Chapter markers come in two flavors. Some volumes use Arabic ("CHAPTER 1"),

@@ -207,6 +207,7 @@ final class LexiconParserTests: XCTestCase {
         let e = entries[0]
         XCTAssertEqual(e.id, "H1961")
         XCTAssertEqual(e.lemma, "הָיָה")
+        XCTAssertEqual(e.transliteration, "haw-yaw")
         // Meaning should retain the leading "to exist, i.e. ..." prose.
         XCTAssertTrue(e.gloss.contains("exist"), "got gloss: \(e.gloss)")
         XCTAssertTrue(e.definition.contains("primitive root"))

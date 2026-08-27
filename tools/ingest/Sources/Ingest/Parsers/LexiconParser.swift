@@ -150,7 +150,10 @@ private final class HebrewLexiconDelegate: StackedTextDelegate {
             // Only the entry-level <w> (direct child of <entry>) carries the
             // transliteration attribute we want; nested <w> inside <source>/
             // <meaning> are cross-references.
-            if elementStack.count == 2 /* entry + this element */ {
+            // At onStart the current element is already on the stack
+            // ([lexicon, entry, w] → depth 3), so gate on parent == "entry"
+            // the same way lemma capture does in onEnd — not stack.count == 2.
+            if elementStack.dropLast().last == "entry" {
                 if let pron = attributes["pron"] ?? attributes["xlit"] {
                     current?.translit = pron
                 }
