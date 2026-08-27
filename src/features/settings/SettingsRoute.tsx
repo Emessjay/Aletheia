@@ -6,6 +6,10 @@ import {
   type ThemeMode,
 } from "@/stores/useSettingsStore";
 import {
+  CANON_TRADITIONS,
+  CANON_TRADITION_META,
+} from "@/domain/canonTradition";
+import {
   audioTranslations,
   readerTabTranslations,
 } from "@/domain/translations";
@@ -32,6 +36,8 @@ export function SettingsRoute() {
   const setDropCapsEnabled = useSettingsStore((s) => s.setDropCapsEnabled);
   const audioBarEnabled = useSettingsStore((s) => s.audioBarEnabled);
   const setAudioBarEnabled = useSettingsStore((s) => s.setAudioBarEnabled);
+  const canonTradition = useSettingsStore((s) => s.canonTradition);
+  const setCanonTradition = useSettingsStore((s) => s.setCanonTradition);
   // Subscribe to tabs so the row re-renders when active state changes; derive
   // per-language activeness from the snapshot rather than calling a method off
   // a stable function reference (which would skip re-renders).
@@ -68,6 +74,42 @@ export function SettingsRoute() {
             />
           ))}
         </div>
+      </Section>
+
+      <Section title="Canon">
+        <p
+          style={{
+            color: "var(--color-fg-muted)",
+            fontSize: 13,
+            margin: 0,
+            maxWidth: 540,
+          }}
+        >
+          Chooses which books outside the Protestant 66 are labeled Deuterocanon
+          versus Apocrypha in the reader sidebar. Does not hide or reorder books.
+        </p>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 18 }}>
+          {CANON_TRADITIONS.map((id) => (
+            <RadioRow
+              key={id}
+              label={CANON_TRADITION_META[id].shortLabel}
+              active={canonTradition === id}
+              onClick={() => setCanonTradition(id)}
+            />
+          ))}
+        </div>
+        {canonTradition ? (
+          <p
+            style={{
+              color: "var(--color-fg-subtle)",
+              fontSize: 13,
+              margin: 0,
+              maxWidth: 540,
+            }}
+          >
+            {CANON_TRADITION_META[canonTradition].description}
+          </p>
+        ) : null}
       </Section>
 
       <Section title="Reading">

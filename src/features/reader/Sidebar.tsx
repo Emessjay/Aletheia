@@ -1,29 +1,51 @@
 import { Link, useParams } from "react-router-dom";
 import { useBooks } from "@/db/hooks";
-import type { BookRow, Testament } from "@/db/types";
+import type { BookRow } from "@/db/types";
+import {
+  classifyExtraBook,
+  type CanonTradition,
+} from "@/domain/canonTradition";
+import { useSettingsStore } from "@/stores/useSettingsStore";
 
-const TESTAMENT_LABELS: Record<Testament, string> = {
+type SidebarGroup = "old" | "new" | "deuterocanon" | "apocrypha";
+
+const GROUP_LABELS: Record<SidebarGroup, string> = {
   old: "Old Testament",
-  // The corpus section is the KJV Apocrypha, which is broader than the
-  // Catholic deuterocanon (1–2 Esdras and the Prayer of Manasseh are
-  // apocrypha but not deuterocanonical) — label it as both.
-  deutero: "Apocrypha/Deuterocanon",
   new: "New Testament",
+  deuterocanon: "Deuterocanon",
+  apocrypha: "Apocrypha",
 };
 
-const TESTAMENT_ORDER: Testament[] = ["old", "new", "deutero"];
+const GROUP_ORDER: SidebarGroup[] = [
+  "old",
+  "new",
+  "deuterocanon",
+  "apocrypha",
+];
+
+function groupForBook(book: BookRow, tradition: CanonTradition): SidebarGroup {
+  if (book.testament === "old") return "old";
+  if (book.testament === "new") return "new";
+  // Corpus stores the full KJV-Apocrypha / WEB set as testament "deutero".
+  return classifyExtraBook(book.slug, tradition);
+}
 
 export function Sidebar() {
   const { book: activeBook = "" } = useParams();
   const q = useBooks("en_bsb");
+  // Until onboarding completes the modal blocks the shell; fall back to
+  // protestant labeling so the sidebar never crashes if rendered early.
+  const canonTradition =
+    useSettingsStore((s) => s.canonTradition) ?? "protestant";
 
-  const groups: Record<Testament, BookRow[]> = {
+  const groups: Record<SidebarGroup, BookRow[]> = {
     old: [],
-    deutero: [],
     new: [],
+    deuterocanon: [],
+    apocrypha: [],
   };
   for (const b of q.data ?? []) {
-    groups[b.testament].push(b);
+    groups[groupForBook(b, canonTradition)].push(b);
   }
 
   return (
@@ -37,11 +59,11 @@ export function Sidebar() {
         padding: "16px 0",
       }}
     >
-      {TESTAMENT_ORDER.map((t) => {
-        const items = groups[t];
+      {GROUP_ORDER.map((g) => {
+        const items = groups[g];
         if (items.length === 0) return null;
         return (
-          <section key={t} style={{ marginBottom: 14 }}>
+          <section key={g} style={{ marginBottom: 14 }}>
             <div
               style={{
                 fontSize: 11,
@@ -52,7 +74,7 @@ export function Sidebar() {
                 marginBottom: 4,
               }}
             >
-              {TESTAMENT_LABELS[t]}
+              {GROUP_LABELS[g]}
             </div>
             {items.map((b) => (
               <SidebarLink key={b.id} book={b} active={activeBook === b.slug} />

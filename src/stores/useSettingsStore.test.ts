@@ -72,3 +72,32 @@ describe("retainReaderLangs", () => {
     expect(stored.find((t) => t.lang === "en_bsb")?.active).toBe(true);
   });
 });
+
+describe("canonTradition preference", () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+    useSettingsStore.setState({ canonTradition: null });
+  });
+
+  it("starts unset so first-run onboarding can prompt", () => {
+    expect(useSettingsStore.getState().canonTradition).toBeNull();
+    expect(window.localStorage.getItem("aletheia.canonTradition")).toBeNull();
+  });
+
+  it("persists a chosen tradition to localStorage", () => {
+    useSettingsStore.getState().setCanonTradition("catholic");
+    expect(useSettingsStore.getState().canonTradition).toBe("catholic");
+    expect(window.localStorage.getItem("aletheia.canonTradition")).toBe(
+      "catholic",
+    );
+  });
+
+  it("can switch traditions after the initial choice", () => {
+    useSettingsStore.getState().setCanonTradition("protestant");
+    useSettingsStore.getState().setCanonTradition("orthodox");
+    expect(useSettingsStore.getState().canonTradition).toBe("orthodox");
+    expect(window.localStorage.getItem("aletheia.canonTradition")).toBe(
+      "orthodox",
+    );
+  });
+});

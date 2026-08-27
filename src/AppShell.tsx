@@ -16,6 +16,7 @@ import {
 import { AuthProvider } from "@/auth/AuthProvider";
 import { AuthMenu } from "@/auth/AuthMenu";
 import { AuthScreen } from "@/auth/AuthScreen";
+import { CanonOnboarding } from "@/features/settings/CanonOnboarding";
 
 // titleBarStyle "Overlay" leaves the native window controls floating on top of
 // our header. Pad to clear them where applicable.
@@ -265,6 +266,7 @@ export function AppShell() {
       <CommandPalette />
       <KeyboardHelp open={helpOpen} onClose={() => setHelpOpen(false)} />
       <AuthScreen />
+      <CanonOnboarding />
     </div>
     </AuthProvider>
   );

@@ -1,5 +1,9 @@
 import { create } from "zustand";
 import type { CorpusLanguage } from "@/db/types";
+import {
+  isCanonTradition,
+  type CanonTradition,
+} from "@/domain/canonTradition";
 import { readerTabTranslations } from "@/domain/translations";
 import {
   resolveInterlinear,
@@ -9,6 +13,7 @@ import {
 } from "@/domain/tabs";
 
 export type ThemeMode = "light" | "dark" | "system";
+export type { CanonTradition };
 
 const THEME_KEY = "aletheia.theme";
 const TABS_KEY = "aletheia.tabs";
@@ -18,6 +23,7 @@ const LEGACY_TAB_ORDER_KEY = "aletheia.tabOrder";
 const FONT_SIZE_KEY = "aletheia.fontSize";
 const DROP_CAPS_KEY = "aletheia.dropCaps";
 const AUDIO_BAR_KEY = "aletheia.audioBar";
+const CANON_TRADITION_KEY = "aletheia.canonTradition";
 
 export const DEFAULT_FONT_SIZE = 17;
 export const MIN_FONT_SIZE = 13;
@@ -186,6 +192,13 @@ function readAudioBar(): boolean {
   return raw === null ? true : raw === "1";
 }
 
+/** `null` until the user picks a tradition (first-run onboarding). */
+function readCanonTradition(): CanonTradition | null {
+  if (typeof window === "undefined") return null;
+  const raw = window.localStorage.getItem(CANON_TRADITION_KEY);
+  return isCanonTradition(raw) ? raw : null;
+}
+
 function ensureAtLeastOneActive(tabs: Tab[]): Tab[] {
   if (tabs.some((t) => t.active)) return tabs;
   // Reactivate BSB if present; else the first single tab; else the first tab.
@@ -229,6 +242,11 @@ interface SettingsState {
   setDropCapsEnabled: (v: boolean) => void;
   audioBarEnabled: boolean;
   setAudioBarEnabled: (v: boolean) => void;
+
+  /** Bible canon tradition for deuterocanon vs apocrypha labels.
+   *  `null` means the first-run prompt has not been answered yet. */
+  canonTradition: CanonTradition | null;
+  setCanonTradition: (t: CanonTradition) => void;
 }
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
@@ -406,6 +424,14 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       window.localStorage.setItem(AUDIO_BAR_KEY, v ? "1" : "0");
     }
     set({ audioBarEnabled: v });
+  },
+
+  canonTradition: readCanonTradition(),
+  setCanonTradition: (canonTradition) => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(CANON_TRADITION_KEY, canonTradition);
+    }
+    set({ canonTradition });
   },
 }));
 
