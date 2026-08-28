@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "repo": "Emessjay/aletheia-corpus",
+  "revision": "4d690efa31a2e22ac0ff85091a99c2584c57fcea",
+  "publishedAt": "2026-08-28T20:03:18Z",
+  "note": "Pinned corpus artifacts on Hugging Face Hub. Fetch with: npm run fetch-corpus-packs",
+  "packs": [
+    {
+      "id": "base",
+      "kind": "sqlite",
+      "path": "base.sqlite",
+      "bytes": 142237696,
+      "sha256": "018c247cf6419a7b35be0cad1f44bb1580cd3a868a0b2f96ffcd931181657f58"
+    },
+    {
+      "id": "interlinear",
+      "kind": "sqlite",
+      "path": "interlinear.sqlite",
+      "bytes": 231002112,
+      "sha256": "9ece18681b0197a06db927b837bb9a185aecb0ad4822cad6044ffb794eb33ebe"
+    },
+    {
+      "id": "commentaries",
+      "kind": "sqlite",
+      "path": "commentaries.sqlite",
+      "bytes": 215752704,
+      "sha256": "fd15d5c26573a6ab2a74ac0d6a0d01ec7367f88ddd0746750ad5a04bb1001a44"
+    },
+    {
+      "id": "anf",
+      "kind": "sqlite",
+      "path": "anf.sqlite",
+      "bytes": 45969408,
+      "sha256": "56a31ccaeb4bb764cc2dea9c0fe4b79e837001363f8ec6113f5eaf7e569f6d44"
+    },
+    {
+      "id": "npnf",
+      "kind": "sqlite",
+      "path": "npnf.sqlite",
+      "bytes": 114528256,
+      "sha256": "9500108e8f3d9b8e6193bc4d18977f7d1cd019baf9f5fbd1259ae98b86eea5da"
+    },
+    {
+      "id": "reformers",
+      "kind": "sqlite",
+      "path": "reformers.sqlite",
+      "bytes": 23252992,
+      "sha256": "83392ac048f0f2045d4219869591c439fe23ddb3e2145ae2924d8a5bc1ea970c"
+    },
+    {
+      "id": "audio-modern-en",
+      "kind": "directory",
+      "path": "audio-modern-en",
+      "bytes": 8368950001,
+      "sha256": "1b1720ff8a23eb7a0d304b8a38f9fb64871eabdaf37179f978380fd32a54d9a0"
+    }
+  ]
+}
