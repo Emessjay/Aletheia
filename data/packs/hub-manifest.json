@@ -1,9 +1,11 @@
 {
   "schemaVersion": 1,
+  "channel": "production",
+  "branch": "main",
   "repo": "Emessjay/aletheia-corpus",
   "revision": "4d690efa31a2e22ac0ff85091a99c2584c57fcea",
   "publishedAt": "2026-08-28T20:03:18Z",
-  "note": "Pinned corpus artifacts on Hugging Face Hub. Fetch with: npm run fetch-corpus-packs",
+  "note": "Production corpus — stable downloads and release builds. Fetch with: npm run fetch-corpus-packs -- --channel production. Promoted from development on major releases.",
   "packs": [
     {
       "id": "base",
