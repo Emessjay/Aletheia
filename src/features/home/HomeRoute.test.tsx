@@ -25,9 +25,9 @@ function authRequiredError() {
   return err;
 }
 
-function renderHome() {
+function renderHome(initialEntry = "/") {
   return render(
-    <MemoryRouter initialEntries={["/"]}>
+    <MemoryRouter initialEntries={[initialEntry]}>
       <Routes>
         <Route path="/" element={<HomeRoute />} />
         <Route path="/reader/:work/:book/:chapter" element={<p>READER</p>} />
@@ -51,6 +51,12 @@ describe("HomeRoute web landing", () => {
     ).toHaveAttribute("href", "/reader/bible/gen/1");
     expect(screen.getByRole("button", { name: /build for mac/i })).toBeInTheDocument();
     expect(screen.queryByText("READER")).toBeNull();
+  });
+
+  it("canonicalizes // to / on web", () => {
+    renderHome("//");
+    expect(screen.getByRole("heading", { name: "Aletheia" })).toBeInTheDocument();
+    expect(mockKvGet).not.toHaveBeenCalled();
   });
 });
 

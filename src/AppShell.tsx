@@ -8,6 +8,7 @@ import { useCommandPaletteStore } from "@/stores/useCommandPaletteStore";
 import { getPlatform } from "@/platform";
 import { useViewportWidth } from "@/lib/useViewportWidth";
 import { useGlobalShortcuts } from "@/lib/useGlobalShortcuts";
+import { isRootPath } from "@/lib/isRootPath";
 import { MAIN_TABS, isTabActive } from "@/tabs/registry";
 import {
   isTabAllowedByPacks,
@@ -48,8 +49,8 @@ export function AppShell() {
   const win = platformInfo.isWindowsDesktop;
   const viewportW = useViewportWidth();
   const compact = viewportW < SIDEBAR_BREAKPOINT;
-  // Web `/` is the marketing homepage — no app chrome or first-run canon modal.
-  const marketingHome = !platformInfo.isDesktop && loc.pathname === "/";
+  // Web site root (including `//`) is the marketing homepage — no app chrome.
+  const marketingHome = !platformInfo.isDesktop && isRootPath(loc.pathname);
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   // Auto-close the drawer on route or breakpoint change.

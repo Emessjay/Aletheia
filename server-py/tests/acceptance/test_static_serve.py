@@ -28,6 +28,25 @@ async def test_unknown_non_api_route_falls_back_to_spa():
 
 
 @pytest.mark.asyncio
+async def test_double_slash_root_redirects_to_canonical():
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test", follow_redirects=False) as client:
+        resp = await client.get("//")
+    assert resp.status_code == 308
+    assert resp.headers.get("location") == "/"
+
+
+@pytest.mark.asyncio
+async def test_root_index_has_no_store_cache():
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.get("/")
+    if resp.status_code == 200:
+        cache = resp.headers.get("cache-control", "").lower()
+        assert "no-store" in cache
+
+
+@pytest.mark.asyncio
 async def test_api_404_returns_json_not_html():
     """Regression guard: the SPA fallback must NEVER swallow unknown /api/*
     routes. If a frontend calls /api/typo and gets HTML back, every JSON

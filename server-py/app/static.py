@@ -9,10 +9,13 @@ of HTML — frontend reliability depends on that distinction.
 from __future__ import annotations
 
 import mimetypes
+import re
 from pathlib import Path
 
 from fastapi import APIRouter, FastAPI
-from fastapi.responses import FileResponse, JSONResponse, Response
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Response
+
+INDEX_HEADERS = {"Cache-Control": "no-store, must-revalidate"}
 
 
 def mount_static(app: FastAPI, static_dir: Path) -> None:
@@ -31,6 +34,10 @@ def mount_static(app: FastAPI, static_dir: Path) -> None:
         if full_path.startswith("api/") or full_path == "api":
             return JSONResponse({"error": "Not Found"}, status_code=404)
 
+        # `//` and other slash-only paths → canonical `/`.
+        if full_path and re.fullmatch(r"/+", full_path):
+            return RedirectResponse("/", status_code=308)
+
         if not index_path.exists():
             # Frontend not built yet — surface a JSON 404 with a hint instead
             # of a 5xx so the route stays usable during API-only local dev.
@@ -48,11 +55,11 @@ def mount_static(app: FastAPI, static_dir: Path) -> None:
                 candidate.relative_to(static_dir.resolve())
             except ValueError:
                 # Path traversal attempt — fall through to index for SPA.
-                return FileResponse(index_path, media_type="text/html", headers={"Cache-Control": "no-cache"})
+                return FileResponse(index_path, media_type="text/html", headers=INDEX_HEADERS)
             if candidate.is_file():
                 mt, _ = mimetypes.guess_type(str(candidate))
                 return FileResponse(candidate, media_type=mt or "application/octet-stream")
 
-        return FileResponse(index_path, media_type="text/html", headers={"Cache-Control": "no-cache"})
+        return FileResponse(index_path, media_type="text/html", headers=INDEX_HEADERS)
 
     app.include_router(router)

@@ -1,7 +1,8 @@
 import { useEffect, useState, type CSSProperties } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, Navigate, useNavigate, useLocation } from "react-router-dom";
 import { kvGet } from "@/db/user";
 import { getPlatform } from "@/platform";
+import { isRootPath } from "@/lib/isRootPath";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { VersionBadge } from "@/components/VersionBadge";
 import {
@@ -20,6 +21,13 @@ const WEB_APP_PATH = "/reader/bible/gen/1";
 
 export function HomeRoute() {
   const isDesktop = getPlatform().info.isDesktop;
+  const { pathname } = useLocation();
+
+  // Canonicalize `//` (and other slash-only roots) to `/` so React Router,
+  // marketing chrome, and bookmarks all hit the same landing URL.
+  if (!isDesktop && isRootPath(pathname) && pathname !== "/") {
+    return <Navigate to="/" replace />;
+  }
 
   if (isDesktop) {
     return <DesktopResume />;

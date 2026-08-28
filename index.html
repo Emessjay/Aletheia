@@ -12,6 +12,13 @@
     </style>
     <script>
       (function () {
+        // Canonicalize // → / before the SPA boots (some browsers keep // in the URL).
+        var p = location.pathname;
+        if (/^\/+$/.test(p) && p !== "/") location.replace("/");
+      })();
+    </script>
+    <script>
+      (function () {
         try {
           var saved = localStorage.getItem("aletheia.theme") || "system";
           var resolved = saved === "system"
