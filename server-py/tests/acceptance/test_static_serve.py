@@ -30,8 +30,10 @@ async def test_unknown_non_api_route_falls_back_to_spa():
 @pytest.mark.asyncio
 async def test_double_slash_root_redirects_to_canonical():
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test", follow_redirects=False) as client:
-        resp = await client.get("//")
+    async with AsyncClient(transport=transport, follow_redirects=False) as client:
+        # Relative "//" is normalized away by httpx URL joining; use an absolute
+        # URL so the ASGI scope path stays "//" (what browsers send).
+        resp = await client.get("http://test//")
     assert resp.status_code == 308
     assert resp.headers.get("location") == "/"
 

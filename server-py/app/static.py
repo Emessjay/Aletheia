@@ -18,6 +18,22 @@ from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Resp
 INDEX_HEADERS = {"Cache-Control": "no-store, must-revalidate"}
 
 
+def install_slash_canonicalization(app: FastAPI) -> None:
+    """Redirect ``//`` (and ``///``…) to ``/`` before routing.
+
+    Starlette's ``/{full_path:path}`` catch-all does not reliably receive a
+    ``full_path`` value for slash-only URLs, so the check inside ``spa`` is not
+    enough on its own.
+    """
+
+    @app.middleware("http")
+    async def redirect_slashes_only(request, call_next):  # type: ignore[no-untyped-def]
+        path = request.scope.get("path", "")
+        if path != "/" and path and re.fullmatch(r"/+", path):
+            return RedirectResponse("/", status_code=308)
+        return await call_next(request)
+
+
 def mount_static(app: FastAPI, static_dir: Path) -> None:
     """Register the SPA catch-all on ``app``.
 

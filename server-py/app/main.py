@@ -29,7 +29,7 @@ from .routes.audio import audio_router
 from .routes.corpus import corpus_router
 from .routes.group import group_router
 from .routes.user import user_router
-from .static import mount_static
+from .static import install_slash_canonicalization, mount_static
 
 log = logging.getLogger("aletheia")
 
@@ -84,6 +84,9 @@ def create_app() -> FastAPI:
     app.include_router(audio_router(), prefix="/api/audio")
     app.include_router(user_router(), prefix="/api/user")
     app.include_router(group_router(), prefix="/api")
+
+    # Canonicalize `//` before the SPA catch-all (see static.install_slash_canonicalization).
+    install_slash_canonicalization(app)
 
     # Mount the SPA catch-all LAST. The handler itself returns JSON 404 for
     # any unmatched /api/* path so the SPA fallback never swallows API calls.
