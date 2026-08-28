@@ -49,6 +49,8 @@
       "../data/packs/npnf.sqlite",
       "../data/packs/reformers.sqlite",
       "../data/packs/audio-modern-en",
+      "../data/packs/hub-manifest.json",
+      "../data/packs/hub-manifest.dev.json",
       "../data/packs/registry.json"
     ],
     "icon": [

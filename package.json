@@ -13,6 +13,12 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "pack-corpus": "python3 scripts/split-corpus-packs.py",
+    "create-hf-dataset": "python3 scripts/create-hf-dataset.py",
+    "fetch-corpus-packs": "python3 scripts/fetch-corpus-packs.py",
+    "upload-corpus-packs": "python3 scripts/upload-corpus-packs.py",
+    "promote-corpus-packs": "python3 scripts/promote-corpus-packs.py",
+    "ensure-corpus-from-hub": "python3 scripts/ensure-corpus-from-hub.py",
+    "test:corpus-hub": "python3 scripts/test-corpus-hub-pipeline.py",
     "fetch-audio-pack": "python3 scripts/fetch-audio-pack.py",
     "reingest": "bash scripts/reingest-packs.sh",
     "reingest:all": "bash scripts/reingest-packs.sh --all"

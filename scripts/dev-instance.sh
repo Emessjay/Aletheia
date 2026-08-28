@@ -51,14 +51,17 @@ fi
 
 echo "▶ Aletheia dev #${N}  vite=${PORT}  hmr=${HMR}  identifier=${IDENT}${WORKTREE_LABEL:+  worktree=${WORKTREE_LABEL}}"
 
-# Corpus packs: prefer split shards under data/packs/ (full content for
-# local testing). Generate with `npm run pack-corpus` if missing.
+# Corpus packs: fetch development channel when missing.
 if [[ ! -f data/packs/base.sqlite ]]; then
     if [[ -f data/Aletheia.sqlite ]]; then
         echo "▶ Generating corpus packs from data/Aletheia.sqlite…"
         python3 scripts/split-corpus-packs.py
+    elif python3 -c "import json; m=json.load(open('data/packs/hub-manifest.dev.json')); exit(0 if m.get('revision') else 1)" 2>/dev/null; then
+        echo "▶ Fetching development corpus packs from Hugging Face Hub…"
+        python3 -m pip install -q -r scripts/requirements-corpus.txt
+        python3 scripts/fetch-corpus-packs.py --channel development
     else
-        echo "warning: no data/packs/base.sqlite and no data/Aletheia.sqlite — desktop corpus will fail to open" >&2
+        echo "warning: no data/packs/base.sqlite — run npm run fetch-corpus-packs -- --channel development" >&2
     fi
 fi
 

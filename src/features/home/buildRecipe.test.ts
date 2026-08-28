@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  CORPUS_HF_REPO,
   REPO_URL,
   buildMacRecipe,
   sqlitePackIdsForBuild,
@@ -40,16 +41,21 @@ describe("buildMacRecipe", () => {
     expect(script).toContain("brew install node@20");
     expect(script).toContain("https://sh.rustup.rs");
     expect(script).toContain(`git clone ${REPO_URL}`);
-    expect(script).toContain("npm run pack-corpus -- --packs base");
+    expect(script).toContain(CORPUS_HF_REPO);
+    expect(script).toContain("requirements-corpus.txt");
+    expect(script).toContain(
+      "npm run fetch-corpus-packs -- --channel production --packs base",
+    );
     expect(script).toContain("npm run tauri build");
-    expect(script).not.toContain("fetch-audio-pack");
+    expect(script).not.toContain("fetch_sources.sh");
+    expect(script).not.toContain("pack-corpus");
   });
 
-  it("includes selected sqlite packs and the audio fetch when checked", () => {
+  it("includes selected packs in the production HF fetch list", () => {
     const script = buildMacRecipe(set("interlinear", "commentaries", "audio-modern-en"));
     expect(script).toContain(
-      "npm run pack-corpus -- --packs base interlinear commentaries",
+      "npm run fetch-corpus-packs -- --channel production --packs base interlinear commentaries audio-modern-en",
     );
-    expect(script).toContain("npm run fetch-audio-pack");
+    expect(script).not.toContain("fetch-audio-pack");
   });
 });

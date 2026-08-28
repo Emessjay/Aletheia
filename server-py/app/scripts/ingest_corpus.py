@@ -44,6 +44,36 @@ def _default_corpus_path() -> Path:
     return (Path(__file__).resolve().parents[3] / "data" / "Aletheia.sqlite").resolve()
 
 
+def _ensure_corpus(corpus_path: Path) -> Path:
+    """Bootstrap monolith from Hugging Face production packs when missing."""
+    if corpus_path.is_file():
+        return corpus_path
+    repo_root = Path(__file__).resolve().parents[3]
+    script = repo_root / "scripts" / "ensure-corpus-from-hub.py"
+    if not script.is_file():
+        raise SystemExit(f"corpus bootstrap script missing: {script}")
+    import subprocess
+
+    log.info("corpus missing — bootstrapping from Hugging Face (production)")
+    subprocess.run(
+        [
+            sys.executable,
+            str(script),
+            "--channel",
+            "production",
+            "--monolith",
+            str(corpus_path),
+            "--packs",
+            str(repo_root / "data" / "packs"),
+        ],
+        cwd=repo_root,
+        check=True,
+    )
+    if not corpus_path.is_file():
+        raise SystemExit(f"corpus bootstrap failed: {corpus_path} still missing")
+    return corpus_path
+
+
 # Column lists per table, in the same order we'll read from SQLite and write
 # to Postgres. Excludes the generated ``search_vector`` column (Postgres
 # computes it). For nullable/has-default integer PKs we still copy the source
@@ -177,7 +207,7 @@ def main(argv: list[str] | None = None) -> int:
     if not database_url:
         print("DATABASE_URL is not set", file=sys.stderr)
         return 2
-    asyncio.run(ingest(database_url, _default_corpus_path()))
+    asyncio.run(ingest(database_url, _ensure_corpus(_default_corpus_path())))
     return 0
 
 

@@ -135,6 +135,15 @@ SOURCES="${ROOT_DIR}/data/sources"
 SQLITE="${ROOT_DIR}/data/Aletheia.sqlite"
 INGEST_DIR="${ROOT_DIR}/tools/ingest"
 
+ensure_monolith_from_hub() {
+    if [[ -f "${SQLITE}" ]]; then
+        return 0
+    fi
+    note "Bootstrapping monolith from Hugging Face (development channel)…"
+    python3 -m pip install -q -r scripts/requirements-corpus.txt
+    python3 scripts/ensure-corpus-from-hub.py --channel development
+}
+
 run_ingest() {
     local groups="${1:-}"
     [[ -d "${SOURCES}" ]] || die "missing data/sources — run ./scripts/fetch_sources.sh first"
@@ -231,6 +240,7 @@ if [[ "${ALL}" -eq 1 ]]; then
     run_ingest ""
     run_split
     note "Done. Audio MP3s are separate: npm run fetch-audio-pack"
+    note "Upload development corpus: npm run upload-corpus-packs"
     exit 0
 fi
 
@@ -248,7 +258,8 @@ done
 
 if [[ -n "${SQLITE_PACKS}" ]]; then
     if [[ "${PACK_ONLY}" -eq 0 ]]; then
-        [[ -f "${SQLITE}" ]] || die "selective ingest needs existing ${SQLITE} (or use --all)"
+        ensure_monolith_from_hub
+        [[ -f "${SQLITE}" ]] || die "monolith missing after HF bootstrap"
         # shellcheck disable=SC2086
         # Do not name this GROUPS — that is a readonly bash builtin (macOS /bin/bash 3.2).
         INGEST_GROUPS="$(union_groups ${SQLITE_PACKS})"

@@ -1,0 +1,2 @@
+# Corpus pack fetch/upload (maintainers + builders).
+huggingface_hub>=0.26.0

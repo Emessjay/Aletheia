@@ -8,6 +8,9 @@ import {
 
 export const REPO_URL = "https://github.com/Emessjay/Aletheia.git";
 
+/** Hugging Face dataset hosting pinned corpus pack artifacts. */
+export const CORPUS_HF_REPO = "Emessjay/aletheia-corpus";
+
 /** Optional packs the homepage exposes as checkboxes (everything but base). */
 export const OPTIONAL_BUILD_PACKS = CORPUS_PACKS.filter((p) => p.kind !== "base");
 
@@ -88,29 +91,27 @@ export const PREREQ_BOOTSTRAP = [
   '  . "$HOME/.cargo/env"',
   "fi",
   "",
-  "if ! command -v swift >/dev/null 2>&1; then",
-  '  echo "Swift is required for the corpus ingest but was not found."',
-  '  echo "Install Xcode from the App Store (or ensure Command Line Tools finished), then re-run."',
-  "  exit 1",
-  "fi",
-  "",
-  'echo "==> Prerequisites OK (node $(node -v), rustc $(rustc --version | awk \'{print $2}\'), swift present)."',
+  'echo "==> Prerequisites OK (node $(node -v), rustc $(rustc --version | awk \'{print $2}\')).',
 ].join("\n");
 
 /**
  * Shell script a visitor can copy to install missing prerequisites, clone,
- * pack the selected corpus shards, optionally fetch narration MP3s, and
- * produce a macOS Tauri bundle.
+ * download pinned production corpus packs from Hugging Face Hub, and produce a
+ * macOS Tauri bundle.
  */
 export function buildMacRecipe(
   selected: ReadonlySet<OptionalBuildPackId>,
 ): string {
-  const sqlitePacks = sqlitePackIdsForBuild(selected);
-  const packList = sqlitePacks.join(" ");
+  const fetchPacks = [...sqlitePackIdsForBuild(selected)];
+  if (wantsAudioPack(selected)) {
+    fetchPacks.push("audio-modern-en");
+  }
+  const packList = fetchPacks.join(" ");
   const lines: string[] = [
     "# Aletheia — build for Mac",
     "# Installs missing prerequisites (Xcode CLT, Homebrew, Node 20+, Rust),",
-    "# then clones, builds the corpus, and produces a Tauri app bundle.",
+    `# then clones, fetches production corpus packs from Hugging Face (${CORPUS_HF_REPO}),`,
+    "# and produces a Tauri app bundle.",
     "# Paste into Terminal, or: bash build-aletheia.sh",
     "",
     PREREQ_BOOTSTRAP,
@@ -119,31 +120,13 @@ export function buildMacRecipe(
     "cd Aletheia",
     "npm install",
     "",
-    "# Fetch public-domain sources and build the corpus SQLite once:",
-    "./scripts/fetch_sources.sh",
-    "cd tools/ingest",
-    "swift run aletheia-ingest \\",
-    "  --source-root ../../data/sources \\",
-    "  --output ../../data/Aletheia.sqlite",
-    "cd ../..",
-    "",
-    "# Split the monolith into the packs you selected:",
-    `npm run pack-corpus -- --packs ${packList}`,
-  ];
-
-  if (wantsAudioPack(selected)) {
-    lines.push(
-      "",
-      "# Offline narration MP3s (~8 GB; resumable):",
-      "npm run fetch-audio-pack",
-    );
-  }
-
-  lines.push(
+    "# Production corpus (modular packs, SHA-256 verified):",
+    "python3 -m pip install -q -r scripts/requirements-corpus.txt",
+    `npm run fetch-corpus-packs -- --channel production --packs ${packList}`,
     "",
     "# Production macOS app (output under src-tauri/target/release/bundle/):",
     "npm run tauri build",
-  );
+  ];
 
   return lines.join("\n");
 }

@@ -41,6 +41,9 @@ import sqlite3
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from corpus_hub import sha256_directory_manifest, sha256_file
+
 PACK_VERSION = 1
 
 # All SQLite/directory pack ids this script can emit (order for full runs).
@@ -337,15 +340,18 @@ def pack_entry(out_dir: Path, pack_id: str, path: Path) -> dict:
     if path.is_dir():
         size = sum(p.stat().st_size for p in path.rglob("*") if p.is_file())
         kind = "directory"
+        digest = sha256_directory_manifest(path)
     else:
         size = path.stat().st_size
         kind = "sqlite"
+        digest = sha256_file(path)
     return {
         "id": pack_id,
         "version": PACK_VERSION,
         "path": str(path.relative_to(out_dir)),
         "kind": kind,
         "bytes": size,
+        "sha256": digest,
     }
 
 

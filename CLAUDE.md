@@ -62,20 +62,17 @@ probably bypassing one of them — stop and look:
   `src/db/user.ts` using `$N` — that is the shared dialect.
 
 - **Corpus packs (desktop only)** — `src/domain/corpusPacks.ts` +
-  `scripts/split-corpus-packs.py`. The Tauri base install is lean
-  (`data/packs/base.sqlite`: Bibles, Strong's *lexicon*, xref, Summa,
-  Creeds). Optional shards (interlinear `word` table, commentaries, ANF,
-  NPNF, reformers) and the Modern English audio pack (timing + prepackaged
-  MP3s under `audio-modern-en/`) live under `data/packs/`. Runtime merges
-  installed SQLite packs into the app-data working copy
-  (`src-tauri/src/corpus_packs.rs`); audio MP3s are read from the pack
-  directory and hard-linked into app-data for playback (no network when
-  present). Fetch MP3s with `npm run fetch-audio-pack` before a full desktop
-  test build. Dev/test bundles all packs via `tauri.conf.json` resources;
-  production should ship only `base.sqlite`. Web ignores this — it trims via
-  Postgres ingest and keeps on-demand `/api/audio` caching. After rebuilding
-  `data/Aletheia.sqlite`, run `npm run pack-corpus` before desktop builds.
-  See `data/packs/README.md`.
+  `scripts/split-corpus-packs.py`. Pinned on Hugging Face Hub
+  (`Emessjay/aletheia-corpus`) in **production** and **development**
+  channels (`hub-manifest.json` / `hub-manifest.dev.json`). Stable builds
+  fetch production (`npm run fetch-corpus-packs -- --channel production`);
+  dev worktrees and selective reingest bootstrap from development.
+  Maintainers upload mutations with `npm run upload-corpus-packs`; major
+  releases promote dev → production via `npm run promote-corpus-packs`.
+  Runtime merges installed SQLite packs into app-data
+  (`src-tauri/src/corpus_packs.rs`). Web Postgres ingest bootstraps the
+  monolith from production when `data/Aletheia.sqlite` is missing. See
+  `data/packs/README.md`.
 
 ## Web/Railway deployment (FastAPI + Postgres)
 
